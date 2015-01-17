@@ -1,0 +1,11 @@
+*.pyc
+*.class
+*.pyo
+*.pydevproject
+*.project
+*.idea
+*.sqlite3
+*.db
+*.egg-info
+tethys_datasets/temp/*
+tethys_datasets/tests/test_config.py
