@@ -20,7 +20,7 @@ To install via download::
 Tests
 -----
 
-To run the tests
+To run the tests you will need to edit the ``test_config.py`` file located at ``tethys_dataset_services.tests.test_config.py`` with an appropriate CKAN endpoint and API key.
 
 Usage
 -----
@@ -29,7 +29,9 @@ Usage
 
   from tethys_dataset_services.engines import CkanDatasetEngine
 
-  engine = CkanDatasetEngine(endpoint='',
-                             apikey='')
+  engine = CkanDatasetEngine(endpoint='http://<ckan_host>/api/3/action',
+                             apikey='G3taN@p|k3Y')
+
+  result = engine.list_datasets()
 
 
