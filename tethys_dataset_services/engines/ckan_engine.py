@@ -97,7 +97,7 @@ class CkanDatasetEngine(DatasetEngine):
             return parsed
 
         except:
-            print('Status Code {0}: {1}'.format(status, response))
+            print('Status Code {0}: {1}'.format(status, response.encode('utf-8')))
             return None
 
     def search_datasets(self, query, console=False, **kwargs):
