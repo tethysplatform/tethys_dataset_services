@@ -1,6 +1,6 @@
 import requests
 
-from ..base import DatasetEngine
+from tethys_dataset_services.base import DatasetEngine
 
 
 class HydroShareDatasetEngine(DatasetEngine):

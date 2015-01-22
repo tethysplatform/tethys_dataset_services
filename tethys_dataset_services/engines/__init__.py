@@ -1,2 +1,3 @@
 from ckan_engine import CkanDatasetEngine
 from hydroshare_engine import HydroShareDatasetEngine
+from geoserver_engine import GeoServerSpatialDatasetEngine

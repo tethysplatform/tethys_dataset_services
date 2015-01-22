@@ -1,1 +1,2 @@
 from dataset_engine_abc import DatasetEngine
+from spatial_dataset_engine_abc import SpatialDatasetEngine
