@@ -2,9 +2,13 @@ import os
 import json
 import pprint
 import requests
+from requests.auth import HTTPBasicAuth
 import owslib
+import inspect
+from zipfile import ZipFile, is_zipfile
 import geoserver
-from geoserver.catalog import Catalog as GeoServerCatalog
+from geoserver.catalog import Catalog as GeoServerCatalog, _name
+from geoserver.util import shapefile_and_friends
 
 from tethys_dataset_services.base import SpatialDatasetEngine
 
@@ -60,6 +64,20 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         return gs_object
 
+    def _assemble_url(self, *args):
+        """
+        Create a URL from all the args.
+        """
+        endpoint = self.endpoint
+
+        # Eliminate trailing slash if necessary
+        if endpoint[-1] == '/':
+            endpoint = endpoint[:-1]
+
+        pieces = list(args)
+        pieces.insert(0, endpoint)
+        return '/'.join(pieces)
+
     def _get_geoserver_catalog_object(self):
         """
         Internal method used to get the connection object to GeoServer.
@@ -73,6 +91,50 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         """
         if debug:
             pprint.pprint(return_object)
+
+    def _handle_delete(self, identifier, gs_object, purge, recurse, debug):
+        """
+        Handle delete calls
+        """
+        # Get a GeoServer catalog object and query for list of resources
+        catalog = self._get_geoserver_catalog_object()
+
+        # Initialize response dictionary
+        response_dict = {'success': False}
+        if gs_object:
+            try:
+                # Execute
+                catalog.delete(config_object=gs_object, purge=purge, recurse=recurse)
+
+                # Update response dictionary
+                response_dict['success'] = True
+                response_dict['result'] = None
+
+            except geoserver.catalog.FailedRequestError as e:
+                # Update response dictionary
+                response_dict['success'] = False
+                response_dict['result'] = e.message
+        else:
+            # Update response dictionary
+            response_dict['success'] = False
+            response_dict['result'] = 'GeoServer object does not exist: "{0}".'.format(identifier)
+
+        self._handle_debug(response_dict, debug)
+        return response_dict
+
+    def _process_identifier(self, identifier):
+        """
+        Split identifier into name and workspace parts if applicable
+        """
+        # Assume no workspace and only name
+        workspace = None
+        name = identifier
+
+        # Colon ':' is a delimiter between workspace and name i.e: workspace:name
+        if ':' in identifier:
+            workspace, name = identifier.split(':')
+
+        return workspace, name
 
     def _transcribe_geoserver_objects(self, gs_object_list):
         """
@@ -316,6 +378,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         return layer_group_dict
 
     def create_resource(self, layer_id, url=None, file=None, **kwargs):
+        pass
+
+    def create_shapefile_resource(self, layer_id, shapefile_base, overwrite=False, charset=None, debug=True):
         """
         Create a new resource.
 
@@ -328,9 +393,90 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Returns:
           (dict): Response dictionary
         """
-        return NotImplemented
+        # Get a GeoServer catalog object and query for list of layer groups
+        catalog = self._get_geoserver_catalog_object()
 
-    def create_layer(self, name, **kwargs):
+        # Process identifier
+        workspace, name = self._process_identifier(layer_id)
+
+        # Get default work space if none is given
+        if not workspace:
+            workspace = catalog.get_default_workspace().name
+
+        # Throw error if overwrite is not true and store already exists
+        if not overwrite:
+            try:
+                store = catalog.get_store(name=name, workspace=workspace)
+                print store.name, store.workspace
+                message = "There is already a store named " + name
+                if workspace:
+                    message += " in " + workspace
+
+                response_dict = {'success': False,
+                                 'error': message}
+
+                self._handle_debug(response_dict, debug)
+                return response_dict
+
+            except geoserver.catalog.FailedRequestError:
+                pass
+
+        # Prepare files
+        if is_zipfile(shapefile_base):
+            archive = shapefile_base
+        else:
+            shapefile_plus_sidecars = shapefile_and_friends(shapefile_base)
+            archive = '{0}.zip'.format(os.path.join(os.path.split(shapefile_base)[0], name))
+
+            with ZipFile(archive, 'w') as zfile:
+                for extension, filepath in shapefile_plus_sidecars.iteritems():
+                    filename = '{0}.{1}'.format(name, extension)
+                    zfile.write(filename=filepath, arcname=filename)
+
+        files = {'file': open(archive, 'rb')}
+
+        # Prepare headers
+        headers = {
+            "Content-type": "application/zip",
+            "Accept": "application/xml"
+        }
+
+        # Prepare URL
+        url = self._assemble_url('workspaces', workspace, 'datastores', name, 'file.shp')
+
+        # Set params
+        params = {}
+
+        if charset:
+            params['charset'] = charset
+
+        if overwrite:
+            params['update'] = 'overwrite'
+
+        # Execute: PUT /workspaces/<ws>/datastores/<ds>/file.shp
+        response = requests.put(url=url,
+                                files=files,
+                                headers=headers,
+                                params=params,
+                                auth=HTTPBasicAuth(username=self.username, password=self.password))
+
+        if response.status_code != 201:
+            response_dict = {'success': False,
+                             'error': '{1}({0}): {2}'.format(response.status_code, response.reason, response.text)}
+
+            self._handle_debug(response_dict, debug)
+            return response_dict
+
+        # Wrap up successfully
+        catalog.reload()
+        new_resource = catalog.get_resource(name=name, workspace=workspace)
+        resource_dict = self._transcribe_geoserver_object(new_resource)
+        response_dict = {'success': True,
+                         'result': resource_dict}
+        self._handle_debug(response_dict, debug)
+        return response_dict
+
+    def create_layer(self, layer_id, debug=False):
         """
         Create a new layer.
 
@@ -341,9 +487,11 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Returns:
           (dict): Response dictionary
         """
-        return NotImplemented
+        # Get a GeoServer catalog object and query for list of layer groups
+        catalog = self._get_geoserver_catalog_object()
 
-    def create_layer_group(self):
+
+    def create_layer_group(self, layer_group_id, layers, styles, bounds=None, debug=False):
         """
         Create a new resource.
 
@@ -356,6 +504,28 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Returns:
           (dict): Response dictionary
         """
+        # Get a GeoServer catalog object and query for list of layer groups
+        catalog = self._get_geoserver_catalog_object()
+
+        # Response dictionary
+        response_dict = {'success': False}
+
+        # Create layer group
+        try:
+            layer_group = catalog.create_layergroup(layer_group_id, layers, styles, bounds)
+            catalog.save(layer_group)
+
+            layer_group_dict = self._transcribe_geoserver_object(layer_group)
+
+            response_dict['success'] = True
+            response_dict['result'] = layer_group_dict
+
+        except geoserver.catalog.ConflictingDataError as e:
+            response_dict['success'] = False
+            response_dict['error'] = e.message
+
+        self._handle_debug(response_dict, debug)
+        return response_dict
 
     def update_resource(self, resource_id, store=None, workspace=None, debug=False, **kwargs):
         """
@@ -455,8 +625,15 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Returns:
           (dict): Response dictionary
         """
+        # Get a GeoServer catalog object and query for list of layer groups
+        catalog = self._get_geoserver_catalog_object()
 
-        return None
+        # Get resource
+        resource = catalog.get_resource(name=resource_id)
+
+        # Handle delete
+        return self._handle_delete(identifier=resource_id, gs_object=resource, purge=purge,
+                                   recurse=recurse, debug=debug)
 
     def delete_layer(self, layer_id, purge=False, recurse=False, debug=False):
         """
@@ -471,18 +648,12 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Get a GeoServer catalog object and query for list of layer groups
         catalog = self._get_geoserver_catalog_object()
 
-        # Get layer group
+        # Get resource
         layer = catalog.get_layer(name=layer_id)
 
-        if layer:
-            catalog.delete(config_object=layer, purge=purge, recurse=recurse)
-            if debug:
-                print('Successfully deleted layer "{0}".'.format(layer.name))
-            return True
-        else:
-            if debug:
-                print('No such layer "{0}".'.format(layer_id))
-            return False
+        # Handle delete
+        return self._handle_delete(identifier=layer_id, gs_object=layer, purge=purge,
+                                   recurse=recurse, debug=debug)
 
     def delete_layer_group(self, layer_group_id, purge=False, recurse=False, debug=False):
         """
@@ -500,17 +671,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Get layer group
         layer_group = catalog.get_layergroup(name=layer_group_id)
 
-        if layer_group:
-            catalog.delete(config_object=layer_group, purge=purge, recurse=recurse)
-            if debug:
-                print('Successfully, deleted layer group "{0}".'.format(layer_group.name))
-            return True
-        else:
-            if debug:
-                print('No such layer group "{0}".'.format(layer_group_id))
-            return False
-    
-
+        # Handle delete
+        return self._handle_delete(identifier=layer_group_id, gs_object=layer_group, purge=purge,
+                                   recurse=recurse, debug=debug)
 
     def get_layer_as_wfs(self, layer_id, **kwargs):
         """
