@@ -380,16 +380,15 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
     def create_resource(self, layer_id, url=None, file=None, **kwargs):
         pass
 
-    def create_shapefile_resource(self, layer_id, shapefile_base, overwrite=False, charset=None, debug=True):
+    def create_shapefile_resource(self, resource_id, shapefile_base, overwrite=False, charset=None, debug=True):
         """
-        Create a new resource.
+        Create a new shapefile resource.
 
-        Args:
-          dataset_id (string): Identifier of the dataset to which the resource will be added.
-          url (string, optional): URL of resource to associate with resource.
-          file (string, optional): Path of file to upload as resource.
-          **kwargs (kwargs, optional): Any number of additional keyword arguments.
-
+        Args
+          resource_id (string): Identifier for the resource to be created. Can be a name or a workspace name combination to add the new resource to the workspace (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace.
+          shapefile_base (string): Path to shapefile base name (e.g.: "/path/base" for shapefile at "/path/base.shp") or a zip file containing all the shapefile components.
+          overwrite (bool, optional): Overwrite the file if it already exists.
+          charset (string, optional): Specify the character encoding of the file being uploaded (e.g.: “ISO-8559-1”)
         Returns:
           (dict): Response dictionary
         """
@@ -397,7 +396,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         catalog = self._get_geoserver_catalog_object()
 
         # Process identifier
-        workspace, name = self._process_identifier(layer_id)
+        workspace, name = self._process_identifier(resource_id)
 
         # Get default work space if none is given
         if not workspace:
@@ -475,6 +474,12 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                          'result': resource_dict}
         self._handle_debug(response_dict, debug)
         return response_dict
+
+    def create_coverage_resource(self):
+        """
+        Create a coverage feature store for raster datasets.
+        """
+        pass
 
     def create_layer(self, layer_id, debug=False):
         """
