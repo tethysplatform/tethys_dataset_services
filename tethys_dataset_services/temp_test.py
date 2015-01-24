@@ -43,12 +43,42 @@ engine = GeoServerSpatialDatasetEngine(endpoint='http://192.168.59.103:8181/geos
 # engine.create_layer_group('my_layer_group', layers=layers, styles=styles, bounds=bounds, debug=True)
 
 # Shapefile Layer
-shapefile_base = "/Users/swainn/projects/tethysdev/tethys_dataset_services/tethys_dataset_services/tests/files/shapefile/bugsites"  # Test both base and zip archive methods
-# engine.create_shapefile_resource('cite:foo', shapefile_dir=shapefile_base, overwrite=True, debug=True)  # Handle overwrite in tests
-# shapefile_base = "/Users/swainn/projects/tethysdev/tethys_dataset_services/tethys_dataset_services/tests/files/shapefile/bar.zip"
-# engine.create_shapefile_resource('cite:bar', shapefile_base=shapefile_base, overwrite=True, debug=True)
-engine.create_shapefile_resource('bar', shapefile_base=shapefile_base, overwrite=True, debug=True)
+# shapefile_base = "/Users/swainn/projects/tethysdev/tethys_dataset_services/tethys_dataset_services/tests/files/shapefile/bugsites"  # Test both base and zip archive methods
+# # engine.create_shapefile_resource('cite:foo', shapefile_dir=shapefile_base, overwrite=True, debug=True)  # Handle overwrite in tests
+# # shapefile_base = "/Users/swainn/projects/tethysdev/tethys_dataset_services/tethys_dataset_services/tests/files/shapefile/bar.zip"
+# # engine.create_shapefile_resource('cite:bar', shapefile_base=shapefile_base, overwrite=True, debug=True)
+# engine.create_shapefile_resource('bar', shapefile_base=shapefile_base, overwrite=True, debug=True)
 
+# STORES AND WORKSPACES
+# workspace = engine.get_workspace('sf', debug=True)
+# garbage_workspace = engine.get_workspace('garbage', debug=True)
+# store = engine.get_store('sf', debug=True)
+# workspace_store = engine.get_store('sf:sfdem', debug=True)
+# garbage_store = engine.get_workspace('garbage', debug=True)
+
+# workspace = engine.create_workspace('fred', 'http://tethys.ci-water.org/fred', debug=True)
+# workspace = engine.create_workspace('bob', 'http://tethys.ci-water.org/bob', debug=True)
+# workspace = engine.create_workspace('bob', 'http://tethys.ci-water.org/bob', debug=True)  # Duplicate name fails
+# workspace = engine.create_workspace('jan', 'http://tethys.ci-water.org/bob', debug=True)  # Duplicate URI fails
+
+# engine.delete_workspace('fred', debug=True)
+# engine.delete_workspace('bob', debug=True)
+# engine.delete_workspace('bob', debug=True)
+
+# engine.delete_store('c9x18bxx3m', debug=True)
+# engine.delete_store('sf:tqnw8vce27', debug=True)
+# engine.delete_store('garbage', debug=True)
+
+
+shapefile_base = "/Users/swainn/projects/tethysdev/tethys_dataset_services/tethys_dataset_services/tests/files/shapefile/test"  # Test both base and zip archive methods
+engine.create_shapefile_resource('sf:ldkeianeic', shapefile_base=shapefile_base, overwrite=True, debug=True)
+
+# resource = engine.get_resource('sf:sfdem', debug=True)
+resource = engine.get_resource('ldkeianeic', store='ldkeianeic', debug=True)
+
+response = engine.update_resource(resource_id='sf:ldkeianeic',
+                                  title='A new title.',
+                                  debug=True)
 
 
 # SERVICES

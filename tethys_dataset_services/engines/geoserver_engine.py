@@ -108,12 +108,13 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
                 # Update response dictionary
                 response_dict['success'] = True
-                response_dict['result'] = None
+                response_dict['error'] = None
 
             except geoserver.catalog.FailedRequestError as e:
                 # Update response dictionary
                 response_dict['success'] = False
-                response_dict['result'] = e.message
+                response_dict['error'] = e.message
+
         else:
             # Update response dictionary
             response_dict['success'] = False
@@ -233,14 +234,23 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             for resource_object in resource_objects:
                 resource_names.append(resource_object.name)
 
+            # Assemble Response
+            response_dict = {'success': True,
+                             'result': resource_names}
+
             # Handle the debug and return
-            self._handle_debug(resource_names, debug)
-            return resource_names
+            self._handle_debug(response_dict, debug)
+            return response_dict
 
         # Handle the debug and return
         resource_dicts = self._transcribe_geoserver_objects(resource_objects)
-        self._handle_debug(resource_dicts, debug)
-        return resource_dicts
+
+        # Assemble Response
+        response_dict = {'success': True,
+                         'result': resource_dicts}
+
+        self._handle_debug(response_dict, debug)
+        return response_dict
 
     def list_layers(self, with_properties=False, debug=False, **kwargs):
         """
@@ -265,14 +275,23 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             for layer_object in layer_objects:
                 layer_names.append(layer_object.name)
 
+            # Assemble Response
+            response_dict = {'success': True,
+                             'result': layer_names}
+
             # Handle the debug and return
-            self._handle_debug(layer_names, debug)
-            return layer_names
+            self._handle_debug(response_dict, debug)
+            return response_dict
 
         # Handle the debug and return
         layer_dicts = self._transcribe_geoserver_objects(layer_objects)
-        self._handle_debug(layer_dicts, debug)
-        return layer_dicts
+
+        # Assemble Response
+        response_dict = {'success': True,
+                         'result': layer_dicts}
+
+        self._handle_debug(response_dict, debug)
+        return response_dict
 
     def list_layer_groups(self, with_properties=False, debug=False, **kwargs):
         """
@@ -297,21 +316,30 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             for layer_group_object in layer_group_objects:
                 layer_group_names.append(layer_group_object.name)
 
+            # Assemble Response
+            response_dict = {'success': True,
+                             'result': layer_group_names}
+
             # Handle the debug and return
-            self._handle_debug(layer_group_names, debug)
-            return layer_group_names
+            self._handle_debug(response_dict, debug)
+            return response_dict
 
         # Handle the debug and return
         layer_group_dicts = self._transcribe_geoserver_objects(layer_group_objects)
-        self._handle_debug(layer_group_dicts, debug)
-        return layer_group_dicts
 
-    def get_resource(self, resource_id, store=None, workspace=None, debug=False, **kwargs):
+        # Assemble Response
+        response_dict = {'success': True,
+                         'result': layer_group_dicts}
+
+        self._handle_debug(response_dict, debug)
+        return response_dict
+
+    def get_resource(self, resource_id, store=None, debug=False, **kwargs):
         """
         Retrieve a resource object.
 
         Args:
-          resource_id (string): Name of the resource to retrieve.
+          resource_id (string): Identifier for the resource to be created. Can be a name or a workspace name combination to add the new resource to the workspace (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace.
           store (string, optional): Name of the store  from which to get the resource.
           workspace (string, optional): Name of workspace from which to get the resource.
           debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
@@ -323,13 +351,29 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Get a GeoServer catalog object and query for list of layer groups
         catalog = self._get_geoserver_catalog_object()
 
+        # Process identifier
+        workspace, name = self._process_identifier(resource_id)
+
         # Get resource
-        resource = catalog.get_resource(name=resource_id, store=store, workspace=workspace)
-        resource_dict = self._transcribe_geoserver_object(resource)
+        try:
+            resource = catalog.get_resource(name=name, store=store, workspace=workspace)
+            if not resource:
+                response_dict = {'success': False,
+                                 'error': 'Resource "{0}" not found.'.format(resource_id)}
+            else:
+                resource_dict = self._transcribe_geoserver_object(resource)
+
+                # Assemble Response
+                response_dict = {'success': True,
+                                 'result': resource_dict}
+
+        except geoserver.catalog.FailedRequestError as e:
+            response_dict = {'success': False,
+                             'error': e.message}
 
         # Handle the debug and return
-        self._handle_debug(resource_dict, debug)
-        return resource_dict
+        self._handle_debug(response_dict, debug)
+        return response_dict
 
     def get_layer(self, layer_id, debug=False, **kwargs):
         """
@@ -346,20 +390,34 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Get a GeoServer catalog object and query for list of layer groups
         catalog = self._get_geoserver_catalog_object()
 
-        # Get resource
-        layer = catalog.get_layer(name=layer_id)
-        layer_dict = self._transcribe_geoserver_object(layer)
+        try:
+            # Get layer
+            layer = catalog.get_layer(name=layer_id)
+
+            if not layer:
+                response_dict = {'success': False,
+                                 'error': 'Layer "{0}" not found.'.format(layer_id)}
+            else:
+                layer_dict = self._transcribe_geoserver_object(layer)
+
+                # Assemble Response
+                response_dict = {'success': True,
+                                 'result': layer_dict}
+
+        except geoserver.catalog.FailedRequestError as e:
+            response_dict = {'success': False,
+                             'error': e.message}
 
         # Handle the debug and return
-        self._handle_debug(layer_dict, debug)
-        return layer_dict
+        self._handle_debug(response_dict, debug)
+        return response_dict
 
     def get_layer_group(self, layer_group_id, debug=False, **kwargs):
         """
         Retrieve a layer group object.
 
         Args:
-          layer_group_id (string): Identifier of the layer to retrieve.
+          layer_group_id (string): Name of the layer group to retrieve.
           debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
           **kwargs (kwargs, optional): Any number of additional keyword arguments.
 
@@ -369,26 +427,117 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Get a GeoServer catalog object and query for list of layer groups
         catalog = self._get_geoserver_catalog_object()
 
-        # Get resource
-        layer_group = catalog.get_layergroup(name=layer_group_id)
-        layer_group_dict = self._transcribe_geoserver_object(layer_group)
+        try:
+            # Get resource
+            layer_group = catalog.get_layergroup(name=layer_group_id)
+
+            if not layer_group:
+                response_dict = {'success': False,
+                                 'error': 'Layer Group "{0}" not found.'.format(layer_group_id)}
+            else:
+                layer_group_dict = self._transcribe_geoserver_object(layer_group)
+
+                # Assemble Response
+                response_dict = {'success': True,
+                                 'result': layer_group_dict}
+
+        except geoserver.catalog.FailedRequestError as e:
+            response_dict = {'success': False,
+                             'error': e.message}
 
         # Handle the debug and return
-        self._handle_debug(layer_group_dict, debug)
-        return layer_group_dict
+        self._handle_debug(response_dict, debug)
+        return response_dict
+
+    def get_store(self, store_id, debug=False):
+        """
+        Retrieve a store object.
+
+        Args:
+          store_id (string): Name of the layer group to retrieve.
+          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+
+        Returns:
+          (dict): Response dictionary
+        """
+        # Get a GeoServer catalog object and query for list of layer groups
+        catalog = self._get_geoserver_catalog_object()
+
+        # Process identifier
+        workspace, name = self._process_identifier(store_id)
+
+        try:
+            # Get resource
+            store = catalog.get_store(name=name, workspace=workspace)
+
+            if not store:
+                response_dict = {'success': False,
+                                 'error': 'Store "{0}" not found.'.format(store_id)}
+            else:
+                store_dict = self._transcribe_geoserver_object(store)
+
+                # Assemble Response
+                response_dict = {'success': True,
+                                 'result': store_dict}
+
+        except geoserver.catalog.FailedRequestError as e:
+            response_dict = {'success': False,
+                             'error': e.message}
+
+        # Handle the debug and return
+        self._handle_debug(response_dict, debug)
+        return response_dict
+
+    def get_workspace(self, workspace_id, debug=False):
+        """
+        Retrieve a workspace object.
+
+        Args:
+          workspace_id (string): Name of the layer group to retrieve.
+          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+
+        Returns:
+          (dict): Response dictionary
+        """
+        # Get a GeoServer catalog object and query for list of layer groups
+        catalog = self._get_geoserver_catalog_object()
+
+        try:
+            # Get resource
+            workspace = catalog.get_workspace(name=workspace_id)
+
+            if not workspace:
+                response_dict = {'success': False,
+                                 'error': 'Workspace "{0}" not found.'.format(workspace_id)}
+            else:
+                workspace_dict = self._transcribe_geoserver_object(workspace)
+
+                # Assemble Response
+                response_dict = {'success': True,
+                                 'result': workspace_dict}
+
+        except geoserver.catalog.FailedRequestError as e:
+            response_dict = {'success': False,
+                             'error': e.message}
+
+        # Handle the debug and return
+        self._handle_debug(response_dict, debug)
+        return response_dict
 
     def create_resource(self, layer_id, url=None, file=None, **kwargs):
         pass
 
-    def create_shapefile_resource(self, resource_id, shapefile_base, overwrite=False, charset=None, debug=True):
+    def create_shapefile_resource(self, resource_id, shapefile_base, overwrite=False, charset=None, debug=False):
         """
         Create a new shapefile resource.
+
+        Note: Creating a resource results in the creation of a store and a layer.
 
         Args
           resource_id (string): Identifier for the resource to be created. Can be a name or a workspace name combination to add the new resource to the workspace (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace.
           shapefile_base (string): Path to shapefile base name (e.g.: "/path/base" for shapefile at "/path/base.shp") or a zip file containing all the shapefile components.
           overwrite (bool, optional): Overwrite the file if it already exists.
-          charset (string, optional): Specify the character encoding of the file being uploaded (e.g.: “ISO-8559-1”)
+          charset (string, optional): Specify the character encoding of the file being uploaded (e.g.: ISO-8559-1)
         Returns:
           (dict): Response dictionary
         """
@@ -470,6 +619,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         catalog.reload()
         new_resource = catalog.get_resource(name=name, workspace=workspace)
         resource_dict = self._transcribe_geoserver_object(new_resource)
+
         response_dict = {'success': True,
                          'result': resource_dict}
         self._handle_debug(response_dict, debug)
@@ -486,15 +636,13 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Create a new layer.
 
         Args:
-          name (string): Name of the dataset to create.
-          **kwargs (kwargs, optional): Any number of additional keyword arguments.
+          name (string): Name of the layer to create.
 
         Returns:
           (dict): Response dictionary
         """
         # Get a GeoServer catalog object and query for list of layer groups
         catalog = self._get_geoserver_catalog_object()
-
 
     def create_layer_group(self, layer_group_id, layers, styles, bounds=None, debug=False):
         """
@@ -504,7 +652,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
           dataset_id (string): Identifier of the dataset to which the resource will be added.
           url (string, optional): URL of resource to associate with resource.
           file (string, optional): Path of file to upload as resource.
-          **kwargs (kwargs, optional): Any number of additional keyword arguments.
 
         Returns:
           (dict): Response dictionary
@@ -532,14 +679,14 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         self._handle_debug(response_dict, debug)
         return response_dict
 
-    def update_resource(self, resource_id, store=None, workspace=None, debug=False, **kwargs):
+    def create_workspace(self, workspace_id, uri, debug=False):
         """
-        Update an existing resource.
+        Create a new workspace.
 
         Args:
-          resource_id (string): Identifier of the resource to update.
+          workspace_id (string): Identifier of the workspace.
+          uri (string): URI associated with your project. Does not need to be a real web URL, just a unique identifier. One suggestion is to append the URL of your project with the name of the workspace (e.g.: http:www.example.com/workspace-name).
           debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
-          **kwargs (kwargs, optional): Key value pairs representing the attributes to change.
 
         Returns:
           (dict): Response dictionary
@@ -547,19 +694,63 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Get a GeoServer catalog object and query for list of layer groups
         catalog = self._get_geoserver_catalog_object()
 
-        # Get resource
-        resource = catalog.get_resource(name=resource_id, store=store, workspace=workspace)
+        # Create workspace
+        try:
+            # Do create
+            workspace = catalog.create_workspace(workspace_id, uri)
+            workspace_dict = self._transcribe_geoserver_object(workspace)
+            response_dict = {'success': True,
+                             'result': workspace_dict}
 
-        # Make the changes
-        updated_resource = self._apply_changes_to_gs_object(kwargs, resource)
+        except AssertionError as e:
+            response_dict = {'success': False,
+                             'error': e.message}
 
-        # Save the changes
-        catalog.save(updated_resource)
+        self._handle_debug(response_dict, debug)
+        return response_dict
 
-        # Return the updated resource dictionary
-        resource_dict = self._transcribe_geoserver_object(updated_resource)
-        self._handle_debug(resource_dict, debug)
-        return resource_dict
+    def update_resource(self, resource_id, store=None, debug=False, **kwargs):
+        """
+        Update an existing resource.
+
+        Args:
+          resource_id (string): Identifier of the resource to update.
+          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+          **kwargs (kwargs, optional): Key value pairs representing the attributes to change.
+          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+
+        Returns:
+          (dict): Response dictionary
+        """
+        # Get a GeoServer catalog object and query for list of layer groups
+        catalog = self._get_geoserver_catalog_object()
+
+        # Process identifier
+        workspace, name = self._process_identifier(resource_id)
+
+        try:
+            # Get resource
+            resource = catalog.get_resource(name=name, store=store, workspace=workspace)
+
+            # Make the changes
+            updated_resource = self._apply_changes_to_gs_object(kwargs, resource)
+
+            # Save the changes
+            catalog.save(updated_resource)
+
+            # Return the updated resource dictionary
+            resource_dict = self._transcribe_geoserver_object(updated_resource)
+
+            # Assemble Response
+            response_dict = {'success': True,
+                             'result': resource_dict}
+
+        except geoserver.catalog.FailedRequestError as e:
+            response_dict = {'success': False,
+                             'error': e.message}
+
+        self._handle_debug(response_dict, debug)
+        return response_dict
 
     def update_layer(self, layer_id, debug=False, **kwargs):
         """
@@ -568,6 +759,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Args:
           layer_id (string): Identifier of the dataset to update.
           **kwargs (kwargs, optional): Any number of additional keyword arguments.
+          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -575,19 +767,29 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Get a GeoServer catalog object and query for list of layer groups
         catalog = self._get_geoserver_catalog_object()
 
-        # Get resource
-        layer = catalog.get_layer(name=layer_id)
+        try:
+            # Get resource
+            layer = catalog.get_layer(name=layer_id)
 
-        # Apply changes from kwargs
-        updated_layer = self._apply_changes_to_gs_object(kwargs, layer)
+            # Apply changes from kwargs
+            updated_layer = self._apply_changes_to_gs_object(kwargs, layer)
 
-        # Save the changes
-        catalog.save(updated_layer)
+            # Save the changes
+            catalog.save(updated_layer)
 
-        # Return the updated resource dictionary
-        layer_dict = self._transcribe_geoserver_object(updated_layer)
-        self._handle_debug(layer_dict, debug)
-        return layer_dict
+            # Return the updated resource dictionary
+            layer_dict = self._transcribe_geoserver_object(updated_layer)
+
+            # Assemble Response
+            response_dict = {'success': True,
+                             'result': layer_dict}
+
+        except geoserver.catalog.FailedRequestError as e:
+            response_dict = {'success': False,
+                             'error': e.message}
+
+        self._handle_debug(response_dict, debug)
+        return response_dict
 
     def update_layer_group(self, layer_group_id, debug=False, **kwargs):
         """
@@ -597,6 +799,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Args:
           layer_group_id (string): Identifier of the dataset to update.
           **kwargs (kwargs, optional): Any number of additional keyword arguments.
+          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -604,28 +807,41 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Get a GeoServer catalog object and query for list of layer groups
         catalog = self._get_geoserver_catalog_object()
 
-        # Get resource
-        layer_group = catalog.get_layergroup(name=layer_group_id)
+        try:
+            # Get resource
+            layer_group = catalog.get_layergroup(name=layer_group_id)
 
-        # Make the changes
-        for attribute, value in kwargs.iteritems():
-            if hasattr(layer_group, attribute):
-                setattr(layer_group, attribute, value)
+            # Make the changes
+            for attribute, value in kwargs.iteritems():
+                if hasattr(layer_group, attribute):
+                    setattr(layer_group, attribute, value)
 
-        # Save the changes
-        catalog.save(layer_group)
+            # Save the changes
+            catalog.save(layer_group)
 
-        # Return the updated resource dictionary
-        layer_group_dict = self._transcribe_geoserver_object(layer_group)
-        self._handle_debug(layer_group_dict, debug)
-        return layer_group_dict
+            # Return the updated resource dictionary
+            layer_group_dict = self._transcribe_geoserver_object(layer_group)
 
-    def delete_resource(self, resource_id, purge=False, recurse=False, debug=False):
+            # Assemble Response
+            response_dict = {'success': True,
+                             'result': layer_group_dict}
+
+        except geoserver.catalog.FailedRequestError as e:
+            response_dict = {'success': False,
+                             'error': e.message}
+
+        self._handle_debug(response_dict, debug)
+        return response_dict
+
+    def delete_resource(self, resource_id, store=None, purge=False, recurse=False, debug=False):
         """
         Delete a resource.
 
         Args:
           resource_id (string): Name of the resource to delete.
+          purge (bool, optional): Purge if True.
+          recurse (bool, optional): Delete recursively if True.
+          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -633,8 +849,11 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Get a GeoServer catalog object and query for list of layer groups
         catalog = self._get_geoserver_catalog_object()
 
+        # Process identifier
+        workspace, name = self._process_identifier(resource_id)
+
         # Get resource
-        resource = catalog.get_resource(name=resource_id)
+        resource = catalog.get_resource(name=name, store=store, workspace=workspace)
 
         # Handle delete
         return self._handle_delete(identifier=resource_id, gs_object=resource, purge=purge,
@@ -646,6 +865,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         Args:
           layer_id (string): Name of the layer to delete.
+          purge (bool, optional): Purge if True.
+          recurse (bool, optional): Delete recursively if True.
+          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -666,6 +888,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         Args:
           layer_group_id (string): Name of the layer group to delete.
+          purge (bool, optional): Purge if True.
+          recurse (bool, optional): Delete recursively if True.
+          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -679,6 +904,63 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Handle delete
         return self._handle_delete(identifier=layer_group_id, gs_object=layer_group, purge=purge,
                                    recurse=recurse, debug=debug)
+
+    def delete_workspace(self, workspace_id, purge=False, recurse=False, debug=False):
+        """
+        Delete a layer group.
+
+        Args:
+          workspace_id (string): Name of the workspace to delete.
+          purge (bool, optional): Purge if True.
+          recurse (bool, optional): Delete recursively if True.
+          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+
+        Returns:
+          (dict): Response dictionary
+        """
+        # Get a GeoServer catalog object and query for list of layer groups
+        catalog = self._get_geoserver_catalog_object()
+
+        # Get layer group
+        workspace = catalog.get_workspace(workspace_id)
+
+        # Handle delete
+        return self._handle_delete(identifier=workspace_id, gs_object=workspace, purge=purge,
+                                   recurse=recurse, debug=debug)
+
+    def delete_store(self, store_id, purge=False, recurse=False, debug=False):
+        """
+        Delete a store.
+
+        Args:
+          store_id (string): Name of the store to delete.
+          purge (bool, optional): Purge if True.
+          recurse (bool, optional): Delete recursively if True.
+          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+
+        Returns:
+          (dict): Response dictionary
+        """
+        # Get a GeoServer catalog object and query for list of layer groups
+        catalog = self._get_geoserver_catalog_object()
+
+        # Process identifier
+        workspace, name = self._process_identifier(store_id)
+
+        # Get layer group
+        try:
+            store = catalog.get_store(name=name, workspace=workspace)
+
+            # Handle delete
+            return self._handle_delete(identifier=store_id, gs_object=store, purge=purge,
+                                       recurse=recurse, debug=debug)
+        except geoserver.catalog.FailedRequestError as e:
+            # Update response dictionary
+            response_dict = {'success': False,
+                             'error': e.message}
+
+            self._handle_debug(response_dict, debug)
+            return response_dict
 
     def get_layer_as_wfs(self, layer_id, **kwargs):
         """
