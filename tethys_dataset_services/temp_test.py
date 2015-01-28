@@ -70,15 +70,49 @@ engine = GeoServerSpatialDatasetEngine(endpoint='http://192.168.59.103:8181/geos
 # engine.delete_store('garbage', debug=True)
 
 
-shapefile_base = "/Users/swainn/projects/tethysdev/tethys_dataset_services/tethys_dataset_services/tests/files/shapefile/test"  # Test both base and zip archive methods
-engine.create_shapefile_resource('sf:ldkeianeic', shapefile_base=shapefile_base, overwrite=True, debug=True)
+# shapefile_base = "/Users/swainn/projects/tethysdev/tethys_dataset_services/tethys_dataset_services/tests/files/shapefile/test"  # Test both base and zip archive methods
+# engine.create_shapefile_resource('sf:ldkeianeic', shapefile_base=shapefile_base, overwrite=True, debug=True)
+#
+# # resource = engine.get_resource('sf:sfdem', debug=True)
+# resource = engine.get_resource('ldkeianeic', store='ldkeianeic', debug=True)
+#
+# response = engine.update_resource(resource_id='sf:ldkeianeic',
+#                                   title='A new title.',
+#                                   debug=True)
 
-# resource = engine.get_resource('sf:sfdem', debug=True)
-resource = engine.get_resource('ldkeianeic', store='ldkeianeic', debug=True)
+# response = engine.get_style(style_id='line', debug=True)  # Without workspace
+# response = engine.get_style(style_id='sf:line', debug=True)  # With workspace NOTE: must specify workspace if belongs to workspace...
 
-response = engine.update_resource(resource_id='sf:ldkeianeic',
-                                  title='A new title.',
-                                  debug=True)
+# ## CREATE STYLE
+# sld = '/Users/swainn/projects/tethysdev/tethys_dataset_services/tethys_dataset_services/tests/files/point.sld'
+# # with open(sld, 'r') as sld_file:
+# #     response = engine.create_style(style_id='fred', sld=sld_file.read(), debug=True)
+# #
+# with open(sld, 'r') as sld_file:
+#     response = engine.create_style(style_id='sf:fred', sld=sld_file.read(), debug=True)
+#
+# response = engine.delete_style(style_id='sf:fred', debug=True)
+
+# response = engine.list_stores(debug=True)
+# response = engine.list_stores(with_properties=True, debug=True)
+# response = engine.list_stores(workspace='sf', with_properties=True, debug=True)
+
+# response = engine.list_workspaces(debug=True)
+# response = engine.list_workspaces(with_properties=True, debug=True)
+
+# response = engine.list_styles(debug=True)
+# response = engine.list_styles(with_properties=True, debug=True)
+
+# response = engine.list_layers(with_properties=True, debug=True)
+# response = engine.list_layer_groups(debug=True)
+response = engine.list_resources(with_properties=True, debug=True)
+
+# response = engine.get_layer(layer_id='sf:roads', debug=True)
+# response = engine.get_layer(layer_id='sf:sfdem', debug=True)
+
+response = engine.get_resource(resource_id='sf:roads', debug=True)
+# response = engine.get_resource(resource_id='sf:sfdem', debug=True)
+
 
 
 # SERVICES

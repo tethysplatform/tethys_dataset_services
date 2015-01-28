@@ -3,10 +3,10 @@ import random
 import string
 import unittest
 
-from ..engines import GeoServerSpatialDatasetEngine
+from tethys_dataset_services.engines import GeoServerSpatialDatasetEngine
 
 try:
-    from .test_config import TEST_GEOSERVER_DATASET_SERVICE
+    from tethys_dataset_services.tests.test_config import TEST_GEOSERVER_DATASET_SERVICE
 
 except ImportError:
     print('ERROR: To perform tests, you must create a file in the "tests" package called "test_config.py". In this file'
@@ -45,7 +45,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         # Create Test Workspaces
         # self.test_resource_workspace = random_string_generator(10)
-        self.test_resource_workspace = 'sf'
+        self.test_resource_workspace = random_string_generator(10)
+        self.engine.create_workspace(workspace_id=self.test_resource_workspace, uri=random_string_generator(5))
 
         # Create Test Stores/Resources/Layers
         ## Shapefile
@@ -67,14 +68,21 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         ## Coverage
 
+        # Create Test Style
+        self.test_style_name = 'point'
+
         # Create Test Layer Groups
-        self.test_layer_group_name = 'tasmania'
+        self.test_layer_group_name = random_string_generator(10)
+        self.engine.create_layer_group(layer_group_id=self.test_layer_group_name,
+                                       layers=(self.test_layer_name,),
+                                       styles=(self.test_style_name,))
 
         # Pause
-        pause(20)
+        pause(10)
 
     def tearDown(self):
         # Delete test layer groups
+        self.engine.delete_layer_group(layer_group_id=self.test_layer_group_name)
 
         # Delete test resources & layers
         self.engine.delete_resource(self.test_resource_identifier, recurse=True)
@@ -83,6 +91,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.engine.delete_store(self.test_store_identifier)
 
         # Delete test workspace
+        self.engine.delete_workspace(self.test_resource_workspace)
 
     def assert_valid_response_object(self, response_object):
         # Response object should be a dictionary with the keys 'success' and either 'result' if success is True
@@ -253,6 +262,15 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         self.assertTrue(test_layer_group_in)
 
+    def test_list_workspaces(self):
+        pass
+
+    def test_list_stores(self):
+        pass
+
+    def test_list_styles(self):
+        pass
+
     def test_get_resource(self):
         # Execute
         response = self.engine.get_resource(resource_id=self.test_resource_name, debug=self.debug)
@@ -343,7 +361,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertIn('name', result)
         self.assertEqual(result['name'], self.test_layer_name)
 
-    def test_gets_layer_group(self):
+    def test_get_layer_group(self):
         # Execute
         response = self.engine.get_layer_group(layer_group_id=self.test_layer_group_name, debug=self.debug)
 
@@ -362,6 +380,15 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         # Properties
         self.assertIn('name', result)
         self.assertEqual(result['name'], self.test_layer_group_name)
+
+    def test_get_store(self):
+        pass
+
+    def test_get_workspace(self):
+        pass
+
+    def test_get_style(self):
+        pass
 
     def test_update_resource(self):
         # Setup
@@ -453,49 +480,170 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertEqual(result, updated_result)
 
     def test_update_layer(self):
-        pass
+        # Get original
+        old_response = self.engine.get_layer(layer_id=self.test_layer_name)
+
+        # Update
+        new_default_style = self.test_style_name
+        response = self.engine.update_layer(layer_id=self.test_layer_name,
+                                            default_style=new_default_style,
+                                            debug=self.debug)
+
+        # Update should succeed
+        self.assert_valid_response_object(response)
+        self.assertTrue(response['success'])
+
+        old_result = old_response['result']
+        result = response['result']
+        self.assertEqual(result['default_style'], new_default_style)
+        self.assertNotEqual(old_result['default_style'], result['default_style'])
 
     def test_update_layer_group(self):
         pass
 
     def test_delete_resource(self):
-        pass
+        # Must delete layer group and layer first
+        self.engine.delete_layer_group(layer_group_id=self.test_layer_group_name)
+        self.engine.delete_layer(layer_id=self.test_layer_name)
+
+        # Do delete
+        response = self.engine.delete_resource(resource_id=self.test_resource_identifier)
+
+        # Should succeed
+        self.assert_valid_response_object(response)
+        self.assertTrue(response['success'])
+        self.assertIsNone(response['result'])
 
     def test_delete_resource_belongs_to_layer(self):
-        pass
+        # Do delete without deleting layer group and layer
+        response = self.engine.delete_resource(resource_id=self.test_resource_identifier)
+
+        # Should fail
+        self.assert_valid_response_object(response)
+        self.assertFalse(response['success'])
 
     def test_delete_resource_recurse(self):
-        pass
+        # Force delete with recurse
+        response = self.engine.delete_resource(resource_id=self.test_resource_identifier, recurse=True)
+
+        # Should succeed
+        self.assert_valid_response_object(response)
+        self.assertTrue(response['success'])
+        self.assertIsNone(response['result'])
 
     def test_delete_resource_does_not_exist(self):
-        pass
+        # Do delete
+        response = self.engine.delete_resource(resource_id='iDontExist')
+
+        # Should fail
+        self.assert_valid_response_object(response)
+        self.assertFalse(response['success'])
 
     def test_delete_layer(self):
-        pass
+        # Delete layer group first
+        self.engine.delete_layer_group(layer_group_id=self.test_layer_group_name)
+
+        # Do delete
+        response = self.engine.delete_layer(layer_id=self.test_layer_name)
+
+        # Should succeed
+        self.assert_valid_response_object(response)
+        self.assertTrue(response['success'])
+        self.assertIsNone(response['result'])
 
     def test_delete_layer_belongs_to_group(self):
-        pass
+        # Do delete without deleting layer group
+        response = self.engine.delete_layer(layer_id=self.test_layer_name)
+
+        # Should fail
+        self.assert_valid_response_object(response)
+        self.assertFalse(response['success'])
 
     def test_delete_layer_recurse(self):
-        pass
+        # Force delete with recurse
+        response = self.engine.delete_layer(layer_id=self.test_layer_name, recurse=True)
+
+        # Should succeed
+        self.assert_valid_response_object(response)
+        self.assertTrue(response['success'])
+        self.assertIsNone(response['result'])
 
     def test_delete_layer_does_not_exist(self):
-        pass
+        # Delete layer group first
+        self.engine.delete_layer_group(layer_group_id=self.test_layer_group_name)
+
+        # Do delete
+        response = self.engine.delete_layer(layer_id='iDontExist')
+
+        # Should fail
+        self.assert_valid_response_object(response)
+        self.assertFalse(response['success'])
 
     def test_delete_layer_group(self):
-        pass
+        # Do delete
+        response = self.engine.delete_layer_group(layer_group_id=self.test_layer_group_name)
+
+        # Should succeed
+        self.assert_valid_response_object(response)
+        self.assertTrue(response['success'])
+        self.assertIsNone(response['result'])
 
     def test_delete_layer_group_does_not_exist(self):
+        # Do delete
+        response = self.engine.delete_layer_group(layer_group_id='iDontExist')
+
+        # Should fail
+        self.assert_valid_response_object(response)
+        self.assertFalse(response['success'])
+
+    def test_delete_workspace(self):
+        pass
+
+    def test_delete_store(self):
+        pass
+
+    def test_delete_style(self):
         pass
 
     def test_create_layer_group(self):
-        pass
+        # Do create
+        name = random_string_generator(10)
+        layers = (self.test_layer_name,)
+        styles = (self.test_style_name,)
+        response = self.engine.create_layer_group(layer_group_id=name, layers=layers, styles=styles)
+
+        # Should succeed
+        self.assert_valid_response_object(response)
+        self.assertTrue(response['success'])
+
+        # Validate
+        result = response['result']
+        self.assertEqual(result['name'], name)
+        self.assertEqual(result['layers'], layers)
+        self.assertEqual(result['styles'], [])
+
+        # Clean up
+        self.engine.delete_layer_group(layer_group_id=name)
 
     def test_create_layer_group_mismatch_layers_styles(self):
-        pass
+        # Do create with differing number of styles and layers
+        name = random_string_generator(10)
+        layers = (self.test_layer_name,)
+        styles = (self.test_style_name, self.test_style_name)
+        response = self.engine.create_layer_group(layer_group_id=name, layers=layers, styles=styles)
+
+        # Should fail
+        self.assert_valid_response_object(response)
+        self.assertFalse(response['success'])
 
     def test_create_shapefile_resource(self):
         pass
 
     def test_create_coverage_resource(self):
+        pass
+
+    def test_create_workspace(self):
+        pass
+
+    def test_create_style(self):
         pass
