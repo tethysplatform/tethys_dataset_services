@@ -1,5 +1,6 @@
 import os
 import json
+import math
 import pprint
 import requests
 from requests.auth import HTTPBasicAuth
@@ -78,32 +79,83 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         pieces.insert(0, endpoint)
         return '/'.join(pieces)
 
-    def _get_geoserver_catalog_object(self):
+    def _get_non_rest_endpoint(self):
         """
-        Internal method used to get the connection object to GeoServer.
-        """
-        return GeoServerCatalog(self.endpoint, username=self.username, password=self.password)
-
-    def _get_wfs_url(self, resource_id, output_format='GML3'):
-        """
-        Assemble a WFS url.
+        Get endpoint without the "rest".
         """
         endpoint = self.endpoint
 
         # Eliminate trailing slash if necessary
         if endpoint[-1] == '/':
             endpoint = endpoint[:-1]
-
         if endpoint[-5:] == '/rest':
             endpoint = endpoint[:-5]
+        return endpoint
+
+    def _get_geoserver_catalog_object(self):
+        """
+        Internal method used to get the connection object to GeoServer.
+        """
+        return GeoServerCatalog(self.endpoint, username=self.username, password=self.password)
+
+    def _get_wms_url(self, layer_id, style='', srs='EPSG:4326', bbox='-180,-90,180,90', version='1.1.0',
+                     width='512', height='512', output_format='image/png', tiled=False, transparent=True):
+        """
+        Assemble a WMS url.
+        """
+        endpoint = self._get_non_rest_endpoint()
+
+        if tiled:
+            tiled_option='yes'
+        else:
+            tiled_option='no'
+
+        if transparent:
+            transparent_option='true'
+        else:
+            transparent_option='false'
+
+        wms_url = '{0}/wms?service=WMS&version={1}&request=GetMap&' \
+                  'layers={2}&styles={3}&' \
+                  'transparent={10}&tiled={9}&' \
+                  'srs={4}&bbox={5}&' \
+                  'width={6}&height={7}&' \
+                  'format={8}'.format(endpoint, version, layer_id, style, srs, bbox, width, height, output_format,
+                                      tiled_option, transparent_option)
+
+        return wms_url
+
+    def _get_wcs_url(self, resource_id, srs='EPSG:4326', bbox='-180,-90,180,90', output_format='png', namespace=None,
+                     width='512', height='512'):
+        """
+        Assemble a WCS url.
+        """
+        endpoint = self._get_non_rest_endpoint()
+
+        wcs_url = '{0}/wcs?service=WCS&version=1.1.0&request=GetCoverage&' \
+                  'identifier={1}&' \
+                  'srs={2}&BoundingBox={3}&' \
+                  'width={5}&height={6}&' \
+                  'format={4}'.format(endpoint, resource_id, srs, bbox, output_format, width, height)
+
+        if namespace and isinstance(namespace, basestring):
+            wcs_url = '{0}&namespace={1}'.format(wcs_url, namespace)
+
+        return wcs_url
+
+    def _get_wfs_url(self, resource_id, output_format='GML3'):
+        """
+        Assemble a WFS url.
+        """
+        endpoint = self._get_non_rest_endpoint()
 
         if output_format == 'GML3':
-            wfs_url = '{0}/wfs?service=wfs&version=2.0.0&request=GetFeature&typeNames={1}'.format(endpoint, resource_id)
+            wfs_url = '{0}/wfs?service=WFS&version=2.0.0&request=GetFeature&typeNames={1}'.format(endpoint, resource_id)
         elif output_format == 'GML2':
-            wfs_url = '{0}/wfs?service=wfs&version=1.0.0&request=GetFeature&typeNames={1}&' \
+            wfs_url = '{0}/wfs?service=WFS&version=1.0.0&request=GetFeature&typeNames={1}&' \
                       'outputFormat=GML2'.format(endpoint, resource_id)
         else:
-            wfs_url = '{0}/wfs?service=wfs&version=2.0.0&request=GetFeature&typeNames={1}&' \
+            wfs_url = '{0}/wfs?service=WFS&version=2.0.0&request=GetFeature&typeNames={1}&' \
                       'outputFormat={2}'.format(endpoint, resource_id, output_format)
 
         return wfs_url
@@ -208,14 +260,14 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         NAMED_OBJECTS_WITH_WORKSPACE = ('resource', 'default_style')
         OMIT_ATTRIBUTES = ('writers', 'attribution_object', 'dirty', 'dom', 'save_method')
 
+        # Load into a dictionary
+        object_dictionary = {}
+        resource_object = None
+
         # Get the non-private attributes
         attributes = [a for a in dir(gs_object) if not a.startswith('__') and not a.startswith('_')]
 
-        # Load into a dictionary
-        object_dictionary = {}
-
         for attribute in attributes:
-
             if not callable(getattr(gs_object, attribute)):
                 # Handle special cases upfront
                 if attribute in NAMED_OBJECTS:
@@ -228,12 +280,17 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                 elif attribute in NAMED_OBJECTS_WITH_WORKSPACE:
                     # Append workspace if applicable
                     sub_object = getattr(gs_object, attribute)
-                    if not isinstance(sub_object, str):
+
+                    # Stash resource for later use
+                    if attribute == 'resource':
+                        resource_object = sub_object
+
+                    if sub_object and not isinstance(sub_object, str):
                         if sub_object.workspace:
                             object_dictionary[attribute] = '{0}:{1}'.format(sub_object.workspace.name, sub_object.name)
                         else:
                             object_dictionary[attribute] = sub_object.name
-                    else:
+                    elif isinstance(sub_object, str):
                         object_dictionary[attribute] = getattr(gs_object, attribute)
 
                 elif attribute in OMIT_ATTRIBUTES:
@@ -266,6 +323,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         # Inject appropriate WFS and WMS URLs
         if 'resource_type' in object_dictionary:
+            # Feature Types Get WFS
             if object_dictionary['resource_type'] == 'featureType':
                 if object_dictionary['workspace']:
                     resource_id = '{0}:{1}'.format(object_dictionary['workspace'], object_dictionary['name'])
@@ -279,12 +337,140 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                     'geojson': self._get_wfs_url(resource_id, 'application/json'),
                     'csv': self._get_wfs_url(resource_id, 'csv')
                 }
+
+            # Coverage Types Get WCS
             elif object_dictionary['resource_type'] == 'coverage':
-                print('COVERAGE: ', object_dictionary['name'])
+                workspace = None
+                name = object_dictionary['name']
+                bbox = '-180,-90,180,90'
+                srs = 'EPSG:4326'
+                width = '512'
+                height = '512'
+
+                if object_dictionary['workspace']:
+                    workspace = object_dictionary['workspace']
+
+                if resource_object and resource_object.native_bbox:
+                    # Find the native bounding box
+                    nbbox = resource_object.native_bbox
+                    minx = nbbox[0]
+                    maxx = nbbox[1]
+                    miny = nbbox[2]
+                    maxy = nbbox[3]
+                    srs = resource_object.projection
+                    bbox = '{0},{1},{2},{3}'.format(minx, miny, maxx, maxy)
+
+                    # Resize the width to be proportionate to the image aspect ratio
+                    aspect_ratio = (float(maxx) - float(minx)) / (float(maxy) - float(miny))
+                    width = str(int(aspect_ratio * float(height)))
+
+                object_dictionary['wcs'] = {
+                    'png': self._get_wcs_url(name, output_format='png', namespace=workspace, srs=srs, bbox=bbox),
+                    'gif': self._get_wcs_url(name, output_format='gif', namespace=workspace, srs=srs, bbox=bbox),
+                    'jpeg': self._get_wcs_url(name, output_format='jpeg', namespace=workspace, srs=srs, bbox=bbox),
+                    'tiff': self._get_wcs_url(name, output_format='tif', namespace=workspace, srs=srs, bbox=bbox),
+                    'bmp': self._get_wcs_url(name, output_format='bmp', namespace=workspace, srs=srs, bbox=bbox),
+                    'geotiff': self._get_wcs_url(name, output_format='geotiff', namespace=workspace, srs=srs, bbox=bbox),
+                    'gtopo30': self._get_wcs_url(name, output_format='gtopo30', namespace=workspace, srs=srs, bbox=bbox),
+                    'arcgrid': self._get_wcs_url(name, output_format='ArcGrid', namespace=workspace, srs=srs, bbox=bbox),
+                    'arcgrid_gz': self._get_wcs_url(name, output_format='ArcGrid-GZIP', namespace=workspace, srs=srs, bbox=bbox),
+                }
+
+            elif object_dictionary['resource_type'] == 'layer':
+                # Defaults
+                bbox = '-180,-90,180,90'
+                srs = 'EPSG:4326'
+                width = '512'
+                height = '512'
+                style = ''
+
+                # Layer and style
+                layer = object_dictionary['name']
+                if 'default_style' in object_dictionary:
+                    style = object_dictionary['default_style']
+                    print(style)
+
+                # Try to extract the bounding box from the resource which was saved earlier
+                if resource_object and resource_object.native_bbox:
+                    # Find the native bounding box
+                    nbbox = resource_object.native_bbox
+                    minx = nbbox[0]
+                    maxx = nbbox[1]
+                    miny = nbbox[2]
+                    maxy = nbbox[3]
+                    srs = resource_object.projection
+                    bbox = '{0},{1},{2},{3}'.format(minx, miny, maxx, maxy)
+
+                    # Resize the width to be proportionate to the image aspect ratio
+                    aspect_ratio = (float(maxx) - float(minx)) / (float(maxy) - float(miny))
+                    width = str(int(aspect_ratio * float(height)))
+
+                object_dictionary['wms'] = {
+                    'png': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/png'),
+                    'png8': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/png8'),
+                    'jpeg': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/jpeg'),
+                    'gif': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/gif'),
+                    'tiff': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/tiff'),
+                    'tiff8': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/tiff8'),
+                    'geptiff': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/geotiff'),
+                    'geotiff8': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/geotiff8'),
+                    'svg': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/svg'),
+                    'pdf': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='application/pdf'),
+                    'georss': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='rss'),
+                    'kml': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='kml'),
+                    'kmz': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='kmz'),
+                    'openlayers': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='application/openlayers')
+                }
+
+            elif object_dictionary['resource_type'] == 'layerGroup':
+                # Defaults
+                bbox = '-180,-90,180,90'
+                srs = 'EPSG:4326'
+                width = '512'
+                height = '512'
+                style = ''
+
+                # Layer and style
+                layer = object_dictionary['name']
+                if 'default_style' in object_dictionary:
+                    style = object_dictionary['default_style']
+                    print(style)
+
+                # Try to extract the bounding box from the resource which was saved earlier
+                if 'bounds' in object_dictionary and object_dictionary['bounds']:
+                    # Find the native bounding box
+                    nbbox = object_dictionary['bounds']
+                    minx = nbbox[0]
+                    maxx = nbbox[1]
+                    miny = nbbox[2]
+                    maxy = nbbox[3]
+                    srs = nbbox[4]
+                    bbox = '{0},{1},{2},{3}'.format(minx, miny, maxx, maxy)
+
+                    # Resize the width to be proportionate to the image aspect ratio
+                    aspect_ratio = (float(maxx) - float(minx)) / (float(maxy) - float(miny))
+                    width = str(int(aspect_ratio * float(height)))
+
+                object_dictionary['wms'] = {
+                    'png': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/png'),
+                    'png8': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/png8'),
+                    'jpeg': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/jpeg'),
+                    'gif': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/gif'),
+                    'tiff': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/tiff'),
+                    'tiff8': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/tiff8'),
+                    'geptiff': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/geotiff'),
+                    'geotiff8': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/geotiff8'),
+                    'svg': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/svg'),
+                    'pdf': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='application/pdf'),
+                    'georss': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='rss'),
+                    'kml': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='kml'),
+                    'kmz': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='kmz'),
+                    'openlayers': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='application/openlayers')
+                }
 
         return object_dictionary
 
-    def list_resources(self, with_properties=False, debug=False):
+    def list_resources(self, with_properties=False, store=None, workspace=None, debug=False):
         """
         List all resources available from the spatial dataset service.
 
@@ -297,8 +483,18 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         """
         # Get a GeoServer catalog object and query for list of resources
         catalog = self._get_geoserver_catalog_object()
-        resource_objects = catalog.get_resources()
-        return self._handle_list(resource_objects, with_properties, debug)
+        try:
+            resource_objects = catalog.get_resources(store=store, workspace=workspace)
+            return self._handle_list(resource_objects, with_properties, debug)
+        except geoserver.catalog.AmbiguousRequestError as e:
+            response_object = {'success': False,
+                               'error': e.message}
+        except TypeError as e:
+            response_object = {'success': False,
+                               'error': 'Multiple stores found named "{0}".'.format(store)}
+        self._handle_debug(response_object, debug)
+        return response_object
+
 
     def list_layers(self, with_properties=False, debug=False):
         """
@@ -720,11 +916,200 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         self._handle_debug(response_dict, debug)
         return response_dict
 
-    def create_coverage_resource(self):
+    def create_coverage_resource(self, store_id, coverage_file, coverage_type, overwrite=False, debug=False):
         """
-        Create a coverage feature store for raster datasets.
+        Use this method to add coverage resources to GeoServer. This method can result in the creation of three items: a coverage store, a coverage resource, and a layer.  If store_id references a store that does not exist, it will be created. The coverage resource and the subsequent layer will be created with the same name as the image file that is uploaded.
+
+        Args
+          store_id (string): Identifier for the store to be created. Can be a name or a workspace name combination to add the new resource to the workspace (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace.
+          coverage_file (string): Path to the coverage image or zip archive.
+          coverage_type: Type of coverage that is being created. Valid values include: 'geotiff', 'worldimage', 'imagemosaic'.
+          overwrite (bool, optional): Overwrite the file if it already exists.
+          charset (string, optional): Specify the character encoding of the file being uploaded (e.g.: ISO-8559-1)
+
+        Note
+          If the type coverage being uploaded includes multiple files (e.g.: worldimage, imagemosaic), they must be uploaded as a zip archive. Otherwise upload the singular file (e.g.: geotiff).
+          You may need to include a .prj file with the Well Know Text definition of the projection if it is non-standard.
+
+        Returns:
+          (dict): Response dictionary
         """
-        pass
+        # Globals
+        VALID_COVERAGE_TYPES = ('geotiff', 'worldimage', 'imagemosaic', 'gtopo30', 'arcgrid', 'grassgrid')
+
+        # Validate coverage type
+        if coverage_type not in VALID_COVERAGE_TYPES:
+            raise ValueError('"{0}" is not a valid coverage_type. Use either {1}'.format(coverage_type, ', '.join(VALID_COVERAGE_TYPES)))
+
+        # Get a GeoServer catalog object and query for list of layer groups
+        catalog = self._get_geoserver_catalog_object()
+
+        # Process identifier
+        workspace, name = self._process_identifier(store_id)
+
+        # Get default work space if none is given
+        if not workspace:
+            workspace = catalog.get_default_workspace().name
+
+        # Throw error if overwrite is not true and store already exists
+        if not overwrite:
+            try:
+                store = catalog.get_store(name=name, workspace=workspace)
+                print store.name, store.workspace
+                message = "There is already a store named " + name
+                if workspace:
+                    message += " in " + workspace
+
+                response_dict = {'success': False,
+                                 'error': message}
+
+                self._handle_debug(response_dict, debug)
+                return response_dict
+
+            except geoserver.catalog.FailedRequestError:
+                pass
+
+        # Prepare files
+        working_dir = None
+
+        if coverage_type == 'grassgrid':
+            working_dir = os.path.join(os.path.dirname(coverage_file), '.gstmp')
+            print working_dir
+
+            # Unzip
+            zip_file = ZipFile(coverage_file)
+            zip_file.extractall(working_dir)
+
+            # Change Header
+            valid_grass_file = False
+
+            for file in os.listdir(working_dir):
+                if 'prj' not in file:
+                    # Defaults
+                    contents = ''
+                    north = 90.0
+                    south = -90.0
+                    east = -180.0
+                    west = 180.0
+                    rows = 360
+                    cols = 720
+
+                    with open(os.path.join(working_dir, file), 'r') as f:
+                        contents = f.readlines()
+
+                    corrupt_file = False
+
+                    for line in contents[0:6]:
+                        if 'north' in line:
+                            north = float(line.split(':')[1].strip())
+                        elif 'south' in line:
+                            south = float(line.split(':')[1].strip())
+                        elif 'east' in line:
+                            east = float(line.split(':')[1].strip())
+                        elif 'west' in line:
+                            west = float(line.split(':')[1].strip())
+                        elif 'rows' in line:
+                            rows = int(line.split(':')[1].strip())
+                        elif 'cols' in line:
+                            cols = int(line.split(':')[1].strip())
+                        else:
+                            corrupt_file = True
+
+                    if corrupt_file:
+                        break
+
+                    # Calcuate new header
+                    xllcorner = east
+                    yllcorner = south
+                    cellsize = (north - south) / rows
+
+                    header = ['ncols         {0}\n'.format(cols),
+                              'nrows         {0}\n'.format(rows),
+                              'xllcorner     {0}\n'.format(xllcorner),
+                              'yllcorner     {0}\n'.format(yllcorner),
+                              'cellsize      {0}\n'.format(cellsize)]
+
+                    # Strip off old header and add new one
+                    for i in range(0,6):
+                        contents.pop(0)
+                    contents = header + contents
+
+                    with open(os.path.join(working_dir, file), 'w') as f:
+                        for line in contents:
+                            f.write(line)
+
+                    valid_grass_file = True
+
+            if not valid_grass_file:
+                # Clean up
+                for file in os.listdir(working_dir):
+                    os.remove(os.path.join(working_dir, file))
+                os.rmdir(working_dir)
+                raise IOError('GRASS file could not be processed, check to ensure the GRASS grid is correctly formatted or included.')
+
+            # New coverage zip file (rezip)
+            coverage_file = os.path.join(working_dir, 'foo.zip')
+            with ZipFile(coverage_file, 'w') as zf:
+                for file in os.listdir(working_dir):
+                    if file != 'foo.zip':
+                        zf.write(os.path.join(working_dir, file), file)
+
+        if is_zipfile(coverage_file):
+            content_type = 'application/zip'
+        else:
+            content_type = 'image/{0}'.format(coverage_type)
+
+        # Prepare headers
+        extension = coverage_type
+
+        if coverage_type == 'grassgrid':
+            extension = 'arcgrid'
+
+        files = {'file': open(coverage_file, 'rb')}
+
+        headers = {
+            "Content-type": content_type,
+            "Accept": "application/xml"
+        }
+
+        # Prepare URL
+        url = self._assemble_url('workspaces', workspace, 'coveragestores', name, 'file.{0}'.format(extension))
+
+        # Set params
+        params = {}
+
+        if overwrite:
+            params['update'] = 'overwrite'
+
+        # Execute: PUT /workspaces/<ws>/datastores/<ds>/file.shp
+        response = requests.put(url=url,
+                                files=files,
+                                headers=headers,
+                                params=params,
+                                auth=HTTPBasicAuth(username=self.username, password=self.password))
+
+        # Clean up
+        if working_dir:
+            for file in os.listdir(working_dir):
+                os.remove(os.path.join(working_dir, file))
+            os.rmdir(working_dir)
+
+        if response.status_code != 201:
+            response_dict = {'success': False,
+                             'error': '{1}({0}): {2}'.format(response.status_code, response.reason, response.text)}
+
+            self._handle_debug(response_dict, debug)
+            return response_dict
+
+        # Wrap up successfully
+        catalog.reload()
+        new_resource = catalog.get_resource(name=name, workspace=workspace)
+        resource_dict = self._transcribe_geoserver_object(new_resource)
+
+        response_dict = {'success': True,
+                         'result': resource_dict}
+        self._handle_debug(response_dict, debug)
+        return response_dict
 
     def create_layer(self, layer_id, debug=False):
         """
