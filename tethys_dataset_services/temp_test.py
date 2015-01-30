@@ -117,7 +117,7 @@ engine = GeoServerSpatialDatasetEngine(endpoint='http://192.168.59.103:8181/geos
 # response = engine.get_resource(resource_id='sf:roads', debug=True)
 # response = engine.get_resource(resource_id='sf:sfdem', debug=True)
 
-# response = engine.get_layer(layer_id='sf:roads', debug=True)
+response = engine.get_layer(layer_id='sf:roads', debug=True)
 # response = engine.get_layer(layer_id='sf:sfdem', debug=True)
 
 # response = engine.get_layer_group('tiger-ny', debug=True)
@@ -127,19 +127,19 @@ engine = GeoServerSpatialDatasetEngine(endpoint='http://192.168.59.103:8181/geos
 #                                            coverage_type='arcgrid', overwrite=True, debug=True)
 
 # coverage_file = '/Users/swainn/testing/geoserver/upload/sfdem.tif'
-# response = engine.create_coverage_resource(resource_id='my_geotiff', coverage_file=coverage_file,
+# response = engine.create_coverage_resource(store_id='my_geotiff', coverage_file=coverage_file,
 #                                            coverage_type='geotiff', overwrite=True, debug=True)
 
 # coverage_file = '/Users/swainn/testing/geoserver/upload/mosaic_sample/global_mosaic.zip'
-# response = engine.create_coverage_resource(resource_id='my_mosaic', coverage_file=coverage_file,
+# response = engine.create_coverage_resource(store_id='my_mosaic', coverage_file=coverage_file,
 #                                            coverage_type='imagemosaic', overwrite=True, debug=True)
 
 # coverage_file = '/Users/swainn/testing/geoserver/upload/img_sample/usa.zip'
-# response = engine.create_coverage_resource(resource_id='my_usa', coverage_file=coverage_file,
+# response = engine.create_coverage_resource(store_id='my_usa', coverage_file=coverage_file,
 #                                            coverage_type='worldimage', overwrite=True, debug=True)
 
 # coverage_file = '/Users/swainn/testing/geoserver/upload/img_sample/Pk50095.zip'
-# response = engine.create_coverage_resource(resource_id='my_pk', coverage_file=coverage_file,
+# response = engine.create_coverage_resource(store_id='my_pk', coverage_file=coverage_file,
 #                                            coverage_type='worldimage', overwrite=True, debug=True)
 
 # coverage_file = '/Users/swainn/testing/geoserver/upload/img_sample/foo.zip'
@@ -156,9 +156,12 @@ engine = GeoServerSpatialDatasetEngine(endpoint='http://192.168.59.103:8181/geos
 # response = engine.create_coverage_resource(store_id='topp:my_grass', coverage_file=coverage_file,
 #                                            coverage_type='grassgrid', overwrite=True, debug=True)
 
-coverage_file = '/Users/swainn/testing/geoserver/upload/geotiff_sample/sfdem.zip'
-response = engine.create_coverage_resource(store_id='topp:a_geotiff', coverage_file=coverage_file,
-                                           coverage_type='geotiff', overwrite=True, debug=True)
+# coverage_file = '/Users/swainn/testing/geoserver/upload/geotiff_sample/sfdem.zip'
+# response = engine.create_coverage_resource(store_id='topp:a_geotiff', coverage_file=coverage_file,
+#                                            coverage_type='geotiff', overwrite=True, debug=True)
+
+# shapefile_base = "/Users/swainn/projects/tethysdev/tethys_dataset_services/tethys_dataset_services/tests/files/shapefile/test"  # Test both base and zip archive methods
+# engine.create_shapefile_resource('my_foo_bar', shapefile_base=shapefile_base, overwrite=True, debug=True)
 
 
 

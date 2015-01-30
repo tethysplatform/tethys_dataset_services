@@ -1,11 +1,7 @@
 import os
-import json
-import math
 import pprint
 import requests
 from requests.auth import HTTPBasicAuth
-import owslib
-import inspect
 from zipfile import ZipFile, is_zipfile
 import geoserver
 from geoserver.catalog import Catalog as GeoServerCatalog, _name
@@ -472,11 +468,13 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
     def list_resources(self, with_properties=False, store=None, workspace=None, debug=False):
         """
-        List all resources available from the spatial dataset service.
+        List the names of all resources available from the spatial dataset service.
 
         Args:
           with_properties (bool, optional): Return list of resource dictionaries instead of a list of resource names.
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+          store (string, optional): Return only resources belonging to a certain store.
+          workspace (string, optional): Return only resources belonging to a certain workspace.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -495,14 +493,13 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         self._handle_debug(response_object, debug)
         return response_object
 
-
     def list_layers(self, with_properties=False, debug=False):
         """
-        List all layers available from the spatial dataset service.
+        List names of all layers available from the spatial dataset service.
 
         Args:
           with_properties (bool, optional): Return list of layer dictionaries instead of a list of layer names.
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -514,11 +511,11 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
     def list_layer_groups(self, with_properties=False, debug=False):
         """
-        List all layer groups available from the spatial dataset service.
+        List the names of all layer groups available from the spatial dataset service.
 
         Args:
           with_properties (bool, optional): Return list of layer group dictionaries instead of a list of layer group names.
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -530,11 +527,11 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
     def list_workspaces(self, with_properties=False, debug=False):
         """
-        List all workspaces.
+        List the names of all workspaces available from the spatial dataset service.
 
         Args:
-          with_properties (bool, optional): Return list of layer group dictionaries instead of a list of layer group names.
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+          with_properties (bool, optional): Return list of workspace dictionaries instead of a list of workspace names.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -546,11 +543,12 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
     def list_stores(self, workspace=None, with_properties=False, debug=False):
         """
-        List all stores.
+        List the names of all stores available from the spatial dataset service.
 
         Args:
-          with_properties (bool, optional): Return list of layer group dictionaries instead of a list of layer group names.
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+          workspace (string, optional): List long stores belonging to this workspace.
+          with_properties (bool, optional): Return list of store dictionaries instead of a list of store names.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -570,11 +568,11 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
     def list_styles(self, with_properties=False, debug=False):
         """
-        List all styles.
+        List the names of all styles available from the spatial dataset service.
 
         Args:
-          with_properties (bool, optional): Return list of layer group dictionaries instead of a list of layer group names.
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+          with_properties (bool, optional): Return list of style dictionaries instead of a list of style names.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -589,10 +587,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Retrieve a resource object.
 
         Args:
-          resource_id (string): Identifier for the resource to be created. Can be a name or a workspace name combination to add the new resource to the workspace (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace.
-          store (string, optional): Name of the store  from which to get the resource.
-          workspace (string, optional): Name of workspace from which to get the resource.
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+          resource_id (string): Identifier of the resource to retrieve. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
+          store (string, optional): Get resource from this store.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -629,8 +626,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Retrieve a layer object.
 
         Args:
-          layer_id (string): Name of the layer to retrieve.
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+          layer_id (string): Identifier of the layer to retrieve.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -665,8 +662,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Retrieve a layer group object.
 
         Args:
-          layer_group_id (string): Name of the layer group to retrieve.
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+          layer_group_id (string): Identifier of the layer group to retrieve.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -701,8 +698,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Retrieve a store object.
 
         Args:
-          store_id (string): Name of the layer group to retrieve.
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+          store_id (string): Identifier of the store to retrieve.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -740,8 +737,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Retrieve a workspace object.
 
         Args:
-          workspace_id (string): Name of the layer group to retrieve.
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+          workspace_id (string): Identifier of the workspace to retrieve.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -773,11 +770,11 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
     def get_style(self, style_id, debug=False):
         """
-        Retrieve a workspace object.
+        Retrieve a style object.
 
         Args:
-          style_id (string): Name of the layer group to retrieve.
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+          style_id (string): Identifier of the style to retrieve.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -811,20 +808,23 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         self._handle_debug(response_dict, debug)
         return response_dict
 
-    def create_resource(self, layer_id, url=None, file=None, **kwargs):
-        pass
-
-    def create_shapefile_resource(self, resource_id, shapefile_base, overwrite=False, charset=None, debug=False):
+    def create_feature_resource(self):
         """
-        Create a new shapefile resource.
+        Create generic feature resource.
+        """
 
-        Note: Creating a resource results in the creation of a store and a layer.
+    def create_shapefile_resource(self, store_id, shapefile_base, overwrite=False, charset=None, debug=False):
+        """
+         Use this method to add shapefile resources to GeoServer.
+
+         This method will result in the creation of three items: a feature type store, a feature type resource, and a layer. If store_id references a store that does not exist, it will be created. The feature type resource and the subsequent layer will be created with the same name as the feature type store.
 
         Args
-          resource_id (string): Identifier for the resource to be created. Can be a name or a workspace name combination to add the new resource to the workspace (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace.
-          shapefile_base (string): Path to shapefile base name (e.g.: "/path/base" for shapefile at "/path/base.shp") or a zip file containing all the shapefile components.
+          store_id (string): Identifier for the store to add the resource to. Can be a store name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace.
+          shapefile_base (string): Path to shapefile base name (e.g.: "/path/base" for shapefile at "/path/base.shp") OR a zip file containing all the shapefile pieces.
           overwrite (bool, optional): Overwrite the file if it already exists.
           charset (string, optional): Specify the character encoding of the file being uploaded (e.g.: ISO-8559-1)
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -833,7 +833,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         catalog = self._get_geoserver_catalog_object()
 
         # Process identifier
-        workspace, name = self._process_identifier(resource_id)
+        workspace, name = self._process_identifier(store_id)
 
         # Get default work space if none is given
         if not workspace:
@@ -918,18 +918,20 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
     def create_coverage_resource(self, store_id, coverage_file, coverage_type, overwrite=False, debug=False):
         """
-        Use this method to add coverage resources to GeoServer. This method can result in the creation of three items: a coverage store, a coverage resource, and a layer.  If store_id references a store that does not exist, it will be created. The coverage resource and the subsequent layer will be created with the same name as the image file that is uploaded.
+        Use this method to add coverage resources to GeoServer.
+
+        This method will result in the creation of three items: a coverage store, a coverage resource, and a layer. If store_id references a store that does not exist, it will be created. The coverage resource and the subsequent layer will be created with the same name as the image file that is uploaded.
 
         Args
-          store_id (string): Identifier for the store to be created. Can be a name or a workspace name combination to add the new resource to the workspace (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace.
-          coverage_file (string): Path to the coverage image or zip archive.
-          coverage_type: Type of coverage that is being created. Valid values include: 'geotiff', 'worldimage', 'imagemosaic'.
+          store_id (string): Identifier for the store to add the image to or to be created. Can be a name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace.
+          coverage_file (string): Path to the coverage image or zip archive. Most files will require a .prj file with the Well Known Text definition of the projection. Zip this file up with the image and send the archive.
+          coverage_type: Type of coverage that is being created. Valid values include: 'geotiff', 'worldimage', 'imagemosaic', 'gtopo30', 'arcgrid', and 'grassgrid'.
           overwrite (bool, optional): Overwrite the file if it already exists.
           charset (string, optional): Specify the character encoding of the file being uploaded (e.g.: ISO-8559-1)
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Note
-          If the type coverage being uploaded includes multiple files (e.g.: worldimage, imagemosaic), they must be uploaded as a zip archive. Otherwise upload the singular file (e.g.: geotiff).
-          You may need to include a .prj file with the Well Know Text definition of the projection if it is non-standard.
+          If the type coverage being uploaded includes multiple files (e.g.: image, world file, projecttion file), they must be uploaded as a zip archive. Otherwise upload the single file.
 
         Returns:
           (dict): Response dictionary
@@ -1116,7 +1118,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Create a new layer.
 
         Args:
-          name (string): Name of the layer to create.
+          name (string): Identifier of the layer to create.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -1125,12 +1128,14 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
     def create_layer_group(self, layer_group_id, layers, styles, bounds=None, debug=False):
         """
-        Create a new resource.
+        Create a layer group. The number of layers and the number of styles must be the same.
 
         Args:
-          dataset_id (string): Identifier of the dataset to which the resource will be added.
-          url (string, optional): URL of resource to associate with resource.
-          file (string, optional): Path of file to upload as resource.
+          layer_group_id (string): Identifier of the layer group to create.
+          layers (iterable): A list of layer names to be added to the group. Must be the same length as the styles list.
+          styles (iterable): A list of style names to  associate with each layer in the group. Must be the same length as the layers list.
+          bounds (iterable): A tuple representing the bounding box of the layer group (e.g.: ('-74.02722', '-73.907005', '40.684221', '40.878178', 'EPSG:4326') )
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -1167,9 +1172,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Create a new workspace.
 
         Args:
-          workspace_id (string): Identifier of the workspace.
+          workspace_id (string): Identifier of the workspace to create. Must be unique.
           uri (string): URI associated with your project. Does not need to be a real web URL, just a unique identifier. One suggestion is to append the URL of your project with the name of the workspace (e.g.: http:www.example.com/workspace-name).
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -1194,12 +1199,13 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
     def create_style(self, style_id, sld, overwrite=False, debug=False):
         """
-        Create a new workspace.
+        Create a new SLD style object.
 
         Args:
-          create_style (string): Identifier of the style.
-          sld (string): Styled Layer Descriptor String
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+          create_style (string): Identifier of the style to create.
+          sld (string): Styled Layer Descriptor string
+          overwrite (bool, optional): Overwrite if style already exists. Defaults to False.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -1238,9 +1244,10 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Update an existing resource.
 
         Args:
-          resource_id (string): Identifier of the resource to update.
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
-          **kwargs (kwargs, optional): Key value pairs representing the attributes to change.
+          resource_id (string): Identifier of the resource to update. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
+          store (string, optional): Update a resource in this store.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
+          **kwargs (kwargs, optional): Key value pairs representing the attributes and values to change.
 
         Returns:
           (dict): Response dictionary
@@ -1280,9 +1287,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Update an existing layer.
 
         Args:
-          layer_id (string): Identifier of the dataset to update.
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
-          **kwargs (kwargs, optional): Any number of additional keyword arguments.
+          layer_id (string): Identifier of the layer to update.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
+          **kwargs (kwargs, optional): Key value pairs representing the attributes and values to change.
 
         Returns:
           (dict): Response dictionary
@@ -1320,9 +1327,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         and the number of styles are the same.
 
         Args:
-          layer_group_id (string): Identifier of the dataset to update.
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
-          **kwargs (kwargs, optional): Any number of additional keyword arguments.
+          layer_group_id (string): Identifier of the layer group to update.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
+          **kwargs (kwargs, optional): Key value pairs representing the attributes and values to change
 
         Returns:
           (dict): Response dictionary
@@ -1361,10 +1368,11 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Delete a resource.
 
         Args:
-          resource_id (string): Name of the resource to delete.
+          resource_id (string): Identifier of the resource to delete.
+          store (string, optional): Delete resource from this store.
           purge (bool, optional): Purge if True.
-          recurse (bool, optional): Delete recursively if True.
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+          recurse (bool, optional): Delete recursively any dependencies if True (i.e.: layers or layer groups it belongs to).
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -1387,10 +1395,10 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Delete a layer.
 
         Args:
-          layer_id (string): Name of the layer to delete.
+          layer_id (string): Identifier of the layer to delete.
           purge (bool, optional): Purge if True.
-          recurse (bool, optional): Delete recursively if True.
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+          recurse (bool, optional): Delete recursively if True (i.e: delete layer groups it belongs to).
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -1410,10 +1418,10 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Delete a layer group.
 
         Args:
-          layer_group_id (string): Name of the layer group to delete.
+          layer_group_id (string): Identifier of the layer group to delete.
           purge (bool, optional): Purge if True.
           recurse (bool, optional): Delete recursively if True.
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -1430,13 +1438,13 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
     def delete_workspace(self, workspace_id, purge=False, recurse=False, debug=False):
         """
-        Delete a layer group.
+        Delete a workspace.
 
         Args:
-          workspace_id (string): Name of the workspace to delete.
+          workspace_id (string): Identifier of the workspace to delete.
           purge (bool, optional): Purge if True.
           recurse (bool, optional): Delete recursively if True.
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -1456,10 +1464,10 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Delete a store.
 
         Args:
-          store_id (string): Name of the store to delete.
+          store_id (string): Identifier of the store to delete.
           purge (bool, optional): Purge if True.
           recurse (bool, optional): Delete recursively if True.
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -1490,10 +1498,10 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Delete a style.
 
         Args:
-          style_id (string): Name of the style to delete.
+          style_id (string): Identifier of the style to delete.
           purge (bool, optional): Purge if True.
           recurse (bool, optional): Delete recursively if True.
-          debug (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
           (dict): Response dictionary
@@ -1518,46 +1526,4 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
             self._handle_debug(response_dict, debug)
             return response_dict
-
-    def get_layer_as_wfs(self, layer_id, **kwargs):
-        """
-        Get a layer as a WFS service
-
-        Args:
-          layer_id (string): Identifier of the dataset to retrieve.
-          **kwargs (kwargs, optional): Any number of additional keyword arguments.
-
-        Returns:
-
-          (str): WFS Query URL
-        """
-        return NotImplemented
-    
-    def get_layer_as_wms(self, layer_id, **kwargs):
-        """
-        Get a layer as a WMS service
-
-        Args:
-          layer_id (string): Identifier of the dataset to retrieve.
-          **kwargs (kwargs, optional): Any number of additional keyword arguments.
-
-        Returns:
-
-          (str): WMS Query URL
-        """
-        return NotImplemented
-
-    def get_layer_as_wcs(self, layer_id, **kwargs):
-        """
-        Get a layer as a WCS service
-
-        Args:
-          layer_id (string): Identifier of the dataset to retrieve.
-          **kwargs (kwargs, optional): Any number of additional keyword arguments.
-
-        Returns:
-
-          (str): WCS Query URL
-        """
-        return NotImplemented
 

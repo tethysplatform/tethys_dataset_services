@@ -6,7 +6,7 @@ class SpatialDatasetEngine:
     The base definition for SpatialDatasetEngine objects.
 
     SpatialDatasetEngine objects are bound to a web API endpoint via the 'api_endpoint' property. Optionally,
-    they can also be bound with an apikey or a username and password for operations that require
+    they can also be associated with an apikey or a username and password for operations that require
     authorization.
 
     Response Dictionary:
@@ -75,79 +75,46 @@ class SpatialDatasetEngine:
         return '<DatasetEngine type={0} endpoint={1}>'.format(self.type, self.endpoint)
 
     @abstractmethod
-    def list_layers(self, **kwargs):
+    def list_layers(self):
         """
         List all layers available from the spatial dataset service.
 
-        Args:
-          **kwargs (kwargs, optional): Any number of additional keyword arguments.
-
         Returns:
           (dict): Response dictionary
         """
         return NotImplemented
 
     @abstractmethod
-    def list_resources(self, **kwargs):
+    def list_resources(self):
         """
         List all resources available from the spatial dataset service.
 
-        Args:
-          **kwargs (kwargs, optional): Any number of additional keyword arguments.
-
         Returns:
           (dict): Response dictionary
         """
         return NotImplemented
 
     @abstractmethod
-    def list_layer_groups(self, **kwargs):
+    def get_layer(self, layer_id):
         """
-        List all layer groups available from the spatial dataset service.
-
-        Args:
-          **kwargs (kwargs, optional): Any number of additional keyword arguments.
-
-        Returns:
-          (dict): Response dictionary
-        """
-        return NotImplemented
-
-    @abstractmethod
-    def get_layer(self, layer_id, **kwargs):
-        """
-        Retrieve a layer object.
+        Retrieve a single layer object.
 
         Args:
           layer_id (string): Identifier of the layer to retrieve.
-          **kwargs (kwargs, optional): Any number of additional keyword arguments.
 
         Returns:
           (dict): Response dictionary
         """
         return NotImplemented
 
-    @abstractmethod
-    def get_layer_group(self, layer_group_id, **kwargs):
-        """
-        Retrieve a layer group object.
-
-        Args:
-          layer_id (string): Identifier of the layer to retrieve.
-          **kwargs (kwargs, optional): Any number of additional keyword arguments.
-
-        Returns:
-          (dict): Response dictionary
-        """
 
     @abstractmethod
-    def get_resource(self, resource_id, **kwargs):
+    def get_resource(self, resource_id):
         """
         Retrieve a resource object.
 
         Args:
           resource_id (string): Identifier of the dataset to retrieve.
-          **kwargs (kwargs, optional): Any number of additional keyword arguments.
 
         Returns:
           (dict): Response dictionary
@@ -155,28 +122,24 @@ class SpatialDatasetEngine:
         return NotImplemented
 
     @abstractmethod
-    def create_layer(self, name, **kwargs):
+    def create_layer(self, layer_id):
         """
         Create a new layer.
 
         Args:
-          name (string): Name of the dataset to create.
-          **kwargs (kwargs, optional): Any number of additional keyword arguments.
+          layer_id (string): Identifier of the layer to create.
 
         Returns:
           (dict): Response dictionary
         """
         return NotImplemented
 
-    @abstractmethod
-    def create_resource(self, layer_id, url=None, file=None, **kwargs):
+    def create_resource(self, resource_id, **kwargs):
         """
         Create a new resource.
 
         Args:
-          dataset_id (string): Identifier of the dataset to which the resource will be added.
-          url (string, optional): URL of resource to associate with resource.
-          file (string, optional): Path of file to upload as resource.
+          resource_id (string): Identifier of the resource to create.
           **kwargs (kwargs, optional): Any number of additional keyword arguments.
 
         Returns:
@@ -190,7 +153,7 @@ class SpatialDatasetEngine:
         Update an existing layer.
 
         Args:
-          layer_id (string): Identifier of the dataset to update.
+          layer_id (string): Identifier of the layer to update.
           **kwargs (kwargs, optional): Any number of additional keyword arguments.
 
         Returns:
@@ -199,14 +162,12 @@ class SpatialDatasetEngine:
         return NotImplemented
 
     @abstractmethod
-    def update_resource(self, resource_id, url=None, file=None, **kwargs):
+    def update_resource(self, resource_id, **kwargs):
         """
         Update an existing resource.
 
         Args:
           resource_id (string): Identifier of the resource to update.
-          url (string): URL of resource to associate with resource.
-          file (string): Path of file to upload as resource.
           **kwargs (kwargs, optional): Any number of additional keyword arguments.
 
         Returns:
@@ -215,13 +176,12 @@ class SpatialDatasetEngine:
         return NotImplemented
 
     @abstractmethod
-    def delete_layer(self, layer_id, **kwargs):
+    def delete_layer(self, layer_id):
         """
         Delete a layer.
 
         Args:
-          layer_id (string): Identifier of the dataset to delete.
-          **kwargs (kwargs, optional): Any number of additional keyword arguments.
+          layer_id (string): Identifier of the layer to delete.
 
         Returns:
           (dict): Response dictionary
@@ -229,60 +189,14 @@ class SpatialDatasetEngine:
         return NotImplemented
 
     @abstractmethod
-    def delete_resource(self, resource_id, **kwargs):
+    def delete_resource(self, resource_id):
         """
         Delete a resource.
 
         Args:
           resource_id (string): Identifier of the resource to delete.
-          **kwargs (kwargs, optional): Any number of additional keyword arguments.
 
         Returns:
           (dict): Response dictionary
-        """
-        return NotImplemented
-
-    @abstractmethod
-    def get_layer_as_wfs(self, layer_id, **kwargs):
-        """
-        Get a layer as a WFS service
-
-        Args:
-          layer_id (string): Identifier of the dataset to retrieve.
-          **kwargs (kwargs, optional): Any number of additional keyword arguments.
-
-        Returns:
-
-          (str): WFS Query URL
-        """
-        return NotImplemented
-
-    @abstractmethod
-    def get_layer_as_wms(self, layer_id, **kwargs):
-        """
-        Get a layer as a WMS service
-
-        Args:
-          layer_id (string): Identifier of the dataset to retrieve.
-          **kwargs (kwargs, optional): Any number of additional keyword arguments.
-
-        Returns:
-
-          (str): WMS Query URL
-        """
-        return NotImplemented
-
-    @abstractmethod
-    def get_layer_as_wcs(self, layer_id, **kwargs):
-        """
-        Get a layer as a WCS service
-
-        Args:
-          layer_id (string): Identifier of the dataset to retrieve.
-          **kwargs (kwargs, optional): Any number of additional keyword arguments.
-
-        Returns:
-
-          (str): WCS Query URL
         """
         return NotImplemented
