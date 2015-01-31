@@ -121,7 +121,6 @@ class SpatialDatasetEngine:
         """
         return NotImplemented
 
-    @abstractmethod
     def create_layer(self, layer_id):
         """
         Create a new layer.

@@ -163,12 +163,23 @@ engine = GeoServerSpatialDatasetEngine(endpoint='http://192.168.59.103:8181/geos
 # shapefile_base = "/Users/swainn/projects/tethysdev/tethys_dataset_services/tethys_dataset_services/tests/files/shapefile/test"  # Test both base and zip archive methods
 # engine.create_shapefile_resource('my_foo_bar', shapefile_base=shapefile_base, overwrite=True, debug=True)
 
-# response = engine.create_postgis_store(store_id='sf:death_star_db', host='192.168.59.103', port='5435',
-#                                        database='death_star_example_db', user='tethys_super', password='pass',
-#                                        debug=True)
 
-response = engine.add_postgis_table_resource('sf:death_star_db', 'states', debug=True)
+# Two tables from the same database
+# response = engine.create_postgis_resource(store_id='sf:death_star_db', table='states', host='192.168.59.103', port='5435',
+#                                           database='death_star_example_db', user='tethys_super', password='pass',
+#                                           debug=True)
+#
+# response = engine.create_postgis_resource(store_id='sf:death_star_db', table='darth_states', host='192.168.59.103', port='5435',
+#                                           database='death_star_example_db', user='tethys_super', password='pass',
+#                                           debug=True)
 
+# Create store first then add table
+# response = engine.create_postgis_resource(store_id='sf:another_death_star_db', host='192.168.59.103', port='5435',
+#                                           database='death_star_example_db', user='tethys_super', password='pass',
+#                                           debug=True)
+
+# response = engine.add_table_to_postgis_store(store_id='sf:another_death_star_db', table='states')
+# response = engine.add_table_to_postgis_store(store_id='sf:another_death_star_db', table='darth_states')
 
 
 
