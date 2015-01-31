@@ -117,7 +117,7 @@ engine = GeoServerSpatialDatasetEngine(endpoint='http://192.168.59.103:8181/geos
 # response = engine.get_resource(resource_id='sf:roads', debug=True)
 # response = engine.get_resource(resource_id='sf:sfdem', debug=True)
 
-response = engine.get_layer(layer_id='sf:roads', debug=True)
+# response = engine.get_layer(layer_id='sf:roads', debug=True)
 # response = engine.get_layer(layer_id='sf:sfdem', debug=True)
 
 # response = engine.get_layer_group('tiger-ny', debug=True)
@@ -163,6 +163,11 @@ response = engine.get_layer(layer_id='sf:roads', debug=True)
 # shapefile_base = "/Users/swainn/projects/tethysdev/tethys_dataset_services/tethys_dataset_services/tests/files/shapefile/test"  # Test both base and zip archive methods
 # engine.create_shapefile_resource('my_foo_bar', shapefile_base=shapefile_base, overwrite=True, debug=True)
 
+# response = engine.create_postgis_store(store_id='sf:death_star_db', host='192.168.59.103', port='5435',
+#                                        database='death_star_example_db', user='tethys_super', password='pass',
+#                                        debug=True)
+
+response = engine.add_postgis_table_resource('sf:death_star_db', 'states', debug=True)
 
 
 

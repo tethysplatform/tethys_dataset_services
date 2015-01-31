@@ -1,6 +1,7 @@
 import os
 import pprint
 import requests
+import tempfile
 from requests.auth import HTTPBasicAuth
 from zipfile import ZipFile, is_zipfile
 import geoserver
@@ -808,10 +809,176 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         self._handle_debug(response_dict, debug)
         return response_dict
 
-    def create_feature_resource(self):
+    def create_postgis_store(self, store_id, table, host, port, database, user, password, overwrite=False, debug=False):
         """
         Create generic feature resource.
         """
+        # Get a GeoServer catalog object and query for list of layer groups
+        catalog = self._get_geoserver_catalog_object()
+
+        # Process identifier
+        workspace, name = self._process_identifier(store_id)
+
+        # Get default work space if none is given
+        if not workspace:
+            workspace = catalog.get_default_workspace().name
+
+        # Throw error if overwrite is not true and store already exists
+        if not overwrite:
+            try:
+                store = catalog.get_store(name=name, workspace=workspace)
+                print store.name, store.workspace
+                message = "There is already a store named " + name
+                if workspace:
+                    message += " in " + workspace
+
+                response_dict = {'success': False,
+                                 'error': message}
+
+                self._handle_debug(response_dict, debug)
+                return response_dict
+
+            except geoserver.catalog.FailedRequestError:
+                pass
+
+        # Prepare file
+        xml = """
+              <dataStore>
+                <name>{0}</name>
+                <connectionParameters>
+                  <host>{1}</host>
+                  <port>{2}</port>
+                  <database>{3}</database>
+                  <user>{4}</user>
+                  <passwd>{5}</passwd>
+                  <dbtype>postgis</dbtype>
+                </connectionParameters>
+              </dataStore>
+              """.format(name, host, port, database, user, password)
+
+        # Prepare headers
+        headers = {
+            "Content-type": "text/xml",
+            "Accept": "application/xml"
+        }
+
+        # Prepare URL
+        url = self._assemble_url('workspaces', workspace, 'datastores')
+
+        # Set params
+        params = {}
+
+        if overwrite:
+            params['update'] = 'overwrite'
+
+        # Execute: POST /workspaces/<ws>/datastores
+        response = requests.post(url=url,
+                                 data=xml,
+                                 headers=headers,
+                                 params=params,
+                                 auth=HTTPBasicAuth(username=self.username, password=self.password))
+
+        if response.status_code != 201:
+            response_dict = {'success': False,
+                             'error': '{1}({0}): {2}'.format(response.status_code, response.reason, response.text)}
+
+            self._handle_debug(response_dict, debug)
+            return response_dict
+
+
+
+        # Wrap up successfully
+        catalog.reload()
+        new_store = catalog.get_store(name=name, workspace=workspace)
+        resource_dict = self._transcribe_geoserver_object(new_store)
+
+        response_dict = {'success': True,
+                         'result': resource_dict}
+        self._handle_debug(response_dict, debug)
+        return response_dict
+
+    def create_postgis_resource(self):
+        """
+        Create a new postgis table as a feature type.
+        """
+
+    def add_postgis_table_resource(self, store_id, table, overwrite=False, debug=True):
+        """
+        Add a postgis table that already exists as a feature type.
+        """
+        # Get a GeoServer catalog object and query for list of layer groups
+        catalog = self._get_geoserver_catalog_object()
+
+        # Process identifier
+        workspace, name = self._process_identifier(store_id)
+
+        # Get default work space if none is given
+        if not workspace:
+            workspace = catalog.get_default_workspace().name
+
+        # Throw error if overwrite is not true and store already exists
+        if not overwrite:
+            try:
+                store = catalog.get_store(name=name, workspace=workspace)
+                print store.name, store.workspace
+                message = "There is already a store named " + name
+                if workspace:
+                    message += " in " + workspace
+
+                response_dict = {'success': False,
+                                 'error': message}
+
+                self._handle_debug(response_dict, debug)
+                return response_dict
+
+            except geoserver.catalog.FailedRequestError:
+                pass
+
+        # Prepare file
+        xml = """
+              <featureType>
+                <name>{0}</name>
+              </featureType>
+              """.format(table)
+
+        # Prepare headers
+        headers = {
+            "Content-type": "text/xml",
+            "Accept": "application/xml"
+        }
+
+        # Prepare URL
+        url = self._assemble_url('workspaces', workspace, 'datastores', name, 'featuretypes')
+
+        # Set params
+        params = {}
+
+        if overwrite:
+            params['update'] = 'overwrite'
+
+        # Execute: POST /workspaces/<ws>/datastores
+        response = requests.post(url=url,
+                                 data=xml,
+                                 headers=headers,
+                                 params=params,
+                                 auth=HTTPBasicAuth(username=self.username, password=self.password))
+
+        if response.status_code != 201:
+            response_dict = {'success': False,
+                             'error': '{1}({0}): {2}'.format(response.status_code, response.reason, response.text)}
+
+            self._handle_debug(response_dict, debug)
+            return response_dict
+
+        # Wrap up successfully
+        catalog.reload()
+        new_store = catalog.get_store(name=name, workspace=workspace)
+        resource_dict = self._transcribe_geoserver_object(new_store)
+
+        response_dict = {'success': True,
+                         'result': resource_dict}
+        self._handle_debug(response_dict, debug)
+        return response_dict
 
     def create_shapefile_resource(self, store_id, shapefile_base, overwrite=False, charset=None, debug=False):
         """
