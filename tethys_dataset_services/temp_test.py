@@ -108,6 +108,7 @@ engine = GeoServerSpatialDatasetEngine(endpoint='http://192.168.59.103:8181/geos
 # response = engine.list_styles(with_properties=True, debug=True)
 
 # response = engine.list_layers(with_properties=True, debug=True)
+# response = engine.list_layers(debug=True)
 # response = engine.list_layer_groups(debug=True)
 # response = engine.list_resources(with_properties=True, debug=True)
 
