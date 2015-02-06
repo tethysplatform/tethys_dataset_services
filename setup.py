@@ -12,7 +12,7 @@ requires = ['django',
             'gsconfig',
             'requests']
 
-version = '0.2.0'
+version = '1.0.0'
 setup(
     name='tethys_dataset_services',
     version=version,
