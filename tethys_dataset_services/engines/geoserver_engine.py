@@ -332,6 +332,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                     'gml2': self._get_wfs_url(resource_id, 'GML2'),
                     'shapefile': self._get_wfs_url(resource_id, 'shape-zip'),
                     'geojson': self._get_wfs_url(resource_id, 'application/json'),
+                    'geojsonp': self._get_wfs_url(resource_id, 'text/javascript'),
                     'csv': self._get_wfs_url(resource_id, 'csv')
                 }
 

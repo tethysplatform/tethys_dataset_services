@@ -2,7 +2,7 @@ import os
 from engines import GeoServerSpatialDatasetEngine
 
 # Create Engine
-engine = GeoServerSpatialDatasetEngine(endpoint='http://192.168.59.103:8181/geoserver/rest',
+engine = GeoServerSpatialDatasetEngine(endpoint='http://ciwmap.chpc.utah.edu/geoserver/rest',
                                        username='admin',
                                        password='geoserver')
 
@@ -72,13 +72,14 @@ engine = GeoServerSpatialDatasetEngine(endpoint='http://192.168.59.103:8181/geos
 
 # shapefile_base = "/Users/swainn/projects/tethysdev/tethys_dataset_services/tethys_dataset_services/tests/files/shapefile/test"  # Test both base and zip archive methods
 # shapefile_base = "/Users/swainn/Downloads/NHD_Flowlines/NHDFlowLine_12"
-# engine.create_shapefile_resource('nhd_flowline', shapefile_base=shapefile_base, overwrite=True, debug=True)
+# engine.create_shapefile_resource('erfp:nhd_flowlines_12', shapefile_base=shapefile_base, overwrite=True, debug=True)
+# engine.get_resource('cite:nhd_flowline', debug=True)
 
 # shapefile_base = "/Users/swainn/Downloads/NHD_Catchments/NHDcatchments_12"
 # engine.create_shapefile_resource('nhd_catchments', shapefile_base=shapefile_base, overwrite=True, debug=True)
 
-# # resource = engine.get_resource('sf:sfdem', debug=True)
-# resource = engine.get_resource('ldkeianeic', store='ldkeianeic', debug=True)
+# resource = engine.get_layer('topp:states', debug=True)
+#resource = engine.get_resource('ldkeianeic', store='ldkeianeic', debug=True)
 #
 # response = engine.update_resource(resource_id='sf:ldkeianeic',
 #                                   title='A new title.',
@@ -181,6 +182,13 @@ engine = GeoServerSpatialDatasetEngine(endpoint='http://192.168.59.103:8181/geos
 
 # response = engine.add_table_to_postgis_store(store_id='sf:another_death_star_db', table='states')
 # response = engine.add_table_to_postgis_store(store_id='sf:another_death_star_db', table='darth_states')
+
+### ALAN's DATA ###
+# shapefile_base = "/Users/swainn/Downloads/NHD_Flowlines/NHDFlowLine_12"
+# engine.create_shapefile_resource('erfp:nhd_flowlines_12', shapefile_base=shapefile_base, overwrite=True, debug=True)
+
+# shapefile_base = "/Users/swainn/Downloads/NHD_Catchments/NHDcatchments_12"
+# engine.create_shapefile_resource('erfp:nhd_catchments_12', shapefile_base=shapefile_base, overwrite=True, debug=True)
 
 
 
