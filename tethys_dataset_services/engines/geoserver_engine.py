@@ -1,6 +1,7 @@
 import os
 import pprint
 import requests
+import StringIO
 import tempfile
 from requests.auth import HTTPBasicAuth
 from zipfile import ZipFile, is_zipfile
@@ -1116,15 +1117,17 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         self._handle_debug(response_dict, debug)
         return response_dict
 
-    def create_shapefile_resource(self, store_id, shapefile_base, overwrite=False, charset=None, debug=False):
+    def create_shapefile_resource(self, store_id, shapefile_base=None, shapefile_zip=None, shapefile_upload=None, overwrite=False, charset=None, debug=False):
         """
          Use this method to add shapefile resources to GeoServer.
 
-         This method will result in the creation of three items: a feature type store, a feature type resource, and a layer. If store_id references a store that does not exist, it will be created. The feature type resource and the subsequent layer will be created with the same name as the feature type store.
+         This method will result in the creation of three items: a feature type store, a feature type resource, and a layer. If store_id references a store that does not exist, it will be created. The feature type resource and the subsequent layer will be created with the same name as the feature type store. Provide shapefile with either shapefile_base, shapefile_zip, or shapefile_upload arguments.
 
         Args
           store_id (string): Identifier for the store to add the resource to. Can be a store name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.
-          shapefile_base (string): Path to shapefile base name (e.g.: "/path/base" for shapefile at "/path/base.shp") OR a zip file containing all the shapefile pieces.
+          shapefile_base (string, optional): Path to shapefile base name (e.g.: "/path/base" for shapefile at "/path/base.shp")
+          shapefile_zip (string, optional): Path to a zip file containing the shapefile and side cars.
+          shapefile_upload (FileUpload list, optional): A list of Django FileUpload objects containing a shapefile and side cars that have been uploaded via multipart/form-data form.
           overwrite (bool, optional): Overwrite the file if it already exists.
           charset (string, optional): Specify the character encoding of the file being uploaded (e.g.: ISO-8559-1)
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
@@ -1140,12 +1143,39 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           response = engine.create_shapefile_resource(store_id='workspace:store_name', shapefile_base=shapefile_base)
 
-          # Using archive
+          # Using zip
 
-          shapefile_base = "/path/to/shapefile/example.zip"
+          shapefile_zip = "/path/to/shapefile/example.zip"
 
-          response = engine.create_shapefile_resource(store_id='workspace:store_name', shapefile_base=shapefile_base)
+          response = engine.create_shapefile_resource(store_id='workspace:store_name', shapefile_zip=shapefile_zip)
+
+          # Using upload
+
+          file_list = request.FILES.getlist('files')
+
+          response = engine.create_shapefile_resource(store_id='workspace:store_name', shapefile_upload=file_list)
+
         """
+        # Validate shapefile arguments
+        arg_value_error_msg = 'Exactly one of the "shapefile_base", "shapefile_zip", ' \
+                              'or "shapefile_upload" arguments must be specified. '
+
+        if not shapefile_base and not shapefile_zip and not shapefile_upload:
+            raise ValueError(arg_value_error_msg + 'None given.')
+
+        elif shapefile_zip and shapefile_upload and shapefile_base:
+            raise ValueError(arg_value_error_msg + '"shapefile_base", "shapefile_zip", and '
+                                                   '"shapefile_upload" given.')
+
+        elif shapefile_base and shapefile_zip:
+            raise ValueError(arg_value_error_msg + '"shapefile_base" and "shapefile_zip" given.')
+
+        elif shapefile_base and shapefile_upload:
+            raise ValueError(arg_value_error_msg + '"shapefile_base" and "shapefile_upload" given.')
+
+        elif shapefile_zip and shapefile_upload:
+            raise ValueError(arg_value_error_msg + '"shapefile_zip" and "shapefile_upload" given.')
+
         # Get a GeoServer catalog object and query for list of layer groups
         catalog = self._get_geoserver_catalog_object()
 
@@ -1175,18 +1205,42 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                 pass
 
         # Prepare files
-        if is_zipfile(shapefile_base):
-            archive = shapefile_base
-        else:
-            shapefile_plus_sidecars = shapefile_and_friends(shapefile_base)
-            archive = '{0}.zip'.format(os.path.join(os.path.split(shapefile_base)[0], name))
+        temp_archive = None
+        zip_file_in_memory = None
 
-            with ZipFile(archive, 'w') as zfile:
+        # Shapefile Base Case
+        if shapefile_base:
+            shapefile_plus_sidecars = shapefile_and_friends(shapefile_base)
+            temp_archive = '{0}.zip'.format(os.path.join(os.path.split(shapefile_base)[0], name))
+
+            with ZipFile(temp_archive, 'w') as zfile:
                 for extension, filepath in shapefile_plus_sidecars.iteritems():
                     filename = '{0}.{1}'.format(name, extension)
                     zfile.write(filename=filepath, arcname=filename)
 
-        files = {'file': open(archive, 'rb')}
+            files = {'file': open(temp_archive, 'rb')}
+
+        # Shapefile Zip Case
+        elif shapefile_zip:
+            if is_zipfile(shapefile_zip):
+                files = {'file': open(shapefile_zip, 'rb')}
+            else:
+                raise TypeError('"{0}" is not a zip archive.'.format(shapefile_zip))
+
+        # Shapefile Upload Case
+        elif shapefile_upload:
+            # Write files in memory to zipfile in memory
+            zip_file_in_memory = StringIO.StringIO()
+
+            with ZipFile(zip_file_in_memory, 'w') as zfile:
+                for file in shapefile_upload:
+                    zfile.writestr(file.name, file.read())
+
+            files = {'file': zip_file_in_memory.getvalue()}
+
+        else:
+            raise TypeError('Shapefile error. Check that you are using the correct shapefile argument and that the '
+                            'files are formatted correctly.')
 
         # Prepare headers
         headers = {
@@ -1213,9 +1267,14 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                                 params=params,
                                 auth=HTTPBasicAuth(username=self.username, password=self.password))
 
-        # Clean up file
-        os.remove(archive)
+        # Clean up file stuff
+        if temp_archive:
+            os.remove(temp_archive)
 
+        if zip_file_in_memory:
+            zip_file_in_memory.close()
+
+        # Wrap up with failure
         if response.status_code != 201:
             response_dict = {'success': False,
                              'error': '{1}({0}): {2}'.format(response.status_code, response.reason, response.text)}

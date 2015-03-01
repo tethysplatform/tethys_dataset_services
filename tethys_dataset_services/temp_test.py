@@ -183,12 +183,18 @@ engine = GeoServerSpatialDatasetEngine(endpoint='http://ciwmap.chpc.utah.edu/geo
 # response = engine.add_table_to_postgis_store(store_id='sf:another_death_star_db', table='states')
 # response = engine.add_table_to_postgis_store(store_id='sf:another_death_star_db', table='darth_states')
 
+# shapefile_base = "/Users/swainn/Desktop/Counties/Counties"
+# shapefile_zip = "/Users/swainn/Desktop/UtahMajorRiversPoly/Archive.zip"
+# engine.create_shapefile_resource('utah:counties', shapefile_base=shapefile_base, overwrite=True, debug=True)
+# engine.create_shapefile_resource('utah:rivers', shapefile_zip=shapefile_zip, overwrite=True, debug=True)
+
+
 ### ALAN's DATA ###
-# shapefile_base = "/Users/swainn/Downloads/NHD_Flowlines/NHDFlowLine_12"
+# shapefile_base = "/Users/swainn/Downloads/NHD_Flowlines 2/NHDFlowLine_12"
 # engine.create_shapefile_resource('erfp:nhd_flowlines_12', shapefile_base=shapefile_base, overwrite=True, debug=True)
 
-# shapefile_base = "/Users/swainn/Downloads/NHD_Catchments/NHDcatchments_12"
-# engine.create_shapefile_resource('erfp:nhd_catchments_12', shapefile_base=shapefile_base, overwrite=True, debug=True)
+# shapefile_base = "/Users/swainn/Downloads/NHD_region_12_gage/region_12_gages"
+# engine.create_shapefile_resource('erfp:nhd_gages_12', shapefile_base=shapefile_base, overwrite=True, debug=True)
 
 
 
