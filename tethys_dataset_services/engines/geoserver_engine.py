@@ -1190,7 +1190,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         if not overwrite:
             try:
                 store = catalog.get_store(name=name, workspace=workspace)
-                print store.name, store.workspace
                 message = "There is already a store named " + name
                 if workspace:
                     message += " in " + workspace
@@ -1203,6 +1202,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
             except geoserver.catalog.FailedRequestError:
                 pass
+            except:
+                raise
 
         # Prepare files
         temp_archive = None

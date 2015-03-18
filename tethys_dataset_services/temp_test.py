@@ -6,6 +6,10 @@ engine = GeoServerSpatialDatasetEngine(endpoint='http://ciwmap.chpc.utah.edu/geo
                                        username='admin',
                                        password='geoserver')
 
+# engine = GeoServerSpatialDatasetEngine(endpoint='http://192.168.59.103:8181/geoserver/rest',
+#                                        username='admin',
+#                                        password='geoserver')
+
 # UPDATE
 # updated_resource = engine.update_resource(resource_id='roads',
 #                                           enabled=True,
@@ -194,7 +198,7 @@ engine = GeoServerSpatialDatasetEngine(endpoint='http://ciwmap.chpc.utah.edu/geo
 # engine.create_shapefile_resource('erfp:nhd_flowlines_12', shapefile_base=shapefile_base, overwrite=True, debug=True)
 
 # shapefile_base = "/Users/swainn/Downloads/NHD_region_12_gage/region_12_gages"
-# engine.create_shapefile_resource('erfp:nhd_gages_12', shapefile_base=shapefile_base, overwrite=True, debug=True)
+# engine.create_shapefile_resource('sf:new2', shapefile_base=shapefile_base, overwrite=False, debug=True)
 
 
 

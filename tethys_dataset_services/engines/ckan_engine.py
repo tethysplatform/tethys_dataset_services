@@ -2,6 +2,7 @@ import os
 import json
 import pprint
 import requests
+from requests_toolbelt import MultipartEncoder
 
 from tethys_dataset_services.base import DatasetEngine
 
@@ -70,7 +71,13 @@ class CkanDatasetEngine(DatasetEngine):
         Returns:
           tuple: status_code, response
         """
-        r = requests.post(url, data=data, headers=headers, files=file)
+        if file:
+            data.update(file)
+            m = MultipartEncoder(fields=data)
+            headers['Content-Type'] = m.content_type
+            r = requests.post(url, data=m, headers=headers)
+        else:
+            r = requests.post(url, data=data, headers=headers, files=file)
         return r.status_code, r.text
 
     @staticmethod
@@ -318,7 +325,11 @@ class CkanDatasetEngine(DatasetEngine):
             if not os.path.isfile(file):
                 raise IOError('The file "{0}" does not exist.'.format(file))
             else:
-                file = {'upload': open(file)}
+                filename, extension = os.path.splitext(file)
+                upload_file_name = data_dict['name']
+                if not upload_file_name.endswith(extension):
+                    upload_file_name += extension
+                file = {'upload': (upload_file_name, open(file, 'r'))}
 
         # Execute
         url, data, headers = self._prepare_request(method='resource_create', data_dict=data_dict, file=file)
