@@ -13,7 +13,7 @@ requires = ['django',
             'requests',
             'requests_toolbelt']
 
-version = '1.0.3'
+version = '1.1.0'
 setup(
     name='tethys_dataset_services',
     version=version,
