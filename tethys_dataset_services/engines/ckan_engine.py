@@ -483,3 +483,29 @@ class CkanDatasetEngine(DatasetEngine):
         status, response = self._execute_request(url=url, data=data, headers=headers)
 
         return self._parse_response(status, response, console)
+
+    def validate(self):
+        """
+        Validate CKAN dataset engine. Will throw an error if not valid.
+        """
+        # Strip off the '/action' or '/action/' portion of the endpoint URL
+        if self.endpoint[-1] == '/':
+            api_endpoint = self.endpoint[:-8]
+        else:
+            api_endpoint = self.endpoint[:-7]
+
+        try:
+            r = requests.get(api_endpoint)
+
+        except requests.exceptions.MissingSchema:
+            raise AssertionError('The URL "{0}" provided for the CKAN dataset service endpoint is invalid.'.format(self.endpoint))
+
+        except:
+            raise
+
+        if r.status_code != 200:
+            raise AssertionError('The URL "{0}" is not a valid endpoint for a CKAN dataset service.'.format(self.endpoint))
+
+        if 'version' not in r.json():
+            raise AssertionError('The URL "{0}" is not a valid endpoint for a CKAN dataset service.'.format(self.endpoint))
+

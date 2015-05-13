@@ -1,10 +1,10 @@
 import os
-from engines import GeoServerSpatialDatasetEngine
+from engines import GeoServerSpatialDatasetEngine, CkanDatasetEngine
 
 # Create Engine
-engine = GeoServerSpatialDatasetEngine(endpoint='http://ciwmap.chpc.utah.edu/geoserver/rest',
-                                       username='admin',
-                                       password='geoserver')
+# engine = GeoServerSpatialDatasetEngine(endpoint='http://ciwmap.chpc.utah.edu/geoserver/rest',
+#                                        username='admin',
+#                                        password='geoserver')
 
 # engine = GeoServerSpatialDatasetEngine(endpoint='http://192.168.59.103:8181/geoserver/rest',
 #                                        username='admin',
@@ -162,8 +162,8 @@ engine = GeoServerSpatialDatasetEngine(endpoint='http://ciwmap.chpc.utah.edu/geo
 # response = engine.create_coverage_resource(store_id='topp:my_grass', coverage_file=coverage_file,
 #                                            coverage_type='grassgrid', overwrite=True, debug=True)
 
-# coverage_file = '/Users/swainn/testing/geoserver/upload/geotiff_sample/sfdem.zip'
-# response = engine.create_coverage_resource(store_id='topp:a_geotiff', coverage_file=coverage_file,
+# coverage_file = '/Users/swainn/testing/geoserver/upload/geotiff_sample/sfdem_no_prj.zip'
+# response = engine.create_coverage_resource(store_id='testing:a_geotiff', coverage_file=coverage_file,
 #                                            coverage_type='geotiff', overwrite=True, debug=True)
 
 # shapefile_base = "/Users/swainn/projects/tethysdev/tethys_dataset_services/tethys_dataset_services/tests/files/shapefile/test"  # Test both base and zip archive methods
@@ -200,5 +200,23 @@ engine = GeoServerSpatialDatasetEngine(endpoint='http://ciwmap.chpc.utah.edu/geo
 # shapefile_base = "/Users/swainn/Downloads/NHD_region_12_gage/region_12_gages"
 # engine.create_shapefile_resource('sf:new2', shapefile_base=shapefile_base, overwrite=False, debug=True)
 
+# # Valid
+# engine = CkanDatasetEngine(endpoint='http://ciwckan.chpc.utah.edu/api/3/action',
+#                            apikey='')
+# engine.validate()
+#
+# # Invalid URL
+# engine = CkanDatasetEngine(endpoint='htdu/api/3/action',
+#                            apikey='')
+# engine.validate()
+#
+# # Invalid Endpoint
+# engine = CkanDatasetEngine(endpoint='http://example.com/api/3/action',
+#                            apikey='')
+# engine.validate()
 
+engine = GeoServerSpatialDatasetEngine(endpoint='http://192.168.59.103:8181/geoserver/rest',
+                                       username='admin',
+                                       password='geoserver')
 
+engine.validate()

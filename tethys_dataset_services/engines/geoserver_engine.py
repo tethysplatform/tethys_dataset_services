@@ -1957,3 +1957,20 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             self._handle_debug(response_dict, debug)
             return response_dict
 
+    def validate(self):
+        """
+        Validate the GeoServer spatial dataset engine. Will throw and error if not valid.
+        """
+
+        r = requests.get(self.endpoint, auth=(self.username, self.password))
+
+        if r.status_code == 401:
+            raise AssertionError('The username and password of the GeoServer spatial dataset services engine are not valid.')
+
+        if r.status_code != 200:
+            raise AssertionError('The URL "{0}" is not a valid GeoServer endpoint.'.format(self.endpoint))
+
+        if 'Geoserver Configuration API' not in r.text:
+            raise AssertionError('The URL "{0}" is not a valid GeoServer endpoint.'.format(self.endpoint))
+
+
