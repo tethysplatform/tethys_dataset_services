@@ -9,11 +9,11 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 requires = ['django',
             'owslib',
-            'gsconfig',
+            'gsconfig>=1.0.0,<1.1.0',
             'requests',
             'requests_toolbelt']
 
-version = '1.0.3'
+version = '1.2.0'
 setup(
     name='tethys_dataset_services',
     version=version,

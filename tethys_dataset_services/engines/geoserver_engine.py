@@ -6,7 +6,8 @@ import tempfile
 from requests.auth import HTTPBasicAuth
 from zipfile import ZipFile, is_zipfile
 import geoserver
-from geoserver.catalog import Catalog as GeoServerCatalog, _name
+from geoserver.catalog import Catalog as GeoServerCatalog
+from geoserver.support import JDBCVirtualTable, JDBCVirtualTableGeometry, JDBCVirtualTableParam
 from geoserver.util import shapefile_and_friends
 
 from tethys_dataset_services.base import SpatialDatasetEngine
@@ -285,7 +286,10 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
                     if sub_object and not isinstance(sub_object, str):
                         if sub_object.workspace:
-                            object_dictionary[attribute] = '{0}:{1}'.format(sub_object.workspace.name, sub_object.name)
+                            try:
+                                object_dictionary[attribute] = '{0}:{1}'.format(sub_object.workspace.name, sub_object.name)
+                            except AttributeError:
+                                object_dictionary[attribute] = '{0}:{1}'.format(sub_object.workspace, sub_object.name)
                         else:
                             object_dictionary[attribute] = sub_object.name
                     elif isinstance(sub_object, str):
@@ -1112,6 +1116,94 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         new_store = catalog.get_store(name=name, workspace=workspace)
         resource_dict = self._transcribe_geoserver_object(new_store)
 
+        response_dict = {'success': True,
+                         'result': resource_dict}
+        self._handle_debug(response_dict, debug)
+        return response_dict
+
+    def create_sql_view(self, feature_type_name, postgis_store_id, sql, geometry_column, geometry_type,
+                        geometry_srid=4326, default_style_id=None, key_column=None, parameters=None, debug=False):
+        """
+        Create a new feature type configured as an SQL view.
+
+        Args
+          feature_type_name (string): Name of the feature type and layer to be created.
+          postgis_store_id (string): Identifier of existing postgis store with tables that will be queried by the sql view. Can be a store name or a workspace-name combination (e.g.: "name" or "workspace:name").
+          sql (string): SQL that will be used to construct the sql view / virtual table.
+          geometry_column (string): Name of the geometry column.
+          geometry_type (string): Type of the geometry column (e.g. "Point", "LineString", "Polygon").
+          geometry_srid (string, optional): EPSG spatial reference id of the geometry column. Defaults to 4326.
+          default_style (string, optional): Identifier of a style to assign as the default style. Can be a style name or a workspace-name combination (e.g.: "name" or "workspace:name").
+          key_column (string, optional): The name of the key column.
+          parameters (iterable, optional): A list/tuple of tuple-triplets representing parameters in the form (name, default, regex_validation), (e.g.: (('variable', 'pressure', '^[\w]+$'), ('simtime', '0:00:00', '^[\w\:]+$'))
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
+
+        Returns:
+          (dict): Response dictionary
+
+        Examples:
+
+            sql = "SELECT name, value, geometry FROM pipes"
+
+            response = engine.create_sql_view(
+                feature_type_name='my_feature_type',
+                postgis_store_id='my_workspace:my_postgis_store',
+                sql=sql,
+                geometry_column='geometry',
+                geometry_type='LineString',
+                geometry_srid=32144,
+                default_style_id='my_workspace:pipes',
+                debug=True
+            )
+
+        """
+        # Get a catalog object
+        catalog = self._get_geoserver_catalog_object()
+
+        # Get Existing PostGIS Store
+        store_name = postgis_store_id
+        store_workspace_name = None
+        if ':' in postgis_store_id:
+            store_workspace_name, store_name = postgis_store_id.split(':')
+        store = catalog.get_store(store_name, workspace=store_workspace_name)
+
+        # Define virtual table / sql view
+        epsg_code = 'EPSG:{0}'.format(geometry_srid)
+        geometry = JDBCVirtualTableGeometry(geometry_column, geometry_type, str(geometry_srid))
+
+        if parameters is not None:
+            jdbc_parameters = []
+            for parameter_args in parameters:
+                jdbc_parameters.append(JDBCVirtualTableParam(*parameter_args))
+            parameters = jdbc_parameters
+
+        sql_view = JDBCVirtualTable(feature_type_name, sql, 'false', geometry, key_column, parameters)
+
+        # Publish Feature Type
+        catalog.publish_featuretype(feature_type_name, store, epsg_code, jdbc_virtual_table=sql_view)
+
+        # Wrap Up
+        catalog.reload()
+        r_feature_layer = catalog.get_layer(feature_type_name)
+
+        if default_style_id is None:
+            resource_dict = self._transcribe_geoserver_object(r_feature_layer)
+            response_dict = {'success': True,
+                             'result': resource_dict}
+            self._handle_debug(response_dict, debug)
+            return response_dict
+
+        # Associate Style
+        style_name = default_style_id
+        style_workspace = None
+
+        if ':' in default_style_id:
+            style_workspace, style_name = default_style_id.split(':')
+        style = catalog.get_style(style_name, workspace=style_workspace)
+        r_feature_layer.default_style = style
+        catalog.save(r_feature_layer)
+        catalog.reload()
+        resource_dict = self._transcribe_geoserver_object(r_feature_layer)
         response_dict = {'success': True,
                          'result': resource_dict}
         self._handle_debug(response_dict, debug)

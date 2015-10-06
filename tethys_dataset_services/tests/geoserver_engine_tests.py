@@ -637,13 +637,16 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertFalse(response['success'])
 
     def test_create_shapefile_resource(self):
-        pass
+        self.assertTrue(False)
 
     def test_create_coverage_resource(self):
-        pass
+        self.assertTrue(False)
 
     def test_create_workspace(self):
-        pass
+        self.assertTrue(False)
 
     def test_create_style(self):
-        pass
+        self.assertTrue(False)
+
+    def test_create_sql_view(self):
+        self.assertTrue(False)

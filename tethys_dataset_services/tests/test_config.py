@@ -18,7 +18,7 @@ TEST_HYDRO_SHARE_DATASET_SERVICE = {
 
 TEST_GEOSERVER_DATASET_SERVICE = {
     'ENGINE': 'tethys_dataset_services.engines.GeoServerSpatialDatasetEngine',
-    'ENDPOINT': 'http://192.168.59.103:8181/geoserver/rest',
+    'ENDPOINT': 'http://localhost:8181/geoserver/rest',
     'USERNAME': 'admin',
     'PASSWORD': 'geoserver'
 }
