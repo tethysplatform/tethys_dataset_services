@@ -390,7 +390,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                 layer = object_dictionary['name']
                 if 'default_style' in object_dictionary:
                     style = object_dictionary['default_style']
-                    print(style)
 
                 # Try to extract the bounding box from the resource which was saved earlier
                 if resource_object and resource_object.native_bbox:
@@ -436,7 +435,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                 layer = object_dictionary['name']
                 if 'default_style' in object_dictionary:
                     style = object_dictionary['default_style']
-                    print(style)
 
                 # Try to extract the bounding box from the resource which was saved earlier
                 if 'bounds' in object_dictionary and object_dictionary['bounds']:
@@ -867,7 +865,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         try:
             # Get style
             style = catalog.get_style(name=name, workspace=workspace)
-            print style.name
 
             if not style:
                 response_dict = {'success': False,
@@ -1457,7 +1454,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         if not overwrite:
             try:
                 store = catalog.get_store(name=name, workspace=workspace)
-                print store.name, store.workspace
                 message = "There is already a store named " + name
                 if workspace:
                     message += " in " + workspace
@@ -1476,7 +1472,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         if coverage_type == 'grassgrid':
             working_dir = os.path.join(os.path.dirname(coverage_file), '.gstmp')
-            print working_dir
 
             # Unzip
             zip_file = ZipFile(coverage_file)
