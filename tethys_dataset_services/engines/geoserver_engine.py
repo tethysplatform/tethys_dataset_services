@@ -17,7 +17,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
     """
     Definition for GeoServer Dataset Engine objects.
     """
-
     @property
     def type(self):
         """
@@ -888,11 +887,37 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         self._handle_debug(response_dict, debug)
         return response_dict
 
+    def link_sqlalchemy_db_to_geoserver(self, store_id, sqlalchemy_engine, docker=False, debug=False):
+        """
+        Helper function to simplify linking postgis databases to geoservers using the sqlalchemy engine object.
+
+        Args:
+          store_id (string): Identifier for the store to add the resource to. Can be a store name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.
+          sqlalchemy_engine (sqlalchemy_engine): An SQLAlchemy engine object.
+          docker (bool, optional): Set to True if the database and geoserver are running in a Docker container. Defaults to False.
+          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
+
+        Returns:
+          (dict): Response dictionary
+        """
+        DOCKER_IP_ADDRESS = '172.17.42.1'
+        connection_dict = sqlalchemy_engine.url.translate_connect_args()
+        response = self.create_postgis_feature_resource(
+            store_id=store_id,
+            host=DOCKER_IP_ADDRESS if docker else connection_dict['host'],
+            port=connection_dict['port'],
+            database=connection_dict['database'],
+            user=connection_dict['username'],
+            password=connection_dict['password'],
+            debug=debug
+        )
+        return response
+
     def create_postgis_feature_resource(self, store_id, host, port, database, user, password, table=None, debug=False):
         """
         Use this method to link an existing PostGIS database to GeoServer as a feature store. Note that this method only works for data in vector formats.
 
-        Args
+        Args:
           store_id (string): Identifier for the store to add the resource to. Can be a store name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.
           host (string): Host of the PostGIS database (e.g.: 'www.example.com').
           port (string): Port of the PostGIS database (e.g.: '5432')
