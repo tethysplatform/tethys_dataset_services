@@ -54,7 +54,6 @@ class CkanDatasetEngine(DatasetEngine):
         headers['Authorization'] = apikey
 
         url = '/'.join((self.endpoint.rstrip('/'), method))
-
         return url, data_dict, headers
 
     @staticmethod
@@ -103,9 +102,17 @@ class CkanDatasetEngine(DatasetEngine):
                         print('ERROR: {0}'.format(parsed['error']['message']))
             return parsed
 
-        except:
+        except Exception, e:
+            print e
             print('Status Code {0}: {1}'.format(status, response.encode('utf-8')))
             return None
+
+    def execute_api_method(self, method, console=False, file=None, apikey=None, **kwargs):
+        # Execute
+        url, data, headers = self._prepare_request(method=method, file=file, apikey=apikey, data_dict=kwargs)
+        status, response = self._execute_request(url=url, data=data, headers=headers, file=file)
+
+        return self._parse_response(status, response, console)
 
     def search_datasets(self, query, console=False, **kwargs):
         """
@@ -138,10 +145,8 @@ class CkanDatasetEngine(DatasetEngine):
         data['q'] = query_terms
 
         # Execute
-        url, data, headers = self._prepare_request(method='package_search', data_dict=data)
-        status, response = self._execute_request(url=url, data=data, headers=headers)
-
-        return self._parse_response(status, response, console)
+        method = 'package_search'
+        return self.execute_api_method(method=method, console=console, **data)
 
     def search_resources(self, query, console=False, **kwargs):
         """
@@ -176,10 +181,8 @@ class CkanDatasetEngine(DatasetEngine):
         error_409 = 'HTTP ERROR 409: Ensure query fields are valid and try again.'
 
         # Execute
-        url, data, headers = self._prepare_request(method='resource_search', data_dict=data)
-        status, response = self._execute_request(url=url, data=data, headers=headers)
-
-        return self._parse_response(status, response, console)
+        method='resource_search'
+        return self.execute_api_method(method=method, console=console, **data)
 
     def list_datasets(self, with_resources=False, console=False, **kwargs):
         """
@@ -196,16 +199,16 @@ class CkanDatasetEngine(DatasetEngine):
         Returns:
           list: A list of dataset names or a list of dataset dictionaries if with_resources is true.
         """
+        # Assemble data dictionary
+        data = kwargs
+
         # Execute API Method
         if not with_resources:
-            url, data, headers = self._prepare_request(method='package_list', data_dict=kwargs)
-            status, response = self._execute_request(url=url, data=data, headers=headers)
-
+            method='package_list'
         else:
-            url, data, headers = self._prepare_request(method='current_package_list_with_resources', data_dict=kwargs)
-            status, response = self._execute_request(url=url, data=data, headers=headers)
+            method='current_package_list_with_resources'
 
-        return self._parse_response(status, response, console)
+        return self.execute_api_method(method=method, console=console, **data)
 
     def get_dataset(self, dataset_id, console=False, **kwargs):
         """
@@ -227,10 +230,8 @@ class CkanDatasetEngine(DatasetEngine):
         data['id'] = dataset_id
 
         # Execute
-        url, data, headers = self._prepare_request(method='package_show', data_dict=data)
-        status, response = self._execute_request(url=url, data=data, headers=headers)
-
-        return self._parse_response(status, response, console)
+        method='package_show'
+        return self.execute_api_method(method=method, console=console, **data)
 
     def get_resource(self, resource_id, console=False, **kwargs):
         """
@@ -256,10 +257,8 @@ class CkanDatasetEngine(DatasetEngine):
                     'and that the dataset service at {0} is running properly, then try again.'.format(self.endpoint)
 
         # Execute
-        url, data, headers = self._prepare_request(method='resource_show', data_dict=data)
-        status, response = self._execute_request(url=url, data=data, headers=headers)
-
-        return self._parse_response(status, response, console)
+        method='resource_show'
+        return self.execute_api_method(method=method, console=console, **data)
 
     def create_dataset(self, name, console=False, **kwargs):
         """
@@ -281,10 +280,8 @@ class CkanDatasetEngine(DatasetEngine):
         data['name'] = name
 
         # Execute
-        url, data, headers = self._prepare_request(method='package_create', data_dict=data)
-        status, response = self._execute_request(url=url, data=data, headers=headers)
-
-        return self._parse_response(status, response, console)
+        method='package_create'
+        return self.execute_api_method(method=method, console=console, **data)
 
     def create_resource(self, dataset_id, url=None, file=None, console=False, **kwargs):
         """
@@ -310,15 +307,17 @@ class CkanDatasetEngine(DatasetEngine):
             raise IOError('The url or file parameter is required, but do not use both.')
 
         # Assemble the data dictionary
-        data_dict = kwargs
-        data_dict['package_id'] = dataset_id
+        data= kwargs
+        data['package_id'] = dataset_id
 
         if url:
-            data_dict['url'] = url
+            data['url'] = url
+        else:
+            data['url'] = ''
 
         # Default naming convention
-        if 'name' not in data_dict and file:
-            data_dict['name'] = os.path.basename(file)
+        if 'name' not in data and file:
+            data['name'] = os.path.basename(file)
 
         # Prepare file
         if file:
@@ -326,16 +325,14 @@ class CkanDatasetEngine(DatasetEngine):
                 raise IOError('The file "{0}" does not exist.'.format(file))
             else:
                 filename, extension = os.path.splitext(file)
-                upload_file_name = data_dict['name']
+                upload_file_name = data['name']
                 if not upload_file_name.endswith(extension):
                     upload_file_name += extension
                 file = {'upload': (upload_file_name, open(file, 'r'))}
 
         # Execute
-        url, data, headers = self._prepare_request(method='resource_create', data_dict=data_dict, file=file)
-        status, response = self._execute_request(url=url, data=data, headers=headers, file=file)
-
-        return self._parse_response(status, response, console)
+        method='resource_create'
+        return self.execute_api_method(method=method, console=console, file=file, **data)
 
     def update_dataset(self, dataset_id, console=False, **kwargs):
         """
@@ -378,10 +375,8 @@ class CkanDatasetEngine(DatasetEngine):
                 data['tags'] = original_dataset['tags']
 
         # Execute
-        url, data, headers = self._prepare_request(method='package_update', data_dict=data)
-        status, response = self._execute_request(url=url, data=data, headers=headers)
-
-        return self._parse_response(status, response, console)
+        method='package_update'
+        return self.execute_api_method(method=method, console=console, **data)
 
     def update_resource(self, resource_id, url=None, file=None, console=False, **kwargs):
         """
@@ -405,15 +400,15 @@ class CkanDatasetEngine(DatasetEngine):
             raise IOError('The url and file parameters are mutually exclusive: use one, not both.')
 
         # Assemble the data dictionary
-        data_dict = kwargs
-        data_dict['id'] = resource_id
+        data = kwargs
+        data['id'] = resource_id
 
         if url:
-            data_dict['url'] = url
+            data['url'] = url
 
         # Default naming convention
-        if 'name' not in data_dict and file:
-            data_dict['name'] = os.path.basename(file)
+        if 'name' not in data and file:
+            data['name'] = os.path.basename(file)
 
         # Prepare file
         if file:
@@ -422,19 +417,18 @@ class CkanDatasetEngine(DatasetEngine):
             else:
                file = {'upload': open(file)}
 
-        if not url and not file:
+        # if not url and not file:
+        if not 'url' in data:
             result = self.get_resource(resource_id)
             if result['success']:
                 resource = result['result']
-                data_dict['url'] = resource['url']
+                data['url'] = resource['url']
 
         # Execute
-        url, data, headers = self._prepare_request(method='resource_update', data_dict=data_dict, file=file)
-        status, response = self._execute_request(url=url, data=data, headers=headers, file=file)
+        method='resource_update'
+        return self.execute_api_method(method=method, console=console, file=file, **data)
 
-        return self._parse_response(status, response, console)
-
-    def delete_dataset(self, dataset_id, console=False, **kwargs):
+    def delete_dataset(self, dataset_id, console=False, file=None, **kwargs):
         """
         Delete CKAN dataset
 
@@ -454,10 +448,8 @@ class CkanDatasetEngine(DatasetEngine):
         data['id'] = dataset_id
 
         # Execute
-        url, data, headers = self._prepare_request(method='package_delete', data_dict=data)
-        status, response = self._execute_request(url=url, data=data, headers=headers)
-
-        return self._parse_response(status, response, console)
+        method='package_delete'
+        return self.execute_api_method(method=method, console=console, file=file, **data)
 
     def delete_resource(self, resource_id, console=False, **kwargs):
         """
@@ -479,10 +471,100 @@ class CkanDatasetEngine(DatasetEngine):
         data['id'] = resource_id
 
         # Execute
-        url, data, headers = self._prepare_request(method='resource_delete', data_dict=data)
-        status, response = self._execute_request(url=url, data=data, headers=headers)
+        method='resource_delete'
+        return self.execute_api_method(method=method, console=console, **data)
 
-        return self._parse_response(status, response, console)
+    def download_dataset(self, dataset_id, location=None, console=False, **kwargs):
+        """
+        Downloads all resources in a dataset
+
+        Description
+
+        Args:
+            dataset_id (string): The id of the dataset to download.
+            location (string, optional): Path to the location for the resource to be downloaded. Default is a subdirectory in the current directory named after the dataset.
+            console (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+            **kwargs: Any number of optional keyword arguments to pass to the get_dataset method (see CKAN docs).
+
+        Returns:
+            A list of the files that were downloaded.
+        """
+        result = self.get_dataset(dataset_id, console=console, **kwargs)
+        if result['success']:
+            dataset = result['result']
+
+            location = location or dataset['name']
+
+            downloaded_resources = []
+            for resource in dataset['resources']:
+                downloaded_resource = self._download_resource(resource, location)
+                downloaded_resources.append(downloaded_resource)
+
+            return downloaded_resources
+        else:
+            raise Exception(str(result))#TODO raise an error stating that dataset doesn't exist
+
+    def download_resouce(self, resource_id, location=None, local_file_name=None, console=False, **kwargs):
+        """
+        Download a resource from a resource id
+
+        Description
+
+        Args:
+            resource_id (string): The id of the resource to download.
+            location (string, optional): Path to the location for the resource to be downloaded. Defaults to current directory.
+            local_file_name (string, optional): Name for downloaded file.
+            console (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+            **kwargs: Any number of optional keyword arguments to pass to the get_resource method (see CKAN docs).
+
+        Returns:
+            Path and name of the downloaded file.
+        """
+        result = self.get_resource(resource_id, console=console, **kwargs)
+        if result['success']:
+            resource = result['result']
+            downloaded_resource = self._download_resource(resource, location, local_file_name)
+
+            return downloaded_resource
+        else:
+            raise Exception(str(result))#TODO raise an error stating that dataset doesn't exist
+
+
+    def _download_resource(self, resource, location=None, local_file_name=None):
+        """
+        Download a resource from the resource meta-data dictionary
+        """
+
+        # create filename with extension
+        if not local_file_name:
+            local_file_name = resource['name'] or resource['id']
+            local_file_name = '.'.join((local_file_name, resource['format']))
+
+        # ensure that the location exists
+        if location:
+            try:
+                os.makedirs(location)
+            except OSError, e:
+                pass
+        else:
+            location = './'
+
+
+        local_file = os.path.join(location, local_file_name)
+        url = resource['url']
+
+        # download resource
+        try:
+            r = requests.get(url, stream=True)
+            with open(local_file, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=1024):
+                    if chunk: # filter out keep-alive new chunks
+                        f.write(chunk)
+                        f.flush()
+        except Exception, e:
+            print e
+
+        return local_file
 
     def validate(self):
         """
@@ -508,4 +590,3 @@ class CkanDatasetEngine(DatasetEngine):
 
         if 'version' not in r.json():
             raise AssertionError('The URL "{0}" is not a valid endpoint for a CKAN dataset service.'.format(self.endpoint))
-

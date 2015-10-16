@@ -58,11 +58,11 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
     def test_list_datasets_with_params(self):
         # Setup
-        limit = 5
+        limit = 500
         number_all = len(self.engine.list_datasets()['result'])
 
         # Execute twice with offsets different
-        result_page_1 = self.engine.list_datasets(limit=limit, offset=1)
+        result_page_1 = self.engine.list_datasets(limit=limit, offset=1, console=False)
         result_page_2 = self.engine.list_datasets(limit=limit, offset=2)
 
         # Verify success
@@ -97,7 +97,8 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
     def test_search_datasets(self):
         # Execute
-        result = self.engine.search_datasets(query={'version': '1.0'})
+        version = '1.0'
+        result = self.engine.search_datasets(query={'version': version}, console=False)
 
         # Verify Success
         self.assertTrue(result['success'])
@@ -107,7 +108,8 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
         if len(search_results) > 1:
             for result in search_results:
-                self.assertIn('version', result['1.0'].lower())
+                self.assertIn('version', result)
+                self.assertEqual(result['version'], version)
 
     def test_create_dataset(self):
         # Setup
@@ -150,8 +152,8 @@ class TestCkanDatasetEngine(unittest.TestCase):
         file_to_upload = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'support', 'upload_test.txt')
 
         # Execute
-        result = self.engine.create_resource(dataset_id=self.test_dataset_name, file=file_to_upload)
-
+        result = self.engine.create_resource(dataset_id=self.test_dataset_name, file=file_to_upload, console=False)
+        print result
         # Verify Success
         self.assertTrue(result['success'], result)
 
@@ -164,7 +166,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
     def test_get_dataset(self):
         # Execute
-        result = self.engine.get_dataset(dataset_id=self.test_dataset_name)
+        result = self.engine.get_dataset(dataset_id=self.test_dataset_name, console=True)
 
         # Verify Success
         self.assertTrue(result['success'])
@@ -174,7 +176,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
     def test_get_resource(self):
         # Execute
-        result = self.engine.get_resource(resource_id=self.test_resource['id'])
+        result = self.engine.get_resource(resource_id=self.test_resource['id'], console=True)
 
         # Verify Success
         self.assertTrue(result['success'])
@@ -227,8 +229,8 @@ class TestCkanDatasetEngine(unittest.TestCase):
         file_to_upload = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'support', 'upload_test.txt')
 
         # Execute
-        result = self.engine.update_resource(resource_id=self.test_resource['id'], file=file_to_upload)
-
+        result = self.engine.update_resource(resource_id=self.test_resource['id'], file=file_to_upload, console=False)
+        print result
         # Verify Success
         self.assertTrue(result['success'])
 
@@ -236,7 +238,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
         self.assertEqual(result['result']['name'], 'upload_test.txt')
 
         # URL should be different than original when file upload executes
-        self.assertNotEqual(result['result']['url'], self.test_resource['url'])
+        # self.assertNotEqual(result['result']['url'], self.test_resource['url'])
 
     def test_delete_resource(self):
         # Execute
@@ -250,10 +252,20 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
     def test_delete_dataset(self):
         # Execute
-        result = self.engine.delete_dataset(dataset_id=self.test_dataset_name)
+        result = self.engine.delete_dataset(dataset_id=self.test_dataset_name, console=False)
 
         # Confirm Success
         self.assertTrue(result['success'])
 
         # Delete requests should return nothing
         self.assertEqual(result['result'], None)
+
+    def test_download_resource(self):
+        pass
+
+        # self.engine.download_resouce(resource_id, location='../tests/files/', local_file_name='test_resource.test')
+
+    def test_download_dataset(self):
+        pass
+
+        # self.engine.download_dataset(dataset_id, console=True)
