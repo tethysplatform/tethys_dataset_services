@@ -13,7 +13,7 @@ requires = ['django',
             'requests',
             'requests_toolbelt']
 
-version = '1.2.0'
+version = '1.3.0'
 setup(
     name='tethys_dataset_services',
     version=version,
@@ -28,7 +28,7 @@ setup(
     classifiers=[
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
-        'License :: OSI Approved :: BSD License', # example license
+        'License :: OSI Approved :: BSD License',  # example license
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
