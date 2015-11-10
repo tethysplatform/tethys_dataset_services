@@ -442,7 +442,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                     'gif': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/gif'),
                     'tiff': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/tiff'),
                     'tiff8': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/tiff8'),
-                    'geptiff': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/geotiff'),
+                    'geotiff': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/geotiff'),
                     'geotiff8': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/geotiff8'),
                     'svg': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/svg'),
                     'pdf': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='application/pdf'),
