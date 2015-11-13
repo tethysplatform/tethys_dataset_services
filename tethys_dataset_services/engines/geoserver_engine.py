@@ -3,12 +3,14 @@ import pprint
 import requests
 import StringIO
 import tempfile
+from xml.etree import ElementTree
 from requests.auth import HTTPBasicAuth
 from zipfile import ZipFile, is_zipfile
 import geoserver
 from geoserver.catalog import Catalog as GeoServerCatalog
 from geoserver.support import JDBCVirtualTable, JDBCVirtualTableGeometry, JDBCVirtualTableParam
 from geoserver.util import shapefile_and_friends
+from tethys_dataset_services.utilities import ConvertDictToXml, ConvertXmlToDict
 
 from tethys_dataset_services.base import SpatialDatasetEngine
 
@@ -23,6 +25,33 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         GeoServer Spatial Dataset Type
         """
         return 'GEOSERVER'
+
+    @property
+    def gwc_endpoint(self):
+        return self._gwc_endpoint
+
+    def __init__(self, endpoint, apikey=None, username=None, password=None):
+        """
+        Default constructor for Dataset Engines.
+
+        Args:
+          api_endpoint (string): URL of the dataset service API endpoint (e.g.: www.host.com/api)
+          apikey (string, optional): API key that will be used to authenticate with the dataset service.
+          username (string, optional): Username that will be used to authenticate with the dataset service.
+          password (string, optional): Password that will be used to authenticate with the dataset service.
+        """
+        # Set custom property /geoserver/rest/ -> /geoserver/gwc/rest/
+        if '/' == endpoint[-1]:
+            self._gwc_endpoint = endpoint.replace('rest', 'gwc/rest')
+        else:
+            self._gwc_endpoint = endpoint.replace('rest', 'gwc/rest/')
+
+        super(GeoServerSpatialDatasetEngine, self).__init__(
+            endpoint=endpoint,
+            apikey=apikey,
+            username=username,
+            password=password
+        )
 
     def _apply_changes_to_gs_object(self, attributes_dict, gs_object):
         # Catalog object
@@ -413,7 +442,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                     'gif': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/gif'),
                     'tiff': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/tiff'),
                     'tiff8': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/tiff8'),
-                    'geptiff': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/geotiff'),
+                    'geotiff': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/geotiff'),
                     'geotiff8': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/geotiff8'),
                     'svg': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/svg'),
                     'pdf': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='application/pdf'),
@@ -700,6 +729,16 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                                  'error': 'Layer "{0}" not found.'.format(layer_id)}
             else:
                 layer_dict = self._transcribe_geoserver_object(layer)
+
+                # Get layer caching properties (gsconfig doesn't support this)
+                gwc_url = '{0}layers/{1}.xml'.format(self.gwc_endpoint, layer_id)
+                auth = (self.username, self.password)
+                r = requests.get(gwc_url, auth=auth)
+
+                if r.status_code == 200:
+                    root = ElementTree.XML(r.text)
+                    tile_caching_dict = ConvertXmlToDict(root)
+                    layer_dict['tile_caching'] = tile_caching_dict['GeoServerLayer']
 
                 # Assemble Response
                 response_dict = {'success': True,
@@ -1808,6 +1847,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           updated_layer = engine.update_layer(layer_id='workspace:layer_name', default_style='style1', styles=['style1', 'style2'])
         """
+        # Pop tile caching properties to handle separately
+        tile_caching = kwargs.pop('tile_caching', None)
+
         # Get a GeoServer catalog object and query for list of layer groups
         catalog = self._get_geoserver_catalog_object()
 
@@ -1827,6 +1869,26 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             # Assemble Response
             response_dict = {'success': True,
                              'result': layer_dict}
+
+            # Handle tile caching properties (gsconfig doesn't support this)
+            if tile_caching is not None:
+                gwc_url = '{0}layers/{1}.xml'.format(self.gwc_endpoint, layer_id)
+                auth = (self.username, self.password)
+                xml = ConvertDictToXml({'GeoServerLayer': tile_caching})
+                r = requests.post(
+                    gwc_url,
+                    auth=auth,
+                    headers={'Content-Type': 'text/xml'},
+                    data=ElementTree.tostring(xml)
+                )
+
+                if r.status_code == 200:
+                    layer_dict['tile_caching'] = tile_caching
+                    response_dict = {'success': True,
+                                     'result': layer_dict}
+                else:
+                    response_dict = {'success': False,
+                                     'error': r.text}
 
         except geoserver.catalog.FailedRequestError as e:
             response_dict = {'success': False,
