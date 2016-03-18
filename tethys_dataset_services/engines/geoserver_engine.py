@@ -223,6 +223,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             response_dict['success'] = False
             response_dict['error'] = 'GeoServer object does not exist: "{0}".'.format(identifier)
 
+        # Refresh the catalog
+        catalog.reload()
+
         self._handle_debug(response_dict, debug)
         return response_dict
 
