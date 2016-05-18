@@ -2,7 +2,6 @@ import os
 import pprint
 import requests
 import StringIO
-import tempfile
 from xml.etree import ElementTree
 from requests.auth import HTTPBasicAuth
 from zipfile import ZipFile, is_zipfile
@@ -1458,7 +1457,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Args
           store_id (string): Identifier for the store to add the image to or to be created. Can be a name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.
           coverage_file (string): Path to the coverage image or zip archive. Most files will require a .prj file with the Well Known Text definition of the projection. Zip this file up with the image and send the archive.
-          coverage_type: Type of coverage that is being created. Valid values include: 'geotiff', 'worldimage', 'imagemosaic', 'gtopo30', 'arcgrid', and 'grassgrid'.
+          coverage_type: Type of coverage that is being created. Valid values include: 'geotiff', 'worldimage', 'imagemosaic', 'gtopo30', 'arcgrid', 'grassgrid', 'erdasimg', 'aig', 'gif', 'png', 'jpeg', 'tiff', 'dted', 'rpftoc', 'rst', 'nitf', 'envihdr', 'mrsid', 'ehdr', 'ecw', 'netcdf', 'erdasimg', 'jp2mrsid'.
           overwrite (bool, optional): Overwrite the file if it already exists.
           charset (string, optional): Specify the character encoding of the file being uploaded (e.g.: ISO-8559-1)
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
@@ -1476,7 +1475,29 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
           response = engine.create_coverage_resource(store_id='workspace:store_name', coverage_file=coverage_file, coverage_type='geotiff')
         """
         # Globals
-        VALID_COVERAGE_TYPES = ('geotiff', 'worldimage', 'imagemosaic', 'gtopo30', 'arcgrid', 'grassgrid')
+        VALID_COVERAGE_TYPES = ('geotiff',
+                                'worldimage',
+                                'imagemosaic',
+                                'gtopo30',
+                                'arcgrid',
+                                'grassgrid',
+                                'erdasimg',
+                                'aig',
+                                'gif',
+                                'png',
+                                'jpeg',
+                                'tiff',
+                                'dted',
+                                'rpftoc',
+                                'rst',
+                                'nitf',
+                                'envihdr',
+                                'mrsid',
+                                'ehdr',
+                                'ecw',
+                                'netcdf',
+                                'erdasimg',
+                                'jp2mrsid')
 
         # Validate coverage type
         if coverage_type not in VALID_COVERAGE_TYPES:
