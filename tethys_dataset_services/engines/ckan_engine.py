@@ -114,7 +114,7 @@ class CkanDatasetEngine(DatasetEngine):
 
         return self._parse_response(status, response, console)
 
-    def search_datasets(self, query, console=False, **kwargs):
+    def search_datasets(self, query=None, filtered_query=None, console=False, **kwargs):
         """
         Search CKAN datasets that match a query.
 
@@ -129,20 +129,31 @@ class CkanDatasetEngine(DatasetEngine):
         Returns:
           The response dictionary or None if an error occurs.
         """
+        if not query or not filtered_query:
+            raise Exception("Need query or filtered_query to proceed ...")
+
         # Assemble data dictionary
         data = kwargs
 
+        def get_query_params(query_dict):
+            """
+            Assembles query string from python dictionary
+            """
+            query_terms = []
+            if len(query.keys()) > 1:
+                for key, value in query_dict.iteritems():
+                    query_terms.append('{0}:{1}'.format(key, value))
+            else:
+                for key, value in query_dict.iteritems():
+                    query_terms = '{0}:{1}'.format(key, value)
+            return query_terms
+            
         # Assemble the query parameters
-        query_terms = []
+        if query:
+            data['q'] = get_query_params(query)
 
-        if len(query.keys()) > 1:
-            for key, value in query.iteritems():
-                query_terms.append('{0}:{1}'.format(key, value))
-        else:
-            for key, value in query.iteritems():
-                query_terms = '{0}:{1}'.format(key, value)
-
-        data['q'] = query_terms
+        if filtered_query:
+            data['fq'] = get_query_params(filtered_query)
 
         # Execute
         method = 'package_search'
