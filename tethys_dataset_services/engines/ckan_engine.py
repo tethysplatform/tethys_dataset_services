@@ -129,7 +129,7 @@ class CkanDatasetEngine(DatasetEngine):
         Returns:
           The response dictionary or None if an error occurs.
         """
-        if not query or not filtered_query:
+        if not query and not filtered_query:
             raise Exception("Need query or filtered_query to proceed ...")
 
         # Assemble data dictionary
