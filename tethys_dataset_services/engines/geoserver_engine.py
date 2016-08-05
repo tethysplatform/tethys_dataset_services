@@ -1452,7 +1452,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         """
         Use this method to add coverage resources to GeoServer.
 
-        This method will result in the creation of three items: a coverage store, a coverage resource, and a layer. If store_id references a store that does not exist, it will be created. The coverage resource and the subsequent layer will be created with the same name as the image file that is uploaded if the coverage_name parameter is unspecified.
+        This method will result in the creation of three items: a coverage store, a coverage resource, and a layer. If store_id references a store that does not exist, it will be created. Unless coverage_name is specified, the coverage resource and the subsequent layer will be created with the same name as the image file that is uploaded.
 
         Args
           store_id (string): Identifier for the store to add the image to or to be created. Can be a name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.
