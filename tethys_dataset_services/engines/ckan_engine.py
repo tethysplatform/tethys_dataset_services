@@ -1,6 +1,8 @@
 import os
 import json
 import pprint
+import warnings
+
 import requests
 from requests_toolbelt import MultipartEncoder
 
@@ -510,6 +512,34 @@ class CkanDatasetEngine(DatasetEngine):
             raise Exception(str(result))#TODO raise an error stating that dataset doesn't exist
 
     def download_resouce(self, resource_id, location=None, local_file_name=None, console=False, **kwargs):
+        """
+        Deprecated alias for download_resource method for backwards compatibility (the old method was misspelled).
+
+        Description
+
+        Args:
+            resource_id (string): The id of the resource to download.
+            location (string, optional): Path to the location for the resource to be downloaded. Defaults to current directory.
+            local_file_name (string, optional): Name for downloaded file.
+            console (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+            **kwargs: Any number of optional keyword arguments to pass to the get_resource method (see CKAN docs).
+
+        Returns:
+            Path and name of the downloaded file.
+        """
+        warnings.warn(
+            "This method has been deprecated because it was misspelled. Use download_resource instead.",
+            DeprecationWarning
+        )
+        self.download_resource(
+            resource_id=resource_id,
+            location=location,
+            local_file_name=local_file_name,
+            console=console,
+            **kwargs
+        )
+
+    def download_resource(self, resource_id, location=None, local_file_name=None, console=False, **kwargs):
         """
         Download a resource from a resource id
 
