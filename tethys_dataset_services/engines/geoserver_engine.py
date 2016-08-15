@@ -2,7 +2,6 @@ import os
 import pprint
 import requests
 import StringIO
-import tempfile
 from xml.etree import ElementTree
 from requests.auth import HTTPBasicAuth
 from zipfile import ZipFile, is_zipfile
@@ -1449,16 +1448,17 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         self._handle_debug(response_dict, debug)
         return response_dict
 
-    def create_coverage_resource(self, store_id, coverage_file, coverage_type, overwrite=False, debug=False):
+    def create_coverage_resource(self, store_id, coverage_file, coverage_type, coverage_name=None, overwrite=False, debug=False):
         """
         Use this method to add coverage resources to GeoServer.
 
-        This method will result in the creation of three items: a coverage store, a coverage resource, and a layer. If store_id references a store that does not exist, it will be created. The coverage resource and the subsequent layer will be created with the same name as the image file that is uploaded.
+        This method will result in the creation of three items: a coverage store, a coverage resource, and a layer. If store_id references a store that does not exist, it will be created. Unless coverage_name is specified, the coverage resource and the subsequent layer will be created with the same name as the image file that is uploaded.
 
         Args
           store_id (string): Identifier for the store to add the image to or to be created. Can be a name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.
           coverage_file (string): Path to the coverage image or zip archive. Most files will require a .prj file with the Well Known Text definition of the projection. Zip this file up with the image and send the archive.
-          coverage_type: Type of coverage that is being created. Valid values include: 'geotiff', 'worldimage', 'imagemosaic', 'gtopo30', 'arcgrid', and 'grassgrid'.
+          coverage_type (string): Type of coverage that is being created. Valid values include: 'geotiff', 'worldimage', 'imagemosaic', 'imagepyramid', 'gtopo30', 'arcgrid', 'grassgrid', 'erdasimg', 'aig', 'gif', 'png', 'jpeg', 'tiff', 'dted', 'rpftoc', 'rst', 'nitf', 'envihdr', 'mrsid', 'ehdr', 'ecw', 'netcdf', 'erdasimg', 'jp2mrsid'.
+	  coverage_name (string): Name of the coverage resource and subsequent layer that are created. If unspecified, these will match the name of the image file that is uploaded.
           overwrite (bool, optional): Overwrite the file if it already exists.
           charset (string, optional): Specify the character encoding of the file being uploaded (e.g.: ISO-8559-1)
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
@@ -1476,7 +1476,30 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
           response = engine.create_coverage_resource(store_id='workspace:store_name', coverage_file=coverage_file, coverage_type='geotiff')
         """
         # Globals
-        VALID_COVERAGE_TYPES = ('geotiff', 'worldimage', 'imagemosaic', 'gtopo30', 'arcgrid', 'grassgrid')
+        VALID_COVERAGE_TYPES = ('geotiff',
+                                'worldimage',
+                                'imagemosaic',
+				'imagepyramid',
+                                'gtopo30',
+                                'arcgrid',
+                                'grassgrid',
+                                'erdasimg',
+                                'aig',
+                                'gif',
+                                'png',
+                                'jpeg',
+                                'tiff',
+                                'dted',
+                                'rpftoc',
+                                'rst',
+                                'nitf',
+                                'envihdr',
+                                'mrsid',
+                                'ehdr',
+                                'ecw',
+                                'netcdf',
+                                'erdasimg',
+                                'jp2mrsid')
 
         # Validate coverage type
         if coverage_type not in VALID_COVERAGE_TYPES:
@@ -1616,6 +1639,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         # Set params
         params = {}
+
+	if coverage_name:
+	    params['coverageName'] = coverage_name
 
         if overwrite:
             params['update'] = 'overwrite'

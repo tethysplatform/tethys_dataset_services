@@ -260,10 +260,12 @@ class TestCkanDatasetEngine(unittest.TestCase):
         # Delete requests should return nothing
         self.assertEqual(result['result'], None)
 
-    def test_download_resource(self):
+    def test_download_resouce(self):
         pass
 
-        # self.engine.download_resouce(resource_id, location='../tests/files/', local_file_name='test_resource.test')
+    def test_download_resource(self):
+        pass
+        # self.engine.download_resource(resource_id, location='../tests/files/', local_file_name='test_resource.test')
 
     def test_download_dataset(self):
         pass

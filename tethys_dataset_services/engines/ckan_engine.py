@@ -1,6 +1,8 @@
 import os
 import json
 import pprint
+import warnings
+
 import requests
 from requests_toolbelt import MultipartEncoder
 
@@ -114,7 +116,20 @@ class CkanDatasetEngine(DatasetEngine):
 
         return self._parse_response(status, response, console)
 
-    def search_datasets(self, query, console=False, **kwargs):
+    def _get_query_params(self, query_dict):
+        """
+        Assembles query string from python dictionary
+        """
+        query_terms = []
+        if len(query_dict.keys()) > 1:
+            for key, value in query_dict.iteritems():
+                query_terms.append('{0}:{1}'.format(key, value))
+        else:
+            for key, value in query_dict.iteritems():
+                query_terms = '{0}:{1}'.format(key, value)
+        return query_terms
+
+    def search_datasets(self, query=None, filtered_query=None, console=False, **kwargs):
         """
         Search CKAN datasets that match a query.
 
@@ -122,27 +137,27 @@ class CkanDatasetEngine(DatasetEngine):
         options (http://docs.ckan.org/en/ckan-2.2/api.html).
 
         Args:
-          query (dict): Key value pairs representing field and values to search for.
+          query (dict, optional if filtered_query set): Key value pairs representing field and values to search for.
+          filtered_query (dict, optional if filtered_query set): Key value pairs representing field and values to search for.
           console (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
           **kwargs: Any number of optional keyword arguments for the method (see CKAN docs).
 
         Returns:
           The response dictionary or None if an error occurs.
         """
+        if not query and not filtered_query:
+            raise Exception("Need query or filtered_query to proceed ...")
+
         # Assemble data dictionary
         data = kwargs
 
+            
         # Assemble the query parameters
-        query_terms = []
+        if query:
+            data['q'] = self._get_query_params(query)
 
-        if len(query.keys()) > 1:
-            for key, value in query.iteritems():
-                query_terms.append('{0}:{1}'.format(key, value))
-        else:
-            for key, value in query.iteritems():
-                query_terms = '{0}:{1}'.format(key, value)
-
-        data['q'] = query_terms
+        if filtered_query:
+            data['fq'] = self._get_query_params(filtered_query)
 
         # Execute
         method = 'package_search'
@@ -167,15 +182,7 @@ class CkanDatasetEngine(DatasetEngine):
         data = kwargs
 
         # Assemble the query parameters
-        query_terms = []
-        if len(query.keys()) > 1:
-            for key, value in query.iteritems():
-                query_terms.append('{0}:{1}'.format(key, value))
-        else:
-            for key, value in query.iteritems():
-                query_terms = '{0}:{1}'.format(key, value)
-
-        data['query'] = query_terms
+        data['query'] = self._get_query_params(query)
 
         # Special error
         error_409 = 'HTTP ERROR 409: Ensure query fields are valid and try again.'
@@ -505,6 +512,34 @@ class CkanDatasetEngine(DatasetEngine):
             raise Exception(str(result))#TODO raise an error stating that dataset doesn't exist
 
     def download_resouce(self, resource_id, location=None, local_file_name=None, console=False, **kwargs):
+        """
+        Deprecated alias for download_resource method for backwards compatibility (the old method was misspelled).
+
+        Description
+
+        Args:
+            resource_id (string): The id of the resource to download.
+            location (string, optional): Path to the location for the resource to be downloaded. Defaults to current directory.
+            local_file_name (string, optional): Name for downloaded file.
+            console (bool, optional): Pretty print the result to the console for debugging. Defaults to False.
+            **kwargs: Any number of optional keyword arguments to pass to the get_resource method (see CKAN docs).
+
+        Returns:
+            Path and name of the downloaded file.
+        """
+        warnings.warn(
+            "This method has been deprecated because it was misspelled. Use download_resource instead.",
+            DeprecationWarning
+        )
+        self.download_resource(
+            resource_id=resource_id,
+            location=location,
+            local_file_name=local_file_name,
+            console=console,
+            **kwargs
+        )
+
+    def download_resource(self, resource_id, location=None, local_file_name=None, console=False, **kwargs):
         """
         Download a resource from a resource id
 
