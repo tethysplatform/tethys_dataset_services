@@ -1479,7 +1479,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         VALID_COVERAGE_TYPES = ('geotiff',
                                 'worldimage',
                                 'imagemosaic',
-				'imagepyramid',
+                                'imagepyramid',
                                 'gtopo30',
                                 'arcgrid',
                                 'grassgrid',
@@ -1640,8 +1640,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Set params
         params = {}
 
-	if coverage_name:
-	    params['coverageName'] = coverage_name
+        if coverage_name:
+            params['coverageName'] = coverage_name
 
         if overwrite:
             params['update'] = 'overwrite'
