@@ -1616,18 +1616,22 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                     if file != 'foo.zip':
                         zf.write(os.path.join(working_dir, file), file)
 
+        # Prepare file(s) for upload
+        files = None
+        data = None
+
         if is_zipfile(coverage_file):
             content_type = 'application/zip'
+            files = {'file': open(coverage_file, 'rb')}
         else:
             content_type = 'image/{0}'.format(coverage_type)
+            data = open(coverage_file, 'rb')
 
         # Prepare headers
         extension = coverage_type
 
         if coverage_type == 'grassgrid':
             extension = 'arcgrid'
-
-        files = {'file': open(coverage_file, 'rb')}
 
         headers = {
             "Content-type": content_type,
@@ -1649,6 +1653,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Execute: PUT /workspaces/<ws>/datastores/<ds>/file.shp
         response = requests.put(url=url,
                                 files=files,
+                                data=data,
                                 headers=headers,
                                 params=params,
                                 auth=HTTPBasicAuth(username=self.username, password=self.password))
