@@ -1458,7 +1458,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
           store_id (string): Identifier for the store to add the image to or to be created. Can be a name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.
           coverage_file (string): Path to the coverage image or zip archive. Most files will require a .prj file with the Well Known Text definition of the projection. Zip this file up with the image and send the archive.
           coverage_type (string): Type of coverage that is being created. Valid values include: 'geotiff', 'worldimage', 'imagemosaic', 'imagepyramid', 'gtopo30', 'arcgrid', 'grassgrid', 'erdasimg', 'aig', 'gif', 'png', 'jpeg', 'tiff', 'dted', 'rpftoc', 'rst', 'nitf', 'envihdr', 'mrsid', 'ehdr', 'ecw', 'netcdf', 'erdasimg', 'jp2mrsid'.
-	  coverage_name (string): Name of the coverage resource and subsequent layer that are created. If unspecified, these will match the name of the image file that is uploaded.
+          coverage_name (string): Name of the coverage resource and subsequent layer that are created. If unspecified, these will match the name of the image file that is uploaded.
           overwrite (bool, optional): Overwrite the file if it already exists.
           charset (string, optional): Specify the character encoding of the file being uploaded (e.g.: ISO-8559-1)
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
@@ -1479,7 +1479,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         VALID_COVERAGE_TYPES = ('geotiff',
                                 'worldimage',
                                 'imagemosaic',
-				'imagepyramid',
+                                'imagepyramid',
                                 'gtopo30',
                                 'arcgrid',
                                 'grassgrid',
@@ -1616,18 +1616,22 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                     if file != 'foo.zip':
                         zf.write(os.path.join(working_dir, file), file)
 
+        # Prepare file(s) for upload
+        files = None
+        data = None
+
         if is_zipfile(coverage_file):
             content_type = 'application/zip'
+            files = {'file': open(coverage_file, 'rb')}
         else:
             content_type = 'image/{0}'.format(coverage_type)
+            data = open(coverage_file, 'rb')
 
         # Prepare headers
         extension = coverage_type
 
         if coverage_type == 'grassgrid':
             extension = 'arcgrid'
-
-        files = {'file': open(coverage_file, 'rb')}
 
         headers = {
             "Content-type": content_type,
@@ -1640,8 +1644,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Set params
         params = {}
 
-	if coverage_name:
-	    params['coverageName'] = coverage_name
+        if coverage_name:
+            params['coverageName'] = coverage_name
 
         if overwrite:
             params['update'] = 'overwrite'
@@ -1649,6 +1653,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Execute: PUT /workspaces/<ws>/datastores/<ds>/file.shp
         response = requests.put(url=url,
                                 files=files,
+                                data=data,
                                 headers=headers,
                                 params=params,
                                 auth=HTTPBasicAuth(username=self.username, password=self.password))
