@@ -925,7 +925,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         self._handle_debug(response_dict, debug)
         return response_dict
 
-    def link_sqlalchemy_db_to_geoserver(self, store_id, sqlalchemy_engine, docker=False, debug=False):
+    def link_sqlalchemy_db_to_geoserver(self, store_id, sqlalchemy_engine, docker=False, debug=False,
+                                        docker_ip_address='172.17.42.1'):
         """
         Helper function to simplify linking postgis databases to geoservers using the sqlalchemy engine object.
 
@@ -934,15 +935,15 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
           sqlalchemy_engine (sqlalchemy_engine): An SQLAlchemy engine object.
           docker (bool, optional): Set to True if the database and geoserver are running in a Docker container. Defaults to False.
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
+          docker_ip_address (str, optional): Override the docker network ip address. Defaults to '172.17.41.1'.
 
         Returns:
           (dict): Response dictionary
         """
-        DOCKER_IP_ADDRESS = '172.17.42.1'
         connection_dict = sqlalchemy_engine.url.translate_connect_args()
         response = self.create_postgis_feature_resource(
             store_id=store_id,
-            host=DOCKER_IP_ADDRESS if docker else connection_dict['host'],
+            host=docker_ip_address if docker else connection_dict['host'],
             port=connection_dict['port'],
             database=connection_dict['database'],
             user=connection_dict['username'],
