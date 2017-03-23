@@ -151,7 +151,6 @@ class CkanDatasetEngine(DatasetEngine):
         # Assemble data dictionary
         data = kwargs
 
-            
         # Assemble the query parameters
         if query:
             data['q'] = self._get_query_params(query)

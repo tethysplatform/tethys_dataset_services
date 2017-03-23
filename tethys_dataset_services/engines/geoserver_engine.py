@@ -215,7 +215,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             except geoserver.catalog.FailedRequestError as e:
                 # Update response dictionary
                 response_dict['success'] = False
-                response_dict['error'] = e.message
+                response_dict['error'] = e
 
         else:
             # Update response dictionary
@@ -530,7 +530,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             return self._handle_list(resource_objects, with_properties, debug)
         except geoserver.catalog.AmbiguousRequestError as e:
             response_object = {'success': False,
-                               'error': e.message}
+                               'error': e}
         except TypeError as e:
             response_object = {'success': False,
                                'error': 'Multiple stores found named "{0}".'.format(store)}
@@ -696,7 +696,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except geoserver.catalog.FailedRequestError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': e}
 
         # Handle the debug and return
         self._handle_debug(response_dict, debug)
@@ -748,7 +748,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except geoserver.catalog.FailedRequestError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': e}
 
         # Handle the debug and return
         self._handle_debug(response_dict, debug)
@@ -790,7 +790,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except geoserver.catalog.FailedRequestError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': e}
 
         # Handle the debug and return
         self._handle_debug(response_dict, debug)
@@ -835,7 +835,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except geoserver.catalog.FailedRequestError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': e}
 
         # Handle the debug and return
         self._handle_debug(response_dict, debug)
@@ -875,7 +875,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except geoserver.catalog.FailedRequestError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': e}
 
         # Handle the debug and return
         self._handle_debug(response_dict, debug)
@@ -919,7 +919,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except geoserver.catalog.FailedRequestError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': e}
 
         # Handle the debug and return
         self._handle_debug(response_dict, debug)
@@ -1724,11 +1724,11 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except geoserver.catalog.ConflictingDataError as e:
             response_dict['success'] = False
-            response_dict['error'] = e.message
+            response_dict['error'] = e
 
         except geoserver.catalog.FailedRequestError as e:
             response_dict['success'] = False
-            response_dict['error'] = e.message
+            response_dict['error'] = e
 
         self._handle_debug(response_dict, debug)
         return response_dict
@@ -1762,7 +1762,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except AssertionError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': e}
 
         self._handle_debug(response_dict, debug)
         return response_dict
@@ -1772,7 +1772,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Create a new SLD style object.
 
         Args:
-          create_style (string): Identifier of the style to create.
+          style_id (string): Identifier of the style to create.
           sld (string): Styled Layer Descriptor string
           overwrite (bool, optional): Overwrite if style already exists. Defaults to False.
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
@@ -1799,7 +1799,21 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Create workspace
         try:
             # Do create
-            catalog.create_style(name=name, data=sld, workspace=workspace, overwrite=overwrite)
+            num_attempts = 0
+            upload_error = True
+            while num_attempts < 5 and upload_error:
+                try:
+                    catalog.create_style(name=name,
+                                         data=sld,
+                                         workspace=workspace,
+                                         overwrite=overwrite)
+                    upload_error = False
+                except geoserver.catalog.UploadError as e:
+                    num_attempts += 1
+                    upload_error = e
+
+            if upload_error:
+                raise upload_error
 
             catalog.reload()
             style = catalog.get_style(name=name, workspace=workspace)
@@ -1810,11 +1824,11 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except AssertionError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': e}
 
         except geoserver.catalog.ConflictingDataError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': e}
 
         self._handle_debug(response_dict, debug)
         return response_dict
@@ -1861,7 +1875,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except geoserver.catalog.FailedRequestError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': e}
 
         self._handle_debug(response_dict, debug)
         return response_dict
@@ -1927,7 +1941,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except geoserver.catalog.FailedRequestError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': e}
 
         self._handle_debug(response_dict, debug)
         return response_dict
@@ -1973,7 +1987,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except geoserver.catalog.FailedRequestError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': e}
 
         self._handle_debug(response_dict, debug)
         return response_dict
@@ -2123,7 +2137,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         except geoserver.catalog.FailedRequestError as e:
             # Update response dictionary
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': e}
 
             self._handle_debug(response_dict, debug)
             return response_dict
@@ -2161,7 +2175,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         except geoserver.catalog.FailedRequestError as e:
             # Update response dictionary
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': e}
 
             self._handle_debug(response_dict, debug)
             return response_dict
@@ -2184,5 +2198,3 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         if 'Geoserver Configuration API' not in r.text:
             raise AssertionError('The URL "{0}" is not a valid GeoServer spatial dataset service endpoint.'.format(self.endpoint))
-
-
