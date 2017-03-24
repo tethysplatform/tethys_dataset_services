@@ -4,7 +4,7 @@ import requests
 import StringIO
 from xml.etree import ElementTree
 from requests.auth import HTTPBasicAuth
-from zipfile import ZipFile, is_zipfile
+from zipfile import ZipFile, is_zipfile, ZIP_DEFLATED
 import geoserver
 from geoserver.catalog import Catalog as GeoServerCatalog
 from geoserver.support import JDBCVirtualTable, JDBCVirtualTableGeometry, JDBCVirtualTableParam
@@ -1449,7 +1449,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         self._handle_debug(response_dict, debug)
         return response_dict
 
-    def create_coverage_resource(self, store_id, coverage_file, coverage_type, coverage_name=None, overwrite=False, debug=False):
+    def create_coverage_resource(self, store_id, coverage_type, coverage_file=None,
+                                 coverage_upload=None, coverage_name=None,
+                                 overwrite=False, debug=False):
         """
         Use this method to add coverage resources to GeoServer.
 
@@ -1457,8 +1459,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         Args
           store_id (string): Identifier for the store to add the image to or to be created. Can be a name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.
-          coverage_file (string): Path to the coverage image or zip archive. Most files will require a .prj file with the Well Known Text definition of the projection. Zip this file up with the image and send the archive.
           coverage_type (string): Type of coverage that is being created. Valid values include: 'geotiff', 'worldimage', 'imagemosaic', 'imagepyramid', 'gtopo30', 'arcgrid', 'grassgrid', 'erdasimg', 'aig', 'gif', 'png', 'jpeg', 'tiff', 'dted', 'rpftoc', 'rst', 'nitf', 'envihdr', 'mrsid', 'ehdr', 'ecw', 'netcdf', 'erdasimg', 'jp2mrsid'.
+          coverage_file (string, optional): Path to the coverage image or zip archive. Most files will require a .prj file with the Well Known Text definition of the projection. Zip this file up with the image and send the archive.
+          coverage_upload (FileUpload list, optional): A list of Django FileUpload objects containing a coverage file and .prj file or archive that have been uploaded via multipart/form-data form.
           coverage_name (string): Name of the coverage resource and subsequent layer that are created. If unspecified, these will match the name of the image file that is uploaded.
           overwrite (bool, optional): Overwrite the file if it already exists.
           charset (string, optional): Specify the character encoding of the file being uploaded (e.g.: ISO-8559-1)
@@ -1536,7 +1539,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Prepare files
         working_dir = None
 
-        if coverage_type == 'grassgrid':
+        if coverage_type == 'grassgrid' and coverage_file is not None:
             working_dir = os.path.join(os.path.dirname(coverage_file), '.gstmp')
 
             # Unzip
@@ -1621,12 +1624,37 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         files = None
         data = None
 
-        if is_zipfile(coverage_file):
+        if coverage_file is not None:
+            if is_zipfile(coverage_file):
+                files = {'file': open(coverage_file, 'rb')}
+                content_type = 'application/zip'
+            else:
+                content_type = 'image/{0}'.format(coverage_type)
+                data = open(coverage_file, 'rb')
+
+        elif coverage_upload is not None:
             content_type = 'application/zip'
-            files = {'file': open(coverage_file, 'rb')}
-        else:
-            content_type = 'image/{0}'.format(coverage_type)
-            data = open(coverage_file, 'rb')
+
+            # Check if zip archive
+            try:
+                if coverage_upload.name.endswith('.zip'):
+                    files = {'file': coverage_upload }
+                else:
+                    content_type = 'image/{0}'.format(coverage_type)
+                    data = coverage_upload
+
+            except AttributeError:
+                pass
+
+            if files is None and data is None:
+                # Write files in memory to zipfile in memory
+                zip_file_in_memory = StringIO.StringIO()
+
+                with ZipFile(zip_file_in_memory, 'w') as zfile:
+                    for file in coverage_upload:
+                        zfile.writestr(file.name, file.read())
+                files = {'file': zip_file_in_memory.getvalue()}
+
 
         # Prepare headers
         extension = coverage_type
