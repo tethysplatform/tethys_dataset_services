@@ -4,7 +4,7 @@ import requests
 import StringIO
 from xml.etree import ElementTree
 from requests.auth import HTTPBasicAuth
-from zipfile import ZipFile, is_zipfile, ZIP_DEFLATED
+from zipfile import ZipFile, is_zipfile
 import geoserver
 from geoserver.catalog import Catalog as GeoServerCatalog
 from geoserver.support import JDBCVirtualTable, JDBCVirtualTableGeometry, JDBCVirtualTableParam
