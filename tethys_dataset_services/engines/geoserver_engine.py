@@ -2,6 +2,7 @@ import os
 import pprint
 import requests
 import StringIO
+from time import sleep
 from xml.etree import ElementTree
 from requests.auth import HTTPBasicAuth
 from zipfile import ZipFile, is_zipfile
@@ -224,6 +225,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         # Refresh the catalog
         catalog.reload()
+        catalog.reset()
 
         self._handle_debug(response_dict, debug)
         return response_dict
@@ -1039,6 +1041,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         if not table:
             # Wrap up successfully with new store created
             catalog.reload()
+            catalog.reset()
             new_store = catalog.get_store(name=name, workspace=workspace)
             resource_dict = self._transcribe_geoserver_object(new_store)
 
@@ -1098,6 +1101,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         # Wrap up successfully
         catalog.reload()
+        catalog.reset()
         new_resource = catalog.get_resource(name=table, store=name)
         resource_dict = self._transcribe_geoserver_object(new_resource)
 
@@ -1177,6 +1181,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         # Wrap up successfully
         catalog.reload()
+        catalog.reset()
         new_store = catalog.get_store(name=name, workspace=workspace)
         resource_dict = self._transcribe_geoserver_object(new_store)
 
@@ -1248,6 +1253,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         # Wrap Up
         catalog.reload()
+        catalog.reset()
         r_feature_layer = catalog.get_layer(feature_type_name)
 
         if default_style_id is None:
@@ -1267,6 +1273,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         r_feature_layer.default_style = style
         catalog.save(r_feature_layer)
         catalog.reload()
+        catalog.reset()
         resource_dict = self._transcribe_geoserver_object(r_feature_layer)
         response_dict = {'success': True,
                          'result': resource_dict}
@@ -1441,6 +1448,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         # Wrap up successfully
         catalog.reload()
+        catalog.reset()
         new_resource = catalog.get_resource(name=name, workspace=workspace)
         resource_dict = self._transcribe_geoserver_object(new_resource)
 
@@ -1687,6 +1695,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                                 params=params,
                                 auth=HTTPBasicAuth(username=self.username, password=self.password))
 
+
         # Clean up
         if working_dir:
             for file in os.listdir(working_dir):
@@ -1701,8 +1710,20 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             return response_dict
 
         # Wrap up successfully
-        catalog.reload()
-        new_resource = catalog.get_resource(name=name, workspace=workspace)
+        new_resource = None
+        failed_attempts = 0
+        while new_resource is None:
+            try:
+                catalog.reload()
+                catalog.reset()
+                new_resource = catalog.get_resource(name=name, workspace=workspace)
+            except geoserver.catalog.FailedRequestError:
+                if failed_attempts > 5:
+                    raise
+                failed_attempts += 1
+                sleep(5)
+                pass
+
         resource_dict = self._transcribe_geoserver_object(new_resource)
 
         response_dict = {'success': True,
@@ -1844,6 +1865,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                 raise upload_error
 
             catalog.reload()
+            catalog.reset()
             style = catalog.get_style(name=name, workspace=workspace)
 
             style_dict = self._transcribe_geoserver_object(style)
