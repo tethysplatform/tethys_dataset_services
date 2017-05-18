@@ -1799,7 +1799,23 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Create workspace
         try:
             # Do create
-            catalog.create_style(name=name, data=sld, workspace=workspace, overwrite=overwrite)
+            num_attempts = 0
+            upload_error = True
+            
+            while num_attempts < 5 and upload_error:
+
+                try:
+                    catalog.create_style(name=name,
+                                         data=sld,
+                                         workspace=workspace,
+                                         overwrite=overwrite)
+                    upload_error = False
+                except geoserver.catalog.UploadError as e:
+                    num_attempts += 1
+                    upload_error = e
+
+            if upload_error:
+                raise upload_error
 
             catalog.reload()
             style = catalog.get_style(name=name, workspace=workspace)
