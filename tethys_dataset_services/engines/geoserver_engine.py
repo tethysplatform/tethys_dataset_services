@@ -1800,7 +1800,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Create a new SLD style object.
 
         Args:
-          create_style (string): Identifier of the style to create.
+          style_id (string): Identifier of the style to create.
           sld (string): Styled Layer Descriptor string
           overwrite (bool, optional): Overwrite if style already exists. Defaults to False.
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
