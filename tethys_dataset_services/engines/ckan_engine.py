@@ -6,7 +6,7 @@ import warnings
 import requests
 from requests_toolbelt import MultipartEncoder
 
-from tethys_dataset_services.base import DatasetEngine
+from ..base import DatasetEngine
 
 
 class CkanDatasetEngine(DatasetEngine):
@@ -104,8 +104,8 @@ class CkanDatasetEngine(DatasetEngine):
                         print('ERROR: {0}'.format(parsed['error']['message']))
             return parsed
 
-        except Exception, e:
-            print e
+        except Exception as e:
+            print(e)
             print('Status Code {0}: {1}'.format(status, response.encode('utf-8')))
             return None
 
@@ -579,7 +579,7 @@ class CkanDatasetEngine(DatasetEngine):
         if location:
             try:
                 os.makedirs(location)
-            except OSError, e:
+            except OSError as e:
                 pass
         else:
             location = './'
@@ -596,8 +596,8 @@ class CkanDatasetEngine(DatasetEngine):
                     if chunk: # filter out keep-alive new chunks
                         f.write(chunk)
                         f.flush()
-        except Exception, e:
-            print e
+        except Exception as e:
+            print(e)
 
         return local_file
 

@@ -132,6 +132,6 @@ def ConvertXmlToDict(root, dictclass=XmlDictObject):
     if type(root) == type(''):
         root = ElementTree.parse(root).getroot()
     elif not isinstance(root, ElementTree.Element):
-        raise TypeError, 'Expected ElementTree.Element or file path string'
+        raise TypeError('Expected ElementTree.Element or file path string')
 
     return dictclass({root.tag: _ConvertXmlToDictRecurse(root, dictclass)})

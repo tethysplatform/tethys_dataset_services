@@ -1,17 +1,19 @@
 import os
 import pprint
 import requests
-import StringIO
+from io import StringIO
 from xml.etree import ElementTree
-from requests.auth import HTTPBasicAuth
 from zipfile import ZipFile, is_zipfile
+
+from past.builtins import basestring
+from requests.auth import HTTPBasicAuth
 import geoserver
 from geoserver.catalog import Catalog as GeoServerCatalog
 from geoserver.support import JDBCVirtualTable, JDBCVirtualTableGeometry, JDBCVirtualTableParam
 from geoserver.util import shapefile_and_friends
-from tethys_dataset_services.utilities import ConvertDictToXml, ConvertXmlToDict
 
-from tethys_dataset_services.base import SpatialDatasetEngine
+from ..utilities import ConvertDictToXml, ConvertXmlToDict
+from ..base import SpatialDatasetEngine
 
 
 class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
