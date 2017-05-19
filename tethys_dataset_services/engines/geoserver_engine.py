@@ -1,17 +1,19 @@
 import os
 import pprint
 import requests
-import StringIO
+from io import StringIO
 from xml.etree import ElementTree
-from requests.auth import HTTPBasicAuth
 from zipfile import ZipFile, is_zipfile
+
+from past.builtins import basestring
+from requests.auth import HTTPBasicAuth
 import geoserver
 from geoserver.catalog import Catalog as GeoServerCatalog
 from geoserver.support import JDBCVirtualTable, JDBCVirtualTableGeometry, JDBCVirtualTableParam
 from geoserver.util import shapefile_and_friends
-from tethys_dataset_services.utilities import ConvertDictToXml, ConvertXmlToDict
 
-from tethys_dataset_services.base import SpatialDatasetEngine
+from ..utilities import ConvertDictToXml, ConvertXmlToDict
+from ..base import SpatialDatasetEngine
 
 
 class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
@@ -215,7 +217,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             except geoserver.catalog.FailedRequestError as e:
                 # Update response dictionary
                 response_dict['success'] = False
-                response_dict['error'] = e.message
+                response_dict['error'] = str(e)
 
         else:
             # Update response dictionary
@@ -530,7 +532,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             return self._handle_list(resource_objects, with_properties, debug)
         except geoserver.catalog.AmbiguousRequestError as e:
             response_object = {'success': False,
-                               'error': e.message}
+                               'error': str(e)}
         except TypeError as e:
             response_object = {'success': False,
                                'error': 'Multiple stores found named "{0}".'.format(store)}
@@ -696,7 +698,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except geoserver.catalog.FailedRequestError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': str(e)}
 
         # Handle the debug and return
         self._handle_debug(response_dict, debug)
@@ -748,7 +750,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except geoserver.catalog.FailedRequestError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': str(e)}
 
         # Handle the debug and return
         self._handle_debug(response_dict, debug)
@@ -790,7 +792,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except geoserver.catalog.FailedRequestError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': str(e)}
 
         # Handle the debug and return
         self._handle_debug(response_dict, debug)
@@ -835,7 +837,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except geoserver.catalog.FailedRequestError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': str(e)}
 
         # Handle the debug and return
         self._handle_debug(response_dict, debug)
@@ -875,7 +877,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except geoserver.catalog.FailedRequestError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': str(e)}
 
         # Handle the debug and return
         self._handle_debug(response_dict, debug)
@@ -919,7 +921,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except geoserver.catalog.FailedRequestError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': str(e)}
 
         # Handle the debug and return
         self._handle_debug(response_dict, debug)
@@ -1449,7 +1451,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         self._handle_debug(response_dict, debug)
         return response_dict
 
-    def create_coverage_resource(self, store_id, coverage_file, coverage_type, coverage_name=None, overwrite=False, debug=False):
+    def create_coverage_resource(self, store_id, coverage_type, coverage_file=None,
+                                 coverage_upload=None, coverage_name=None,
+                                 overwrite=False, debug=False):
         """
         Use this method to add coverage resources to GeoServer.
 
@@ -1457,8 +1461,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         Args
           store_id (string): Identifier for the store to add the image to or to be created. Can be a name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.
-          coverage_file (string): Path to the coverage image or zip archive. Most files will require a .prj file with the Well Known Text definition of the projection. Zip this file up with the image and send the archive.
           coverage_type (string): Type of coverage that is being created. Valid values include: 'geotiff', 'worldimage', 'imagemosaic', 'imagepyramid', 'gtopo30', 'arcgrid', 'grassgrid', 'erdasimg', 'aig', 'gif', 'png', 'jpeg', 'tiff', 'dted', 'rpftoc', 'rst', 'nitf', 'envihdr', 'mrsid', 'ehdr', 'ecw', 'netcdf', 'erdasimg', 'jp2mrsid'.
+          coverage_file (string, optional): Path to the coverage image or zip archive. Most files will require a .prj file with the Well Known Text definition of the projection. Zip this file up with the image and send the archive.
+          coverage_upload (FileUpload list, optional): A list of Django FileUpload objects containing a coverage file and .prj file or archive that have been uploaded via multipart/form-data form.
           coverage_name (string): Name of the coverage resource and subsequent layer that are created. If unspecified, these will match the name of the image file that is uploaded.
           overwrite (bool, optional): Overwrite the file if it already exists.
           charset (string, optional): Specify the character encoding of the file being uploaded (e.g.: ISO-8559-1)
@@ -1536,7 +1541,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Prepare files
         working_dir = None
 
-        if coverage_type == 'grassgrid':
+        if coverage_type == 'grassgrid' and coverage_file is not None:
             working_dir = os.path.join(os.path.dirname(coverage_file), '.gstmp')
 
             # Unzip
@@ -1621,12 +1626,37 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         files = None
         data = None
 
-        if is_zipfile(coverage_file):
+        if coverage_file is not None:
+            if is_zipfile(coverage_file):
+                files = {'file': open(coverage_file, 'rb')}
+                content_type = 'application/zip'
+            else:
+                content_type = 'image/{0}'.format(coverage_type)
+                data = open(coverage_file, 'rb')
+
+        elif coverage_upload is not None:
             content_type = 'application/zip'
-            files = {'file': open(coverage_file, 'rb')}
-        else:
-            content_type = 'image/{0}'.format(coverage_type)
-            data = open(coverage_file, 'rb')
+
+            # Check if zip archive
+            try:
+                if coverage_upload.name.endswith('.zip'):
+                    files = {'file': coverage_upload }
+                else:
+                    content_type = 'image/{0}'.format(coverage_type)
+                    data = coverage_upload
+
+            except AttributeError:
+                pass
+
+            if files is None and data is None:
+                # Write files in memory to zipfile in memory
+                zip_file_in_memory = StringIO.StringIO()
+
+                with ZipFile(zip_file_in_memory, 'w') as zfile:
+                    for file in coverage_upload:
+                        zfile.writestr(file.name, file.read())
+                files = {'file': zip_file_in_memory.getvalue()}
+
 
         # Prepare headers
         extension = coverage_type
@@ -1724,11 +1754,11 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except geoserver.catalog.ConflictingDataError as e:
             response_dict['success'] = False
-            response_dict['error'] = e.message
+            response_dict['error'] = str(e)
 
         except geoserver.catalog.FailedRequestError as e:
             response_dict['success'] = False
-            response_dict['error'] = e.message
+            response_dict['error'] = str(e)
 
         self._handle_debug(response_dict, debug)
         return response_dict
@@ -1762,7 +1792,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except AssertionError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': str(e)}
 
         self._handle_debug(response_dict, debug)
         return response_dict
@@ -1772,7 +1802,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Create a new SLD style object.
 
         Args:
-          create_style (string): Identifier of the style to create.
+          style_id (string): Identifier of the style to create.
           sld (string): Styled Layer Descriptor string
           overwrite (bool, optional): Overwrite if style already exists. Defaults to False.
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
@@ -1799,7 +1829,23 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Create workspace
         try:
             # Do create
-            catalog.create_style(name=name, data=sld, workspace=workspace, overwrite=overwrite)
+            num_attempts = 0
+            upload_error = True
+            
+            while num_attempts < 5 and upload_error:
+
+                try:
+                    catalog.create_style(name=name,
+                                         data=sld,
+                                         workspace=workspace,
+                                         overwrite=overwrite)
+                    upload_error = False
+                except geoserver.catalog.UploadError as e:
+                    num_attempts += 1
+                    upload_error = e
+
+            if upload_error:
+                raise upload_error
 
             catalog.reload()
             style = catalog.get_style(name=name, workspace=workspace)
@@ -1810,11 +1856,11 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except AssertionError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': str(e)}
 
         except geoserver.catalog.ConflictingDataError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': str(e)}
 
         self._handle_debug(response_dict, debug)
         return response_dict
@@ -1861,7 +1907,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except geoserver.catalog.FailedRequestError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': str(e)}
 
         self._handle_debug(response_dict, debug)
         return response_dict
@@ -1927,7 +1973,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except geoserver.catalog.FailedRequestError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': str(e)}
 
         self._handle_debug(response_dict, debug)
         return response_dict
@@ -1973,7 +2019,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except geoserver.catalog.FailedRequestError as e:
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': str(e)}
 
         self._handle_debug(response_dict, debug)
         return response_dict
@@ -2123,7 +2169,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         except geoserver.catalog.FailedRequestError as e:
             # Update response dictionary
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': str(e)}
 
             self._handle_debug(response_dict, debug)
             return response_dict
@@ -2161,7 +2207,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         except geoserver.catalog.FailedRequestError as e:
             # Update response dictionary
             response_dict = {'success': False,
-                             'error': e.message}
+                             'error': str(e)}
 
             self._handle_debug(response_dict, debug)
             return response_dict

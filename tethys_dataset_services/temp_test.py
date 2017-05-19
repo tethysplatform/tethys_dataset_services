@@ -1,5 +1,5 @@
 import os
-from engines import GeoServerSpatialDatasetEngine, CkanDatasetEngine
+from .engines import GeoServerSpatialDatasetEngine, CkanDatasetEngine
 
 # Create Engine
 # engine = GeoServerSpatialDatasetEngine(endpoint='http://ciwmap.chpc.utah.edu/geoserver/rest',
@@ -215,8 +215,8 @@ from engines import GeoServerSpatialDatasetEngine, CkanDatasetEngine
 #                            apikey='')
 # engine.validate()
 
-engine = GeoServerSpatialDatasetEngine(endpoint='http://192.168.59.103:8181/geoserver/rest',
-                                       username='admin',
-                                       password='geoserver')
+# engine = GeoServerSpatialDatasetEngine(endpoint='http://192.168.59.103:8181/geoserver/rest',
+#                                       username='admin',
+#                                       password='geoserver')
 
-engine.validate()
+# engine.validate()
