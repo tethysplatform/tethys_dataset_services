@@ -1393,7 +1393,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
             with ZipFile(zip_file_in_memory, 'w') as zfile:
                 for file in shapefile_upload:
-                    zfile.writestr(file.name, file.read())
+                    extension = os.path.splitext(file.name)[1]
+                    filename = '{0}{1}'.format(name, extension)
+                    zfile.writestr(filename, file.read())
 
             files = {'file': zip_file_in_memory.getvalue()}
 
