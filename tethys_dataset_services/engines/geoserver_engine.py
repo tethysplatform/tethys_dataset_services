@@ -1,7 +1,7 @@
 import os
 import pprint
 import requests
-from io import StringIO
+from io import BytesIO
 from xml.etree import ElementTree
 from zipfile import ZipFile, is_zipfile
 
@@ -1389,11 +1389,13 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Shapefile Upload Case
         elif shapefile_upload:
             # Write files in memory to zipfile in memory
-            zip_file_in_memory = StringIO.StringIO()
+            zip_file_in_memory = BytesIO()
 
             with ZipFile(zip_file_in_memory, 'w') as zfile:
                 for file in shapefile_upload:
-                    zfile.writestr(file.name, file.read())
+                    extension = os.path.splitext(file.name)[1]
+                    filename = '{0}{1}'.format(name, extension)
+                    zfile.writestr(filename, file.read())
 
             files = {'file': zip_file_in_memory.getvalue()}
 
@@ -1650,7 +1652,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
             if files is None and data is None:
                 # Write files in memory to zipfile in memory
-                zip_file_in_memory = StringIO.StringIO()
+                zip_file_in_memory = BytesIO()
 
                 with ZipFile(zip_file_in_memory, 'w') as zfile:
                     for file in coverage_upload:
