@@ -994,7 +994,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         # Determine if store exists
         try:
-            catalog.get_store(name=name, workspace=workspace)
+            store = catalog.get_store(name=name, workspace=workspace)
+            if not store:
+                raise geoserver.catalog.FailedRequestError()
             store_exists = True
         except geoserver.catalog.FailedRequestError:
             store_exists = False
