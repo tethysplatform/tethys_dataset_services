@@ -1,6 +1,7 @@
 import os
 import pprint
 import requests
+import time
 from io import BytesIO
 from xml.etree import ElementTree
 from zipfile import ZipFile, is_zipfile
@@ -1042,9 +1043,21 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         if not table:
             # Wrap up successfully with new store created
-            catalog.reload()
-            new_store = catalog.get_store(name=name, workspace=workspace)
-            resource_dict = self._transcribe_geoserver_object(new_store)
+            MAX_ATTEMPTS = 5
+            attempts = 0
+            resource_dict = {}
+
+            while attempts < MAX_ATTEMPTS:
+                attempts += 1
+                try:
+                    catalog.reload()
+                    new_store = catalog.get_store(name=name, workspace=workspace)
+                    if not new_store:
+                        raise geoserver.catalog.FailedRequestError()
+
+                    resource_dict = self._transcribe_geoserver_object(new_store)
+                except geoserver.catalog.FailedRequestError:
+                    time.sleep(1)
 
             response_dict = {'success': True,
                              'result': resource_dict}
