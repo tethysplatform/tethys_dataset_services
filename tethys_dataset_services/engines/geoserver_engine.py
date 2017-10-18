@@ -1056,6 +1056,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                         raise geoserver.catalog.FailedRequestError()
 
                     resource_dict = self._transcribe_geoserver_object(new_store)
+                    break
                 except geoserver.catalog.FailedRequestError:
                     time.sleep(1)
 
