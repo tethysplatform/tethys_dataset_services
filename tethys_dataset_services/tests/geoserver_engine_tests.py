@@ -2,6 +2,8 @@ import os
 import random
 import string
 import unittest
+import mock
+import geoserver
 
 from tethys_dataset_services.engines import GeoServerSpatialDatasetEngine
 
@@ -43,55 +45,100 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
                                                     username=TEST_GEOSERVER_DATASET_SERVICE['USERNAME'],
                                                     password=TEST_GEOSERVER_DATASET_SERVICE['PASSWORD'])
 
-        # Create Test Workspaces
+        # Mock Objects
+        self.workspace_name = 'a-workspace'
+
+        # Store
+        self.store_name = 'a-store'
+        self.mock_store = mock.NonCallableMagicMock()  #: Needs to pass not callable test
+        # the "name" attribute needs to be set after create b/c name is a constructor argument
+        # http://blog.tunarob.com/2017/04/27/mock-name-attribute/
+        self.mock_store.name = self.store_name
+
+        # Default Style
+        self.default_style_name = 'a-style'
+        self.mock_default_style = mock.NonCallableMagicMock(workspace=self.workspace_name)
+        self.mock_default_style.name = self.default_style_name
+
+        # Styles
+        self.style_names = ['points', 'lines']
+        self.mock_styles = []
+        for sn in self.style_names:
+            mock_style = mock.NonCallableMagicMock(workspace=self.workspace_name)
+            mock_style.name = sn
+            self.mock_styles.append(mock_style)
+
+        # Resources
+        self.resource_names = ['foo', 'bar', 'goo']
+        self.mock_resources = []
+        for rn in self.resource_names:
+            mock_resource = mock.NonCallableMagicMock(workspace=self.workspace_name)
+            mock_resource.name = rn
+            mock_resource.store = self.mock_store
+            self.mock_resources.append(mock_resource)
+
+        # Layers
+        self.layer_names = ['baz', 'bat', 'jazz']
+        self.mock_layers = []
+        for ln in self.layer_names:
+            mock_layer = mock.NonCallableMagicMock(workspace=self.workspace_name)
+            mock_layer.name = ln
+            mock_layer.store = self.mock_store
+            mock_layer.default_style = self.mock_default_style
+            mock_layer.styles = self.mock_styles
+            self.mock_layers.append(mock_layer)
+
+        # # Create Test Workspaces
+        # # self.test_resource_workspace = random_string_generator(10)
         # self.test_resource_workspace = random_string_generator(10)
-        self.test_resource_workspace = random_string_generator(10)
-        self.engine.create_workspace(workspace_id=self.test_resource_workspace, uri=random_string_generator(5))
-
-        # Create Test Stores/Resources/Layers
-        # Shapefile
-
-        # Store name
-        self.test_resource_store = random_string_generator(10)
-
-        # Resource and Layer will take the name of the file
-        self.test_resource_name = self.test_resource_store
-        self.test_layer_name = self.test_resource_store
-
-        # Identifiers of the form 'workspace:item'
-        self.test_store_identifier = '{0}:{1}'.format(self.test_resource_workspace, self.test_resource_store)
-        self.test_resource_identifier = '{0}:{1}'.format(self.test_resource_workspace, self.test_resource_name)
-
-        # Do create shapefile
-        self.engine.create_shapefile_resource(self.test_store_identifier, shapefile_base=self.shapefile_base,
-                                              overwrite=True)
-
-        # Coverage
-
-        # Create Test Style
-        self.test_style_name = 'point'
-
-        # Create Test Layer Groups
-        self.test_layer_group_name = random_string_generator(10)
-        self.engine.create_layer_group(layer_group_id=self.test_layer_group_name,
-                                       layers=(self.test_layer_name,),
-                                       styles=(self.test_style_name,))
-
-        # Pause
-        pause(10)
+        # self.engine.create_workspace(workspace_id=self.test_resource_workspace, uri=random_string_generator(5))
+        #
+        # # Create Test Stores/Resources/Layers
+        # # Shapefile
+        #
+        # # Store name
+        # self.test_resource_store = random_string_generator(10)
+        #
+        # # Resource and Layer will take the name of the file
+        # self.test_resource_name = self.test_resource_store
+        # self.test_layer_name = self.test_resource_store
+        #
+        # # Identifiers of the form 'workspace:item'
+        # self.test_store_identifier = '{0}:{1}'.format(self.test_resource_workspace, self.test_resource_store)
+        # self.test_resource_identifier = '{0}:{1}'.format(self.test_resource_workspace, self.test_resource_name)
+        #
+        # # Do create shapefile
+        # self.engine.create_shapefile_resource(self.test_store_identifier, shapefile_base=self.shapefile_base,
+        #                                       overwrite=True)
+        #
+        # # Coverage
+        #
+        # # Create Test Style
+        # self.test_style_name = 'point'
+        #
+        # # Create Test Layer Groups
+        # self.test_layer_group_name = random_string_generator(10)
+        # self.engine.create_layer_group(layer_group_id=self.test_layer_group_name,
+        #                                layers=(self.test_layer_name,),
+        #                                styles=(self.test_style_name,))
+        #
+        # # Pause
+        # pause(10)
+        pass
 
     def tearDown(self):
-        # Delete test layer groups
-        self.engine.delete_layer_group(layer_group_id=self.test_layer_group_name)
-
-        # Delete test resources & layers
-        self.engine.delete_resource(self.test_resource_identifier, recurse=True)
-
-        # Delete stores
-        self.engine.delete_store(self.test_store_identifier)
-
-        # Delete test workspace
-        self.engine.delete_workspace(self.test_resource_workspace)
+        # # Delete test layer groups
+        # self.engine.delete_layer_group(layer_group_id=self.test_layer_group_name)
+        #
+        # # Delete test resources & layers
+        # self.engine.delete_resource(self.test_resource_identifier, recurse=True)
+        #
+        # # Delete stores
+        # self.engine.delete_store(self.test_store_identifier)
+        #
+        # # Delete test workspace
+        # self.engine.delete_workspace(self.test_resource_workspace)
+        pass
 
     def assert_valid_response_object(self, response_object):
         # Response object should be a dictionary with the keys 'success' and either 'result' if success is True
@@ -105,8 +152,11 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
             elif response_object['success'] is False:
                 self.assertIn('error', response_object)
 
-    def test_list_resources(self):
-        pause(10)
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_list_resources(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_resources.return_value = self.mock_resources
+
         # Execute
         response = self.engine.list_resources(debug=self.debug)
 
@@ -127,9 +177,16 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
             self.assertIsInstance(result[0], str)
 
         # Test layer listed
-        self.assertIn(self.test_resource_name, result)
+        for n in self.resource_names:
+            self.assertIn(n, result)
 
-    def test_list_resources_with_properties(self):
+        mc.get_resources.called_with(store=None, workspace=None)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_list_resources_with_properties(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_resources.return_value = self.mock_resources
+
         # Execute
         response = self.engine.list_resources(with_properties=True)
 
@@ -149,17 +206,54 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         if len(result) > 0:
             self.assertIsInstance(result[0], dict)
 
-        # Test layer included
-        test_resource_in = False
-
         for r in result:
-            if r['name'] == self.test_resource_name:
-                test_resource_in = True
-                break
+            self.assertIn('name', r)
+            self.assertIn(r['name'], self.resource_names)
+            self.assertIn('workspace', r)
+            self.assertEqual(self.workspace_name, r['workspace'])
+            self.assertIn('store', r)
+            self.assertEqual(self.store_name, r['store'])
 
-        self.assertTrue(test_resource_in)
+        mc.get_resources.called_with(store=None, workspace=None)
 
-    def test_list_layers(self):
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_list_resources_ambiguous_error(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_resources.side_effect = geoserver.catalog.AmbiguousRequestError()
+
+        # Execute
+        response = self.engine.list_resources(with_properties=True)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertFalse(response['success'])
+
+        mc.get_resources.called_with(store=None, workspace=None)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_list_resources_multiple_stores_error(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_resources.side_effect = TypeError()
+
+        # Execute
+        response = self.engine.list_resources(with_properties=True)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertFalse(response['success'])
+        self.assertIn('Multiple stores found named', response['error'])
+
+        mc.get_resources.called_with(store=None, workspace=None)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_list_layers(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_layers.return_value = self.mock_layers
+
         # Execute
         response = self.engine.list_layers(debug=self.debug)
 
@@ -180,9 +274,16 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
             self.assertIsInstance(result[0], str)
 
         # Test layer listed
-        self.assertIn(self.test_layer_name, result)
+        for n in self.layer_names:
+            self.assertIn(n, result)
 
-    def test_list_layers_with_properties(self):
+        mc.get_layers.assert_called()
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_list_layers_with_properties(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_layers.return_value = self.mock_layers
+
         # Execute
         response = self.engine.list_layers(with_properties=True)
 
@@ -202,15 +303,22 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         if len(result) > 0:
             self.assertIsInstance(result[0], dict)
 
-        # Test layer included
-        test_layer_in = False
-
         for r in result:
-            if r['name'] == self.test_layer_name:
-                test_layer_in = True
-                break
+            self.assertIn('name', r)
+            self.assertIn(r['name'], self.layer_names)
+            self.assertIn('workspace', r)
+            self.assertEqual(self.workspace_name, r['workspace'])
+            self.assertIn('store', r)
+            self.assertEqual(self.store_name, r['store'])
+            self.assertIn('default_style', r)
+            w_default_style = '{}:{}'.format(self.workspace_name, self.default_style_name)
+            self.assertEqual(w_default_style, r['default_style'])
+            self.assertIn('styles', r)
+            w_styles = ['{}:{}'.format(self.workspace_name, style) for style in self.style_names]
+            for s in r['styles']:
+                self.assertIn(s, w_styles)
 
-        self.assertTrue(test_layer_in)
+        mc.get_layers.assert_called()
 
     def test_list_layer_groups(self):
         # Execute
