@@ -7,5 +7,6 @@
 *.sqlite3
 *.db
 *.egg-info
+*.coverage
 tethys_datasets/temp/*
 tethys_datasets/tests/test_config.py
