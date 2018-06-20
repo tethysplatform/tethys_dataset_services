@@ -263,13 +263,13 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertTrue(test_layer_group_in)
 
     def test_list_workspaces(self):
-        pass
+        raise NotImplementedError()
 
     def test_list_stores(self):
-        pass
+        raise NotImplementedError()
 
     def test_list_styles(self):
-        pass
+        raise NotImplementedError()
 
     def test_get_resource(self):
         # Execute
@@ -339,7 +339,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertEqual(result['store'], self.test_resource_store)
 
     def test_get_resource_multiple_with_name(self):
-        pass
+        raise NotImplementedError()
 
     def test_get_layer(self):
         # Execute
@@ -382,13 +382,13 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertEqual(result['name'], self.test_layer_group_name)
 
     def test_get_store(self):
-        pass
+        raise NotImplementedError()
 
     def test_get_workspace(self):
-        pass
+        raise NotImplementedError()
 
     def test_get_style(self):
-        pass
+        raise NotImplementedError()
 
     def test_update_resource(self):
         # Setup
@@ -499,7 +499,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertNotEqual(old_result['default_style'], result['default_style'])
 
     def test_update_layer_group(self):
-        pass
+        raise NotImplementedError()
 
     def test_delete_resource(self):
         # Must delete layer group and layer first
@@ -597,10 +597,10 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertFalse(response['success'])
 
     def test_delete_workspace(self):
-        pass
+        raise NotImplementedError()
 
     def test_delete_store(self):
-        pass
+        raise NotImplementedError()
 
     def test_delete_style(self):
         pass
@@ -637,16 +637,16 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertFalse(response['success'])
 
     def test_create_shapefile_resource(self):
-        self.assertTrue(False)
+        raise NotImplementedError()
 
     def test_create_coverage_resource(self):
-        self.assertTrue(False)
+        raise NotImplementedError()
 
     def test_create_workspace(self):
-        self.assertTrue(False)
+        raise NotImplementedError()
 
     def test_create_style(self):
-        self.assertTrue(False)
+        raise NotImplementedError()
 
     def test_create_sql_view(self):
-        self.assertTrue(False)
+        raise NotImplementedError()
