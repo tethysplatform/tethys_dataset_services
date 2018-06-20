@@ -135,14 +135,14 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         endpoint = self._get_non_rest_endpoint()
 
         if tiled:
-            tiled_option='yes'
+            tiled_option = 'yes'
         else:
-            tiled_option='no'
+            tiled_option = 'no'
 
         if transparent:
-            transparent_option='true'
+            transparent_option = 'true'
         else:
-            transparent_option='false'
+            transparent_option = 'false'
 
         wms_url = '{0}/wms?service=WMS&version={1}&request=GetMap&' \
                   'layers={2}&styles={3}&' \
@@ -320,7 +320,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                     if sub_object and not isinstance(sub_object, str):
                         if sub_object.workspace:
                             try:
-                                object_dictionary[attribute] = '{0}:{1}'.format(sub_object.workspace.name, sub_object.name)
+                                object_dictionary[attribute] = '{0}:{1}'.format(sub_object.workspace.name,
+                                                                                sub_object.name)
                             except AttributeError:
                                 object_dictionary[attribute] = '{0}:{1}'.format(sub_object.workspace, sub_object.name)
                         else:
@@ -406,10 +407,14 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                     'jpeg': self._get_wcs_url(name, output_format='jpeg', namespace=workspace, srs=srs, bbox=bbox),
                     'tiff': self._get_wcs_url(name, output_format='tif', namespace=workspace, srs=srs, bbox=bbox),
                     'bmp': self._get_wcs_url(name, output_format='bmp', namespace=workspace, srs=srs, bbox=bbox),
-                    'geotiff': self._get_wcs_url(name, output_format='geotiff', namespace=workspace, srs=srs, bbox=bbox),
-                    'gtopo30': self._get_wcs_url(name, output_format='gtopo30', namespace=workspace, srs=srs, bbox=bbox),
-                    'arcgrid': self._get_wcs_url(name, output_format='ArcGrid', namespace=workspace, srs=srs, bbox=bbox),
-                    'arcgrid_gz': self._get_wcs_url(name, output_format='ArcGrid-GZIP', namespace=workspace, srs=srs, bbox=bbox),
+                    'geotiff': self._get_wcs_url(name, output_format='geotiff', namespace=workspace, srs=srs,
+                                                 bbox=bbox),
+                    'gtopo30': self._get_wcs_url(name, output_format='gtopo30', namespace=workspace, srs=srs,
+                                                 bbox=bbox),
+                    'arcgrid': self._get_wcs_url(name, output_format='ArcGrid', namespace=workspace, srs=srs,
+                                                 bbox=bbox),
+                    'arcgrid_gz': self._get_wcs_url(name, output_format='ArcGrid-GZIP', namespace=workspace, srs=srs,
+                                                    bbox=bbox),
                 }
 
             elif object_dictionary['resource_type'] == 'layer':
@@ -441,20 +446,34 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                     width = str(int(aspect_ratio * float(height)))
 
                 object_dictionary['wms'] = {
-                    'png': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/png'),
-                    'png8': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/png8'),
-                    'jpeg': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/jpeg'),
-                    'gif': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/gif'),
-                    'tiff': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/tiff'),
-                    'tiff8': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/tiff8'),
-                    'geotiff': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/geotiff'),
-                    'geotiff8': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/geotiff8'),
-                    'svg': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/svg'),
-                    'pdf': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='application/pdf'),
-                    'georss': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='rss'),
-                    'kml': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='kml'),
-                    'kmz': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='kmz'),
-                    'openlayers': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='application/openlayers')
+                    'png': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                             output_format='image/png'),
+                    'png8': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                              output_format='image/png8'),
+                    'jpeg': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                              output_format='image/jpeg'),
+                    'gif': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                             output_format='image/gif'),
+                    'tiff': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                              output_format='image/tiff'),
+                    'tiff8': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                               output_format='image/tiff8'),
+                    'geotiff': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                                 output_format='image/geotiff'),
+                    'geotiff8': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                                  output_format='image/geotiff8'),
+                    'svg': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                             output_format='image/svg'),
+                    'pdf': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                             output_format='application/pdf'),
+                    'georss': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                                output_format='rss'),
+                    'kml': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                             output_format='kml'),
+                    'kmz': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                             output_format='kmz'),
+                    'openlayers': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                                    output_format='application/openlayers')
                 }
 
             elif object_dictionary['resource_type'] == 'layerGroup':
@@ -486,20 +505,34 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                     width = str(int(aspect_ratio * float(height)))
 
                 object_dictionary['wms'] = {
-                    'png': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/png'),
-                    'png8': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/png8'),
-                    'jpeg': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/jpeg'),
-                    'gif': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/gif'),
-                    'tiff': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/tiff'),
-                    'tiff8': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/tiff8'),
-                    'geptiff': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/geotiff'),
-                    'geotiff8': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/geotiff8'),
-                    'svg': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='image/svg'),
-                    'pdf': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='application/pdf'),
-                    'georss': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='rss'),
-                    'kml': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='kml'),
-                    'kmz': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='kmz'),
-                    'openlayers': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height, output_format='application/openlayers')
+                    'png': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                             output_format='image/png'),
+                    'png8': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                              output_format='image/png8'),
+                    'jpeg': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                              output_format='image/jpeg'),
+                    'gif': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                             output_format='image/gif'),
+                    'tiff': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                              output_format='image/tiff'),
+                    'tiff8': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                               output_format='image/tiff8'),
+                    'geptiff': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                                 output_format='image/geotiff'),
+                    'geotiff8': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                                  output_format='image/geotiff8'),
+                    'svg': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                             output_format='image/svg'),
+                    'pdf': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                             output_format='application/pdf'),
+                    'georss': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                                output_format='rss'),
+                    'kml': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                             output_format='kml'),
+                    'kmz': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                             output_format='kmz'),
+                    'openlayers': self._get_wms_url(layer, style, bbox=bbox, srs=srs, width=width, height=height,
+                                                    output_format='application/openlayers')
                 }
 
         return object_dictionary
@@ -534,7 +567,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         except geoserver.catalog.AmbiguousRequestError as e:
             response_object = {'success': False,
                                'error': str(e)}
-        except TypeError as e:
+        except TypeError:
             response_object = {'success': False,
                                'error': 'Multiple stores found named "{0}".'.format(store)}
         self._handle_debug(response_object, debug)
@@ -567,7 +600,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         List the names of all layer groups available from the spatial dataset service.
 
         Args:
-          with_properties (bool, optional): Return list of layer group dictionaries instead of a list of layer group names.
+          with_properties (bool, optional): Return list of layer group dictionaries instead of a list of layer group names.  # noqa: E501
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
@@ -631,7 +664,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             stores = catalog.get_stores(workspace=workspace)
             return self._handle_list(stores, with_properties, debug)
 
-        except AttributeError as e:
+        except AttributeError:
             response_dict = {'success': False,
                              'result': 'Invalid workspace "{0}".'.format(workspace)}
         self._handle_debug(response_dict, debug)
@@ -664,7 +697,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Retrieve a resource object.
 
         Args:
-          resource_id (string): Identifier of the resource to retrieve. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
+          resource_id (string): Identifier of the resource to retrieve. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").  # noqa: E501
           store (string, optional): Get resource from this store.
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
@@ -710,7 +743,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Retrieve a layer object.
 
         Args:
-          layer_id (string): Identifier of the layer to retrieve. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
+          layer_id (string): Identifier of the layer to retrieve. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").  # noqa: E501
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
@@ -762,7 +795,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Retrieve a layer group object.
 
         Args:
-          layer_group_id (string): Identifier of the layer group to retrieve. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
+          layer_group_id (string): Identifier of the layer group to retrieve. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").  # noqa: E501
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
@@ -804,7 +837,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Retrieve a store object.
 
         Args:
-          store_id (string): Identifier of the store to retrieve. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
+          store_id (string): Identifier of the store to retrieve. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").  # noqa: E501
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
@@ -934,9 +967,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Helper function to simplify linking postgis databases to geoservers using the sqlalchemy engine object.
 
         Args:
-          store_id (string): Identifier for the store to add the resource to. Can be a store name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.
+          store_id (string): Identifier for the store to add the resource to. Can be a store name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.  # noqa: E501
           sqlalchemy_engine (sqlalchemy_engine): An SQLAlchemy engine object.
-          docker (bool, optional): Set to True if the database and geoserver are running in a Docker container. Defaults to False.
+          docker (bool, optional): Set to True if the database and geoserver are running in a Docker container. Defaults to False.  # noqa: E501
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
           docker_ip_address (str, optional): Override the docker network ip address. Defaults to '172.17.41.1'.
 
@@ -957,16 +990,16 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
     def create_postgis_feature_resource(self, store_id, host, port, database, user, password, table=None, debug=False):
         """
-        Use this method to link an existing PostGIS database to GeoServer as a feature store. Note that this method only works for data in vector formats.
+        Use this method to link an existing PostGIS database to GeoServer as a feature store. Note that this method only works for data in vector formats.  # noqa: E501
 
         Args:
-          store_id (string): Identifier for the store to add the resource to. Can be a store name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.
+          store_id (string): Identifier for the store to add the resource to. Can be a store name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.  # noqa: E501
           host (string): Host of the PostGIS database (e.g.: 'www.example.com').
           port (string): Port of the PostGIS database (e.g.: '5432')
           database (string): Name of the database.
           user (string): Database user that has access to the database.
           password (string): Password of database user.
-          table (string, optional): Name of existing table to add as a feature resource to the newly created feature store. A layer will automatically be created for the feature resource as well. Both the layer and the resource will share the same name as the table.
+          table (string, optional): Name of existing table to add as a feature resource to the newly created feature store. A layer will automatically be created for the feature resource as well. Both the layer and the resource will share the same name as the table.  # noqa: E501
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
@@ -976,11 +1009,11 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           # With Table
 
-          response = engine.create_postgis_feature_resource(store_id='workspace:store_name', table='table_name', host='localhost', port='5432', database='database_name', user='user', password='pass')
+          response = engine.create_postgis_feature_resource(store_id='workspace:store_name', table='table_name', host='localhost', port='5432', database='database_name', user='user', password='pass')  # noqa: E501
 
           # Without table
 
-          response = engine.create_postgis_resource(store_id='workspace:store_name', host='localhost', port='5432', database='database_name', user='user', password='pass')
+          response = engine.create_postgis_resource(store_id='workspace:store_name', host='localhost', port='5432', database='database_name', user='user', password='pass')  # noqa: E501
 
         """
         # Get a GeoServer catalog object and query for list of layer groups
@@ -1129,8 +1162,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Add an existing postgis table as a feature resource to a postgis store that already exists.
 
         Args
-          store_id (string): Identifier for the store to add the resource to. Can be a store name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.
-          table (string): Name of existing table to add as a feature resource. A layer will automatically be created for this resource. Both the resource and the layer will share the same name as the table.
+          store_id (string): Identifier for the store to add the resource to. Can be a store name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.  # noqa: E501
+          table (string): Name of existing table to add as a feature resource. A layer will automatically be created for this resource. Both the resource and the layer will share the same name as the table.  # noqa: E501
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
@@ -1210,14 +1243,14 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         Args
           feature_type_name (string): Name of the feature type and layer to be created.
-          postgis_store_id (string): Identifier of existing postgis store with tables that will be queried by the sql view. Can be a store name or a workspace-name combination (e.g.: "name" or "workspace:name").
+          postgis_store_id (string): Identifier of existing postgis store with tables that will be queried by the sql view. Can be a store name or a workspace-name combination (e.g.: "name" or "workspace:name").  # noqa: E501
           sql (string): SQL that will be used to construct the sql view / virtual table.
           geometry_column (string): Name of the geometry column.
           geometry_type (string): Type of the geometry column (e.g. "Point", "LineString", "Polygon").
           geometry_srid (string, optional): EPSG spatial reference id of the geometry column. Defaults to 4326.
-          default_style (string, optional): Identifier of a style to assign as the default style. Can be a style name or a workspace-name combination (e.g.: "name" or "workspace:name").
+          default_style (string, optional): Identifier of a style to assign as the default style. Can be a style name or a workspace-name combination (e.g.: "name" or "workspace:name").  # noqa: E501
           key_column (string, optional): The name of the key column.
-          parameters (iterable, optional): A list/tuple of tuple-triplets representing parameters in the form (name, default, regex_validation), (e.g.: (('variable', 'pressure', '^[\w]+$'), ('simtime', '0:00:00', '^[\w\:]+$'))
+          parameters (iterable, optional): A list/tuple of tuple-triplets representing parameters in the form (name, default, regex_validation), (e.g.: (('variable', 'pressure', '^[\w]+$'), ('simtime', '0:00:00', '^[\w\:]+$'))  # noqa: E501
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
@@ -1291,17 +1324,18 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         self._handle_debug(response_dict, debug)
         return response_dict
 
-    def create_shapefile_resource(self, store_id, shapefile_base=None, shapefile_zip=None, shapefile_upload=None, overwrite=False, charset=None, debug=False):
+    def create_shapefile_resource(self, store_id, shapefile_base=None, shapefile_zip=None, shapefile_upload=None,
+                                  overwrite=False, charset=None, debug=False):
         """
          Use this method to add shapefile resources to GeoServer.
 
-         This method will result in the creation of three items: a feature type store, a feature type resource, and a layer. If store_id references a store that does not exist, it will be created. The feature type resource and the subsequent layer will be created with the same name as the feature type store. Provide shapefile with either shapefile_base, shapefile_zip, or shapefile_upload arguments.
+         This method will result in the creation of three items: a feature type store, a feature type resource, and a layer. If store_id references a store that does not exist, it will be created. The feature type resource and the subsequent layer will be created with the same name as the feature type store. Provide shapefile with either shapefile_base, shapefile_zip, or shapefile_upload arguments.  # noqa: E501
 
         Args
-          store_id (string): Identifier for the store to add the resource to. Can be a store name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.
+          store_id (string): Identifier for the store to add the resource to. Can be a store name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.  # noqa: E501
           shapefile_base (string, optional): Path to shapefile base name (e.g.: "/path/base" for shapefile at "/path/base.shp")
           shapefile_zip (string, optional): Path to a zip file containing the shapefile and side cars.
-          shapefile_upload (FileUpload list, optional): A list of Django FileUpload objects containing a shapefile and side cars that have been uploaded via multipart/form-data form.
+          shapefile_upload (FileUpload list, optional): A list of Django FileUpload objects containing a shapefile and side cars that have been uploaded via multipart/form-data form.  # noqa: E501
           overwrite (bool, optional): Overwrite the file if it already exists.
           charset (string, optional): Specify the character encoding of the file being uploaded (e.g.: ISO-8559-1)
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
@@ -1363,7 +1397,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Throw error if overwrite is not true and store already exists
         if not overwrite:
             try:
-                store = catalog.get_store(name=name, workspace=workspace)
+                catalog.get_store(name=name, workspace=workspace)
                 message = "There is already a store named " + name
                 if workspace:
                     message += " in " + workspace
@@ -1376,7 +1410,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
             except geoserver.catalog.FailedRequestError:
                 pass
-            except:
+            except Exception:
                 raise
 
         # Prepare files
@@ -1475,20 +1509,20 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         """
         Use this method to add coverage resources to GeoServer.
 
-        This method will result in the creation of three items: a coverage store, a coverage resource, and a layer. If store_id references a store that does not exist, it will be created. Unless coverage_name is specified, the coverage resource and the subsequent layer will be created with the same name as the image file that is uploaded.
+        This method will result in the creation of three items: a coverage store, a coverage resource, and a layer. If store_id references a store that does not exist, it will be created. Unless coverage_name is specified, the coverage resource and the subsequent layer will be created with the same name as the image file that is uploaded.  # noqa: E501
 
         Args
-          store_id (string): Identifier for the store to add the image to or to be created. Can be a name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.
-          coverage_type (string): Type of coverage that is being created. Valid values include: 'geotiff', 'worldimage', 'imagemosaic', 'imagepyramid', 'gtopo30', 'arcgrid', 'grassgrid', 'erdasimg', 'aig', 'gif', 'png', 'jpeg', 'tiff', 'dted', 'rpftoc', 'rst', 'nitf', 'envihdr', 'mrsid', 'ehdr', 'ecw', 'netcdf', 'erdasimg', 'jp2mrsid'.
-          coverage_file (string, optional): Path to the coverage image or zip archive. Most files will require a .prj file with the Well Known Text definition of the projection. Zip this file up with the image and send the archive.
-          coverage_upload (FileUpload list, optional): A list of Django FileUpload objects containing a coverage file and .prj file or archive that have been uploaded via multipart/form-data form.
-          coverage_name (string): Name of the coverage resource and subsequent layer that are created. If unspecified, these will match the name of the image file that is uploaded.
+          store_id (string): Identifier for the store to add the image to or to be created. Can be a name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.  # noqa: E501
+          coverage_type (string): Type of coverage that is being created. Valid values include: 'geotiff', 'worldimage', 'imagemosaic', 'imagepyramid', 'gtopo30', 'arcgrid', 'grassgrid', 'erdasimg', 'aig', 'gif', 'png', 'jpeg', 'tiff', 'dted', 'rpftoc', 'rst', 'nitf', 'envihdr', 'mrsid', 'ehdr', 'ecw', 'netcdf', 'erdasimg', 'jp2mrsid'.  # noqa: E501
+          coverage_file (string, optional): Path to the coverage image or zip archive. Most files will require a .prj file with the Well Known Text definition of the projection. Zip this file up with the image and send the archive.  # noqa: E501
+          coverage_upload (FileUpload list, optional): A list of Django FileUpload objects containing a coverage file and .prj file or archive that have been uploaded via multipart/form-data form.  # noqa: E501
+          coverage_name (string): Name of the coverage resource and subsequent layer that are created. If unspecified, these will match the name of the image file that is uploaded.  # noqa: E501
           overwrite (bool, optional): Overwrite the file if it already exists.
           charset (string, optional): Specify the character encoding of the file being uploaded (e.g.: ISO-8559-1)
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Note
-          If the type coverage being uploaded includes multiple files (e.g.: image, world file, projecttion file), they must be uploaded as a zip archive. Otherwise upload the single file.
+          If the type coverage being uploaded includes multiple files (e.g.: image, world file, projecttion file), they must be uploaded as a zip archive. Otherwise upload the single file.  # noqa: E501
 
         Returns:
           (dict): Response dictionary
@@ -1497,7 +1531,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           coverage_file = '/path/to/geotiff/example.zip'
 
-          response = engine.create_coverage_resource(store_id='workspace:store_name', coverage_file=coverage_file, coverage_type='geotiff')
+          response = engine.create_coverage_resource(store_id='workspace:store_name', coverage_file=coverage_file, coverage_type='geotiff')  # noqa: E501
         """
         # Globals
         VALID_COVERAGE_TYPES = ('geotiff',
@@ -1527,7 +1561,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         # Validate coverage type
         if coverage_type not in VALID_COVERAGE_TYPES:
-            raise ValueError('"{0}" is not a valid coverage_type. Use either {1}'.format(coverage_type, ', '.join(VALID_COVERAGE_TYPES)))
+            raise ValueError('"{0}" is not a valid coverage_type. Use either {1}'.format(
+                coverage_type, ', '.join(VALID_COVERAGE_TYPES)))
 
         # Get a GeoServer catalog object and query for list of layer groups
         catalog = self._get_geoserver_catalog_object()
@@ -1542,7 +1577,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Throw error if overwrite is not true and store already exists
         if not overwrite:
             try:
-                store = catalog.get_store(name=name, workspace=workspace)
+                catalog.get_store(name=name, workspace=workspace)
                 message = "There is already a store named " + name
                 if workspace:
                     message += " in " + workspace
@@ -1569,18 +1604,17 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             # Change Header
             valid_grass_file = False
 
-            for file in os.listdir(working_dir):
-                if 'prj' not in file:
+            for f in os.listdir(working_dir):
+                if 'prj' not in f:
                     # Defaults
                     contents = ''
                     north = 90.0
                     south = -90.0
                     east = -180.0
-                    west = 180.0
                     rows = 360
                     cols = 720
 
-                    with open(os.path.join(working_dir, file), 'r') as f:
+                    with open(os.path.join(working_dir, f), 'r') as f:
                         contents = f.readlines()
 
                     corrupt_file = False
@@ -1593,7 +1627,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                         elif 'east' in line:
                             east = float(line.split(':')[1].strip())
                         elif 'west' in line:
-                            west = float(line.split(':')[1].strip())
+                            pass
                         elif 'rows' in line:
                             rows = int(line.split(':')[1].strip())
                         elif 'cols' in line:
@@ -1616,11 +1650,11 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                               'cellsize      {0}\n'.format(cellsize)]
 
                     # Strip off old header and add new one
-                    for i in range(0,6):
+                    for i in range(0, 6):
                         contents.pop(0)
                     contents = header + contents
 
-                    with open(os.path.join(working_dir, file), 'w') as f:
+                    with open(os.path.join(working_dir, f), 'w') as f:
                         for line in contents:
                             f.write(line)
 
@@ -1628,17 +1662,18 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
             if not valid_grass_file:
                 # Clean up
-                for file in os.listdir(working_dir):
-                    os.remove(os.path.join(working_dir, file))
+                for f in os.listdir(working_dir):
+                    os.remove(os.path.join(working_dir, f))
                 os.rmdir(working_dir)
-                raise IOError('GRASS file could not be processed, check to ensure the GRASS grid is correctly formatted or included.')
+                raise IOError('GRASS file could not be processed, check to ensure the GRASS grid is correctly '
+                              'formatted or included.')
 
             # New coverage zip file (rezip)
             coverage_file = os.path.join(working_dir, 'foo.zip')
             with ZipFile(coverage_file, 'w') as zf:
-                for file in os.listdir(working_dir):
-                    if file != 'foo.zip':
-                        zf.write(os.path.join(working_dir, file), file)
+                for f in os.listdir(working_dir):
+                    if f != 'foo.zip':
+                        zf.write(os.path.join(working_dir, f), f)
 
         # Prepare file(s) for upload
         files = None
@@ -1658,7 +1693,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             # Check if zip archive
             try:
                 if coverage_upload.name.endswith('.zip'):
-                    files = {'file': coverage_upload }
+                    files = {'file': coverage_upload}
                 else:
                     content_type = 'image/{0}'.format(coverage_type)
                     data = coverage_upload
@@ -1671,10 +1706,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                 zip_file_in_memory = BytesIO()
 
                 with ZipFile(zip_file_in_memory, 'w') as zfile:
-                    for file in coverage_upload:
-                        zfile.writestr(file.name, file.read())
+                    for f in coverage_upload:
+                        zfile.writestr(f.name, f.read())
                 files = {'file': zip_file_in_memory.getvalue()}
-
 
         # Prepare headers
         extension = coverage_type
@@ -1709,8 +1743,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         # Clean up
         if working_dir:
-            for file in os.listdir(working_dir):
-                os.remove(os.path.join(working_dir, file))
+            for f in os.listdir(working_dir):
+                os.remove(os.path.join(working_dir, f))
             os.rmdir(working_dir)
 
         if response.status_code != 201:
@@ -1737,8 +1771,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Args:
           layer_group_id (string): Identifier of the layer group to create.
           layers (iterable): A list of layer names to be added to the group. Must be the same length as the styles list.
-          styles (iterable): A list of style names to  associate with each layer in the group. Must be the same length as the layers list.
-          bounds (iterable): A tuple representing the bounding box of the layer group (e.g.: ('-74.02722', '-73.907005', '40.684221', '40.878178', 'EPSG:4326') )
+          styles (iterable): A list of style names to  associate with each layer in the group. Must be the same length as the layers list.  # noqa: #501
+          bounds (iterable): A tuple representing the bounding box of the layer group (e.g.: ('-74.02722', '-73.907005', '40.684221', '40.878178', 'EPSG:4326') )  # noqa: #501
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
@@ -1752,7 +1786,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           bounds = ('-74.02722', '-73.907005', '40.684221', '40.878178', 'EPSG:4326')
 
-          response = engine.create_layer_group(layer_group_id='layer_group_name', layers=layers, styles=styles, bounds=bounds)
+          response = engine.create_layer_group(layer_group_id='layer_group_name', layers=layers, styles=styles, bounds=bounds)  # noqa: E501
         """
         # Get a GeoServer catalog object and query for list of layer groups
         catalog = self._get_geoserver_catalog_object()
@@ -1787,7 +1821,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         Args:
           workspace_id (string): Identifier of the workspace to create. Must be unique.
-          uri (string): URI associated with your project. Does not need to be a real web URL, just a unique identifier. One suggestion is to append the URL of your project with the name of the workspace (e.g.: http:www.example.com/workspace-name).
+          uri (string): URI associated with your project. Does not need to be a real web URL, just a unique identifier. One suggestion is to append the URL of your project with the name of the workspace (e.g.: http:www.example.com/workspace-name).  # noqa: E501
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
@@ -1849,7 +1883,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             # Do create
             num_attempts = 0
             upload_error = True
-            
+
             while num_attempts < 5 and upload_error:
 
                 try:
@@ -1888,7 +1922,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Update an existing resource.
 
         Args:
-          resource_id (string): Identifier of the resource to update. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
+          resource_id (string): Identifier of the resource to update. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").  # noqa: E501
           store (string, optional): Update a resource in this store.
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
           **kwargs (kwargs, optional): Key value pairs representing the attributes and values to change.
@@ -1944,7 +1978,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         Examples:
 
-          updated_layer = engine.update_layer(layer_id='workspace:layer_name', default_style='style1', styles=['style1', 'style2'])
+          updated_layer = engine.update_layer(layer_id='workspace:layer_name', default_style='style1', styles=['style1', 'style2'])  # noqa: E501
         """
         # Pop tile caching properties to handle separately
         tile_caching = kwargs.pop('tile_caching', None)
@@ -2011,7 +2045,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         Examples:
 
-          updated_layer_group = engine.update_layer_group(layer_group_id='layer_group_name', layers=['layer1', 'layer2'], styles=['style1', 'style2'])
+          updated_layer_group = engine.update_layer_group(layer_group_id='layer_group_name', layers=['layer1', 'layer2'], styles=['style1', 'style2'])  # noqa: E501
         """
         # Get a GeoServer catalog object and query for list of layer groups
         catalog = self._get_geoserver_catalog_object()
@@ -2050,7 +2084,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
           resource_id (string): Identifier of the resource to delete.
           store (string, optional): Delete resource from this store.
           purge (bool, optional): Purge if True.
-          recurse (bool, optional): Delete recursively any dependencies if True (i.e.: layers or layer groups it belongs to).
+          recurse (bool, optional): Delete recursively any dependencies if True (i.e.: layers or layer groups it belongs to).  # noqa: E501
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
@@ -2238,15 +2272,17 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             r = requests.get(self.endpoint, auth=(self.username, self.password))
 
         except requests.exceptions.MissingSchema:
-            raise AssertionError('The URL "{0}" provided for the GeoServer spatial dataset service endpoint is invalid.'.format(self.endpoint))
+            raise AssertionError('The URL "{0}" provided for the GeoServer spatial dataset service endpoint is '
+                                 'invalid.'.format(self.endpoint))
 
         if r.status_code == 401:
-            raise AssertionError('The username and password of the GeoServer spatial dataset service engine are not valid.')
+            raise AssertionError('The username and password of the GeoServer spatial dataset service engine are '
+                                 'not valid.')
 
         if r.status_code != 200:
-            raise AssertionError('The URL "{0}" is not a valid GeoServer spatial dataset service endpoint.'.format(self.endpoint))
+            raise AssertionError('The URL "{0}" is not a valid GeoServer spatial dataset service '
+                                 'endpoint.'.format(self.endpoint))
 
         if 'Geoserver Configuration API' not in r.text:
-            raise AssertionError('The URL "{0}" is not a valid GeoServer spatial dataset service endpoint.'.format(self.endpoint))
-
-
+            raise AssertionError('The URL "{0}" is not a valid GeoServer spatial dataset service '
+                                 'endpoint.'.format(self.endpoint))

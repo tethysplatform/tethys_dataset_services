@@ -107,7 +107,6 @@ class SpatialDatasetEngine:
         """
         return NotImplemented
 
-
     @abstractmethod
     def get_resource(self, resource_id):
         """

@@ -49,7 +49,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.engine.create_workspace(workspace_id=self.test_resource_workspace, uri=random_string_generator(5))
 
         # Create Test Stores/Resources/Layers
-        ## Shapefile
+        # Shapefile
 
         # Store name
         self.test_resource_store = random_string_generator(10)
@@ -66,7 +66,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.engine.create_shapefile_resource(self.test_store_identifier, shapefile_base=self.shapefile_base,
                                               overwrite=True)
 
-        ## Coverage
+        # Coverage
 
         # Create Test Style
         self.test_style_name = 'point'

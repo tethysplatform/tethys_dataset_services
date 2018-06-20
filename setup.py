@@ -13,12 +13,17 @@ gsconfig_lib = 'gsconfig'
 if sys.version_info.major == 3:
     gsconfig_lib += '-py3'
 
-requires = ['django',
-            'future',
-            'owslib',
-            '{0}>=1.0.0,<1.1.0'.format(gsconfig_lib),
-            'requests',
-            'requests_toolbelt']
+requires = [
+    'django',
+    'future',
+    'owslib',
+    '{0}>=1.0.0,<1.1.0'.format(gsconfig_lib),
+    'requests',
+    'requests_toolbelt',
+    'mock',
+    'coverage',
+    'flake8'
+]
 
 version = '1.6.4'
 setup(

@@ -28,7 +28,7 @@ class HydroShareDatasetEngine(DatasetEngine):
         Returns:
             tuple: url, data_dict, headers
         """
-        pass
+        raise NotImplementedError()
 
     @staticmethod
     def _execute_request(url, data, headers, file=None):
@@ -37,9 +37,9 @@ class HydroShareDatasetEngine(DatasetEngine):
 
         Args:
           url (string): The request url, usually the 'url' returned by '_prepare_request'.
-          data (dict): Key value parameters to send with request, usually the 'data_dict' returned by '_prepare_request'.
-          headers (dict): Key value parameters to include in the headers, usually the 'headers' returned by '_prepare_request'.
-          file (dict): Dictionary containing file to upload. See: http://docs.python-requests.org/en/latest/user/quickstart/#post-a-multipart-encoded-file
+          data (dict): Key value parameters to send with request, usually the 'data_dict' returned by '_prepare_request'.  # noqa: E501
+          headers (dict): Key value parameters to include in the headers, usually the 'headers' returned by '_prepare_request'.  # noqa: E501
+          file (dict): Dictionary containing file to upload. See: http://docs.python-requests.org/en/latest/user/quickstart/#post-a-multipart-encoded-file  # noqa: E501
 
         Returns:
           tuple: status_code, response
@@ -60,7 +60,7 @@ class HydroShareDatasetEngine(DatasetEngine):
         Returns:
           dict: response parsed into a dictionary or raises appropriate error.
         """
-        pass
+        raise NotImplementedError()
 
     def search_datasets(self, query, console=False, **kwargs):
         """
@@ -74,7 +74,7 @@ class HydroShareDatasetEngine(DatasetEngine):
         Returns:
           The response dictionary or None if an error occurs.
         """
-        pass
+        raise NotImplementedError()
 
     def search_resources(self, query, console=False, **kwargs):
         """
@@ -88,7 +88,7 @@ class HydroShareDatasetEngine(DatasetEngine):
         Returns:
           The response dictionary or None if an error occurs.
         """
-        pass
+        raise NotImplementedError()
 
     def list_datasets(self, with_resources=False, console=False, **kwargs):
         """
@@ -102,7 +102,7 @@ class HydroShareDatasetEngine(DatasetEngine):
         Returns:
           list: A list of dataset names or a list of dataset dictionaries if with_resources is true.
         """
-        pass
+        raise NotImplementedError()
 
     def get_dataset(self, dataset_id, console=False, **kwargs):
         """
@@ -116,7 +116,7 @@ class HydroShareDatasetEngine(DatasetEngine):
         Returns:
           The response dictionary or None if an error occurs.
         """
-        pass
+        raise NotImplementedError()
 
     def get_resource(self, resource_id, console=False, **kwargs):
         """
@@ -130,7 +130,7 @@ class HydroShareDatasetEngine(DatasetEngine):
         Returns:
           The response dictionary or None if an error occurs.
         """
-        pass
+        raise NotImplementedError()
 
     def create_dataset(self, name, console=False, **kwargs):
         """
@@ -144,7 +144,7 @@ class HydroShareDatasetEngine(DatasetEngine):
         Returns:
           The response dictionary or None if an error occurs.
         """
-        pass
+        raise NotImplementedError()
 
     def create_resource(self, dataset_id, url=None, file=None, console=False, **kwargs):
         """
@@ -160,7 +160,7 @@ class HydroShareDatasetEngine(DatasetEngine):
         Returns:
           The response dictionary or None if an error occurs.
         """
-        pass
+        raise NotImplementedError()
 
     def update_dataset(self, dataset_id, console=False, **kwargs):
         """
@@ -174,7 +174,7 @@ class HydroShareDatasetEngine(DatasetEngine):
         Returns:
           The response dictionary or None if an error occurs.
         """
-        pass
+        raise NotImplementedError()
 
     def update_resource(self, resource_id, url=None, file=None, console=False, **kwargs):
         """
@@ -190,7 +190,7 @@ class HydroShareDatasetEngine(DatasetEngine):
         Returns:
           The response dictionary or None if an error occurs.
         """
-        pass
+        raise NotImplementedError()
 
     def delete_dataset(self, dataset_id, console=False, **kwargs):
         """
@@ -204,7 +204,7 @@ class HydroShareDatasetEngine(DatasetEngine):
         Returns:
           The response dictionary or None if an error occurs.
         """
-        pass
+        raise NotImplementedError()
 
     def delete_resource(self, resource_id, console=False, **kwargs):
         """
@@ -218,4 +218,4 @@ class HydroShareDatasetEngine(DatasetEngine):
         Returns:
           The response dictionary or None if an error occurs.
         """
-        pass
+        raise NotImplementedError()

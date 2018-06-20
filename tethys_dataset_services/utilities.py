@@ -19,7 +19,7 @@ class XmlDictObject(dict):
         self.__setitem__(item, value)
 
     def __str__(self):
-        if self.has_key('_text'):
+        if '_text' in self:
             return self.__getitem__('_text')
         else:
             return ''
@@ -55,13 +55,13 @@ class XmlDictObject(dict):
 
 
 def _ConvertDictToXmlRecurse(parent, dictitem):
-    assert type(dictitem) is not type([])
+    assert not isinstance(dictitem, type([]))
 
     if isinstance(dictitem, dict):
         for (tag, child) in dictitem.iteritems():
             if str(tag) == '_text':
                 parent.text = str(child)
-            elif type(child) is type([]):
+            elif isinstance(child, type([])):
                 # iterate through the array and convert
                 for listchild in child:
                     elem = ElementTree.Element(tag)
@@ -96,9 +96,9 @@ def _ConvertXmlToDictRecurse(node, dictclass):
     for child in node:
         # recursively add the element's children
         newitem = _ConvertXmlToDictRecurse(child, dictclass)
-        if nodedict.has_key(child.tag):
+        if child.tag in nodedict:
             # found duplicate tag, force a list
-            if type(nodedict[child.tag]) is type([]):
+            if isinstance(nodedict[child.tag], type([])):
                 # append to existing list
                 nodedict[child.tag].append(newitem)
             else:
@@ -129,7 +129,7 @@ def ConvertXmlToDict(root, dictclass=XmlDictObject):
     Converts an XML file or ElementTree Element to a dictionary
     """
     # If a string is passed in, try to open it as a file
-    if type(root) == type(''):
+    if isinstance(root, type('')):
         root = ElementTree.parse(root).getroot()
     elif not isinstance(root, ElementTree.Element):
         raise TypeError('Expected ElementTree.Element or file path string')
