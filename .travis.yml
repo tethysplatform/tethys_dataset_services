@@ -3,6 +3,14 @@ python:
   # We don't actually use the Travis Python, but this keeps it organized.
   - "2.7"
   - "3.6"
+
+stages:
+  - test
+  - deploy-pip
+#  - if: tag =~ ^\d+\.\d+\.\d+$
+  - deploy-conda
+#  - if: tag =~ ^\d+\.\d+\.\d+$
+
 install:
   - sudo apt-get update
   # We do this conditionally because it saves us some downloading if the
@@ -32,9 +40,7 @@ install:
 
 jobs:
   include:
-    - stage: test
-      script:
-        - . test.sh
+    - script: . test.sh # uses the default stage name "test"
     - stage: deploy-pip
       script:
         - echo "deploying to pip..."
