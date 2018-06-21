@@ -38,9 +38,11 @@ install:
     fi
   - python setup.py develop
 
+script: skip
+  - . test.sh
+
 jobs:
   include:
-    - script: . test.sh # uses the default stage name "test"
     - stage: deploy-pip
       script:
         - echo "deploying to pip..."
