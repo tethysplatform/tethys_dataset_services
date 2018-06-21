@@ -5,11 +5,12 @@ python:
   - "3.6"
 
 stages:
+  - lint
   - test
-  - deploy-pip
-#  - if: tag =~ ^\d+\.\d+\.\d+$
-  - deploy-conda
-#  - if: tag =~ ^\d+\.\d+\.\d+$
+  - name: deploy-pip
+    if: tag =~ ^\d+\.\d+\.\d+$
+  - name: deploy-conda
+    if: tag =~ ^\d+\.\d+\.\d+$
 
 install:
   - sudo apt-get update
@@ -39,10 +40,14 @@ install:
   - python setup.py develop
 
 script: skip
-  - . test.sh
+  - coverage run --rcfile=coverage.ini setup.py test -s tethys_dataset_services.tests.geoserver_engine_tests.TestGeoServerDatasetEngine
+  - coverage report -m
 
 jobs:
   include:
+    - stage: lint
+      script:
+        - flake8
     - stage: deploy-pip
       script:
         - echo "deploying to pip..."
