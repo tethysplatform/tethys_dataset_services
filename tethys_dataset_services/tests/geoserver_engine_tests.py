@@ -105,7 +105,6 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
             mock_layer_group.name = lgn
             self.mock_layer_groups.append(mock_layer_group)
 
-
         # # Create Test Workspaces
         # # self.test_resource_workspace = random_string_generator(10)
         # self.test_resource_workspace = random_string_generator(10)
@@ -363,7 +362,13 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         for r in result:
             self.assertIn(r, self.layer_group_names)
 
-    def test_list_layer_groups_with_properties(self):
+        mc.get_layergroups.assert_called()
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_list_layer_groups_with_properties(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_layergroups.return_value = self.mock_layer_groups
+
         # Execute
         response = self.engine.list_layer_groups(with_properties=True, debug=self.debug)
 
@@ -383,15 +388,18 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         if len(result) > 0:
             self.assertIsInstance(result[0], dict)
 
-        # Test layer included
-        test_layer_group_in = False
-
         for r in result:
-            if r['name'] == self.test_layer_group_name:
-                test_layer_group_in = True
-                break
+            self.assertIn('name', r)
+            self.assertIn(r['name'], self.layer_group_names)
+            self.assertIn('workspace', r)
+            self.assertEqual(self.workspace_name, r['workspace'])
+            self.assertIn('catalog', r)
+            self.assertEqual(self.catalog_endpoint, r['catalog'])
+            self.assertIn('layers', r)
+            self.assertEqual(self.layer_names, r['layers'])
+            self.assertNotIn('dom', r)
 
-        self.assertTrue(test_layer_group_in)
+        mc.get_layergroups.assert_called()
 
     def test_list_workspaces(self):
         raise NotImplementedError()
