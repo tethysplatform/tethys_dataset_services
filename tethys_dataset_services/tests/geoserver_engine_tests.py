@@ -706,8 +706,75 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertIn('name', result)
         self.assertEqual(result['name'], self.test_layer_group_name)
 
-    def test_get_store(self):
-        raise NotImplementedError()
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_get_store(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_store.return_value = self.mock_store_names[0]
+
+        # Execute
+        response = self.engine.get_store(store_id=self.store_names[0], debug=self.debug)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        # Properties
+        self.assertIn('name', r)
+        self.assertIn(r['name'], self.store_names)
+        self.assertIn('workspace', r)
+        self.assertEqual(self.workspace_name, r['workspace'])
+
+        mc.get_store.assert_called_with(name=self.store_names[0], workspace=None)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_get_store_none(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_store.return_value = None
+
+        # Execute
+        response = self.engine.get_store(store_id=self.store_names[0], debug=self.debug)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertFalse(response['success'])
+
+        # Extract Result
+        r = response['error']
+
+        self.assertIn('not found', r)
+
+        mc.get_store.assert_called_with(name=self.store_names[0], workspace=None)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_get_store_failed_request_error(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_store.side_effect = geoserver.catalog.FailedRequestError('Failed Request')
+
+        # Execute
+        response = self.engine.get_store(store_id=self.store_names[0], debug=self.debug)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertFalse(response['success'])
+
+        # Extract Result
+        r = response['error']
+
+        self.assertIn('Failed Request', r)
+
+        mc.get_store.assert_called_with(name=self.store_names[0], workspace=None)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_get_style(self, mock_catalog):
