@@ -110,7 +110,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.workspace_names = ['b-workspace', 'c-workspace']
         self.mock_workspaces = []
         for wp in self.workspace_names:
-            mock_workspace = mock.NonCallableMagicMock(workspace=self.workspace_name)
+            mock_workspace = mock.NonCallableMagicMock()
             mock_workspace.name = wp
             self.mock_workspaces.append(mock_workspace)
 
@@ -710,10 +710,6 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         raise NotImplementedError()
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
-    def test_get_workspace(self, mock_catalog):
-        pass
-
-    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_get_style(self, mock_catalog):
         mc = mock_catalog()
         mc.get_style.return_value = self.mock_styles[0]
@@ -783,7 +779,73 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         mc.get_style.assert_called_with(name=self.style_names[0], workspace=None)
 
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_get_workspace(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_workspace.return_value = self.mock_workspaces[0]
 
+        # Execute
+        response = self.engine.get_workspace(workspace_id=self.workspace_names[0], debug=self.debug)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        # Properties
+        self.assertIn('name', r)
+        self.assertIn(r['name'], self.workspace_names[0])
+
+        mc.get_workspace.assert_called_with(name=self.workspace_names[0])
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_get_workspace_none(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_workspace.return_value = None
+
+        # Execute
+        response = self.engine.get_workspace(workspace_id=self.workspace_names[0], debug=self.debug)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertFalse(response['success'])
+
+        # Extract Result
+        r = response['error']
+
+        self.assertIn('not found', r)
+
+        mc.get_workspace.assert_called_with(name=self.workspace_names[0])
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_get_workspace_failed_request_error(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_workspace.side_effect = geoserver.catalog.FailedRequestError('Failed Request')
+
+        # Execute
+        response = self.engine.get_workspace(workspace_id=self.workspace_names[0], debug=self.debug)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertFalse(response['success'])
+
+        # Extract Result
+        r = response['error']
+
+        self.assertIn('Failed Request', r)
+
+        mc.get_workspace.assert_called_with(name=self.workspace_names[0])
 
     def test_update_resource(self):
         # Setup
