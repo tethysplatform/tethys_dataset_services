@@ -762,6 +762,29 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         mc.get_style.assert_called_with(name=self.style_names[0], workspace=None)
 
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_get_style_failed_request_error(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_style.side_effect = geoserver.catalog.FailedRequestError('Failed Request')
+
+        # Execute
+        response = self.engine.get_style(style_id=self.style_names[0], debug=self.debug)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertFalse(response['success'])
+
+        # Extract Result
+        r = response['error']
+
+        self.assertIn('Failed Request', r)
+
+        mc.get_style.assert_called_with(name=self.style_names[0], workspace=None)
+
+
+
     def test_update_resource(self):
         # Setup
         new_title = random_string_generator(15)
