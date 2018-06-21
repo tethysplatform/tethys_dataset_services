@@ -46,6 +46,7 @@ script:
 jobs:
   include:
     - stage: lint
+      install: skip
       script:
         - flake8
     - stage: deploy-pip
