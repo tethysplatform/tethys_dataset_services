@@ -709,8 +709,9 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     def test_get_store(self):
         raise NotImplementedError()
 
-    def test_get_workspace(self):
-        raise NotImplementedError()
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_get_workspace(self, mock_catalog):
+        pass
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_get_style(self, mock_catalog):
@@ -737,6 +738,27 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertIn(r['name'], self.style_names)
         self.assertIn('workspace', r)
         self.assertEqual(self.workspace_name, r['workspace'])
+
+        mc.get_style.assert_called_with(name=self.style_names[0], workspace=None)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_get_style_none(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_style.return_value = None
+
+        # Execute
+        response = self.engine.get_style(style_id=self.style_names[0], debug=self.debug)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertFalse(response['success'])
+
+        # Extract Result
+        r = response['error']
+
+        self.assertIn('not found', r)
 
         mc.get_style.assert_called_with(name=self.style_names[0], workspace=None)
 
