@@ -472,6 +472,50 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         mc.get_resource.assert_called_with(name=self.resource_names[0], store=None, workspace=self.workspace_name)
 
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_get_resource_none(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_resource.return_value = None
+
+        # Execute
+        response = self.engine.get_resource(resource_id=self.resource_names[0], debug=self.debug)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # False
+        self.assertFalse(response['success'])
+
+        # Expect Error
+        r = response['error']
+
+        # Properties
+        self.assertIn('not found', r)
+
+        mc.get_resource.assert_called_with(name=self.resource_names[0], store=None, workspace=None)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_get_resource_failed_request_error(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_resource.side_effect = geoserver.catalog.FailedRequestError('Failed Request')
+
+        # Execute
+        response = self.engine.get_resource(resource_id=self.resource_names[0], debug=self.debug)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # False
+        self.assertFalse(response['success'])
+
+        # Expect Error
+        r = response['error']
+
+        # Properties
+        self.assertIn('Failed Request', r)
+
+        mc.get_resource.assert_called_with(name=self.resource_names[0], store=None, workspace=None)
+
     def test_get_resource_with_store(self):
         # Execute
         response = self.engine.get_resource(resource_id=self.test_resource_name,
