@@ -410,9 +410,13 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     def test_list_styles(self):
         raise NotImplementedError()
 
-    def test_get_resource(self):
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_get_resource(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_resource.return_value = self.mock_resources[0]
+
         # Execute
-        response = self.engine.get_resource(resource_id=self.test_resource_name, debug=self.debug)
+        response = self.engine.get_resource(resource_id=self.resource_names[0], debug=self.debug)
 
         # Validate response object
         self.assert_valid_response_object(response)
@@ -421,18 +425,29 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertTrue(response['success'])
 
         # Extract Result
-        result = response['result']
+        r = response['result']
 
         # Type
-        self.assertIsInstance(result, dict)
+        self.assertIsInstance(r, dict)
 
         # Properties
-        self.assertIn('workspace', result)
-        self.assertEqual(result['workspace'], self.test_resource_workspace)
+        self.assertIn('name', r)
+        self.assertIn(r['name'], self.resource_names)
+        self.assertIn('workspace', r)
+        self.assertEqual(self.workspace_name, r['workspace'])
+        self.assertIn('store', r)
+        self.assertEqual(self.store_name, r['store'])
 
-    def test_get_resource_with_workspace(self):
+        mc.get_resource.assert_called_with(name=self.resource_names[0], store=None, workspace=None)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_get_resource_with_workspace(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_resource.return_value = self.mock_resources[0]
+
         # Execute
-        response = self.engine.get_resource(resource_id=self.test_resource_identifier,
+        resource_id = self.workspace_name + ":" + self.resource_names[0]
+        response = self.engine.get_resource(resource_id=resource_id,
                                             debug=self.debug)
 
         # Validate response object
@@ -442,16 +457,20 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertTrue(response['success'])
 
         # Extract Result
-        result = response['result']
+        r = response['result']
 
         # Type
-        self.assertIsInstance(result, dict)
+        self.assertIsInstance(r, dict)
 
         # Properties
-        self.assertIn('name', result)
-        self.assertIn('workspace', result)
-        self.assertEqual(result['name'], self.test_resource_name)
-        self.assertEqual(result['workspace'], self.test_resource_workspace)
+        self.assertIn('name', r)
+        self.assertIn(r['name'], self.resource_names)
+        self.assertIn('workspace', r)
+        self.assertEqual(self.workspace_name, r['workspace'])
+        self.assertIn('store', r)
+        self.assertEqual(self.store_name, r['store'])
+
+        mc.get_resource.assert_called_with(name=self.resource_names[0], store=None, workspace=self.workspace_name)
 
     def test_get_resource_with_store(self):
         # Execute
