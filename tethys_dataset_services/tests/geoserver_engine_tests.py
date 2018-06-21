@@ -609,55 +609,94 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     def test_update_layer_group(self):
         raise NotImplementedError()
 
-    def test_delete_resource(self):
-        # Must delete layer group and layer first
-        self.engine.delete_layer_group(layer_group_id=self.test_layer_group_name)
-        self.engine.delete_layer(layer_id=self.test_layer_name)
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_delete_resource_with_workspace(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_resource.return_value = self.mock_resources[0]
 
-        # Do delete
-        response = self.engine.delete_resource(resource_id=self.test_resource_identifier)
+        resource_id = '{}:{}'.format(self.workspace_name, self.resource_names[0])
 
-        # Should succeed
+        # Execute
+        response = self.engine.delete_resource(resource_id)
+
+        # Validate response object
         self.assert_valid_response_object(response)
+
+        # Success
         self.assertTrue(response['success'])
-        self.assertIsNone(response['result'])
+        mc.get_resource.assert_called_with(name=self.resource_names[0], store=None, workspace=self.workspace_name)
+        mc.delete.assert_called_with(config_object=self.mock_resources[0], purge=False, recurse=False)
 
-    def test_delete_resource_belongs_to_layer(self):
-        # Do delete without deleting layer group and layer
-        response = self.engine.delete_resource(resource_id=self.test_resource_identifier)
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_delete_resource_without_workspace(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_resource.return_value = self.mock_resources[0]
 
-        # Should fail
+        resource_id = self.resource_names[0]
+
+        # Execute
+        response = self.engine.delete_resource(resource_id)
+
+        # Validate response object
         self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+        mc.get_resource.assert_called_with(name=self.resource_names[0], store=None, workspace=None)
+        mc.delete.assert_called_with(config_object=self.mock_resources[0], purge=False, recurse=False)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_delete_resource_error(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_resource.return_value = self.mock_resources[0]
+        mc.delete.side_effect = geoserver.catalog.FailedRequestError()
+
+        resource_id = '{}:{}'.format(self.workspace_name, self.resource_names[0])
+
+        # Execute
+        response = self.engine.delete_resource(resource_id)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
         self.assertFalse(response['success'])
+        mc.delete.assert_called_with(config_object=self.mock_resources[0], purge=False, recurse=False)
+        mc.get_resource.assert_called_with(name=self.resource_names[0], store=None, workspace=self.workspace_name)
 
-    def test_delete_resource_recurse(self):
-        # Force delete with recurse
-        response = self.engine.delete_resource(resource_id=self.test_resource_identifier, recurse=True)
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_delete_resource_does_not_exist(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_resource.return_value = None
 
-        # Should succeed
+        resource_id = '{}:{}'.format(self.workspace_name, self.resource_names[0])
+
+        # Execute
+        response = self.engine.delete_resource(resource_id)
+
+        # Validate response object
         self.assert_valid_response_object(response)
-        self.assertTrue(response['success'])
-        self.assertIsNone(response['result'])
 
-    def test_delete_resource_does_not_exist(self):
-        # Do delete
-        response = self.engine.delete_resource(resource_id='iDontExist')
-
-        # Should fail
-        self.assert_valid_response_object(response)
+        # Success
         self.assertFalse(response['success'])
+        self.assertIn('GeoServer object does not exist', response['error'])
+        mc.get_resource.assert_called_with(name=self.resource_names[0], store=None, workspace=self.workspace_name)
 
-    def test_delete_layer(self):
-        # Delete layer group first
-        self.engine.delete_layer_group(layer_group_id=self.test_layer_group_name)
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_delete_layer(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_layer.return_value = self.mock_layers[0]
 
-        # Do delete
-        response = self.engine.delete_layer(layer_id=self.test_layer_name)
+        # Execute
+        response = self.engine.delete_layer(self.layer_names[0])
 
-        # Should succeed
+        # Validate response object
         self.assert_valid_response_object(response)
+
+        # Success
         self.assertTrue(response['success'])
-        self.assertIsNone(response['result'])
+        mc.get_layer.assert_called_with(name=self.layer_names[0])
+        mc.delete.assert_called_with(config_object=self.mock_layers[0], purge=False, recurse=False)
 
     def test_delete_layer_belongs_to_group(self):
         # Do delete without deleting layer group
@@ -675,17 +714,6 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assert_valid_response_object(response)
         self.assertTrue(response['success'])
         self.assertIsNone(response['result'])
-
-    def test_delete_layer_does_not_exist(self):
-        # Delete layer group first
-        self.engine.delete_layer_group(layer_group_id=self.test_layer_group_name)
-
-        # Do delete
-        response = self.engine.delete_layer(layer_id='iDontExist')
-
-        # Should fail
-        self.assert_valid_response_object(response)
-        self.assertFalse(response['success'])
 
     def test_delete_layer_group(self):
         # Do delete
