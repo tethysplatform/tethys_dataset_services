@@ -792,31 +792,20 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         mc.get_layer.assert_called_with(name=self.layer_names[0])
         mc.delete.assert_called_with(config_object=self.mock_layers[0], purge=False, recurse=False)
 
-    def test_delete_layer_belongs_to_group(self):
-        # Do delete without deleting layer group
-        response = self.engine.delete_layer(layer_id=self.test_layer_name)
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_delete_layer_group(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_layergroup.return_value = self.mock_layer_groups[0]
 
-        # Should fail
-        self.assert_valid_response_object(response)
-        self.assertFalse(response['success'])
-
-    def test_delete_layer_recurse(self):
-        # Force delete with recurse
-        response = self.engine.delete_layer(layer_id=self.test_layer_name, recurse=True)
-
-        # Should succeed
-        self.assert_valid_response_object(response)
-        self.assertTrue(response['success'])
-        self.assertIsNone(response['result'])
-
-    def test_delete_layer_group(self):
         # Do delete
-        response = self.engine.delete_layer_group(layer_group_id=self.test_layer_group_name)
+        response = self.engine.delete_layer_group(layer_group_id=self.layer_group_names[0])
 
         # Should succeed
         self.assert_valid_response_object(response)
         self.assertTrue(response['success'])
         self.assertIsNone(response['result'])
+        mc.get_layergroup.assert_called_with(name=self.layer_group_names[0])
+        mc.delete.assert_called_with(config_object=self.mock_layer_groups[0], purge=False, recurse=False)
 
     def test_delete_layer_group_does_not_exist(self):
         # Do delete
