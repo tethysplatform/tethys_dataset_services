@@ -30,5 +30,14 @@ install:
     fi
   - python setup.py develop
 
-script:
-  - . test.sh
+jobs:
+  include:
+    - stage: test
+      script:
+        - . test.sh
+    - stage: deploy-pip
+      script:
+        - echo "deploying to pip..."
+    - stage: deploy-conda
+      script:
+        - echo "deploying to conda..."
