@@ -31,4 +31,4 @@ install:
   - python setup.py develop
 
 script:
-  # Your test script goes here
+  - . test.sh
