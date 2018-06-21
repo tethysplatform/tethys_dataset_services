@@ -45,6 +45,10 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
                                                     username=TEST_GEOSERVER_DATASET_SERVICE['USERNAME'],
                                                     password=TEST_GEOSERVER_DATASET_SERVICE['PASSWORD'])
 
+        # Catalog
+        self.catalog_endpoint = 'http://localhost:8181/geoserver/'
+        self.mock_catalog = mock.NonCallableMagicMock(gs_base_url=self.catalog_endpoint)
+
         # Mock Objects
         self.workspace_name = 'a-workspace'
 
@@ -87,6 +91,20 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
             mock_layer.default_style = self.mock_default_style
             mock_layer.styles = self.mock_styles
             self.mock_layers.append(mock_layer)
+
+        # Layer groups
+        self.layer_group_names = ['boo', 'moo']
+        self.mock_layer_groups = []
+        for lgn in self.layer_group_names:
+            mock_layer_group = mock.NonCallableMagicMock(
+                workspace=self.workspace_name,
+                catalog=self.mock_catalog,
+                dom='fake-dom',
+                layers=self.layer_names
+            )
+            mock_layer_group.name = lgn
+            self.mock_layer_groups.append(mock_layer_group)
+
 
         # # Create Test Workspaces
         # # self.test_resource_workspace = random_string_generator(10)
@@ -320,7 +338,11 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         mc.get_layers.assert_called()
 
-    def test_list_layer_groups(self):
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_list_layer_groups(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_layergroups.return_value = self.mock_layer_groups
+
         # Execute
         response = self.engine.list_layer_groups(debug=self.debug)
 
@@ -338,7 +360,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
             self.assertIsInstance(result[0], str)
 
         # Test layer group listed
-        self.assertIn(self.test_layer_group_name, result)
+        for r in result:
+            self.assertIn(r, self.layer_group_names)
 
     def test_list_layer_groups_with_properties(self):
         # Execute
