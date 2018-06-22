@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/tethysplatform/tethys_dataset_services.svg?branch=python3)](https://travis-ci.org/tethysplatform/tethys_dataset_services)
-[![Build status](https://ci.appveyor.com/api/projects/status/ehh3lx289lfj4ue5/branch/master?svg=true)](https://ci.appveyor.com/project/TethysPlatform/tethys-dataset-services/branch/python3)
+[![Build status](https://ci.appveyor.com/api/projects/status/ehh3lx289lfj4ue5?svg=true)](https://ci.appveyor.com/project/TethysPlatform/tethys-dataset-services)
 
 # Tethys Dataset Services
 
