@@ -1,0 +1,9 @@
+django < 2
+future
+owslib
+gsconfig>=1.0.0,<1.1.0
+requests
+requests_toolbelt
+mock
+coverage
+flake8

@@ -2,28 +2,16 @@ import os
 from setuptools import setup, find_packages
 import sys
 
-with open(os.path.join(os.path.dirname(__file__), 'README.rst')) as readme:
+with open(os.path.join(os.path.dirname(__file__), 'README.md')) as readme:
     README = readme.read()
 
 # allow setup.py to be run from any path
 os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
-gsconfig_lib = 'gsconfig'
+requirements_file = 'requirements-py2.txt' if sys.version_info.major == 2 else 'requirements-py3.txt'
 
-if sys.version_info.major == 3:
-    gsconfig_lib += '-py3'
-
-requires = [
-    'django',
-    'future',
-    'owslib',
-    '{0}>=1.0.0,<1.1.0'.format(gsconfig_lib),
-    'requests',
-    'requests_toolbelt',
-    'mock',
-    'coverage',
-    'flake8'
-]
+with open(requirements_file, 'r') as r:
+    requires = r.read()
 
 version = '1.6.4'
 setup(
