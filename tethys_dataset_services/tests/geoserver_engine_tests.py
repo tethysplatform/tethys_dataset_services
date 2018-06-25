@@ -34,6 +34,20 @@ def mock_get_style(name, workspace=None):
     return mock_style
 
 
+class MockResponse(object):
+    def __init__(self, status_code, text=None, json=None, reason=None):
+        self.status_code = status_code
+        self.text = text
+        self.json_obj = json
+        self.reason = reason
+
+    def json(self):
+        return self.json_obj
+
+    def reason(self):
+        return self.reason
+
+
 class TestGeoServerDatasetEngine(unittest.TestCase):
 
     def setUp(self):
@@ -718,6 +732,48 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         mc.get_layer.assert_called_with(name=self.layer_names[0])
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_get_layer_none(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_layer.return_value = None
+
+        # Execute
+        response = self.engine.get_layer(layer_id=self.layer_names[0], debug=self.debug)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertFalse(response['success'])
+
+        # Extract Result
+        r = response['error']
+
+        self.assertIn('not found', r)
+
+        mc.get_layer.assert_called_with(name=self.layer_names[0])
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_get_layer_failed_request_error(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_layer.side_effect = geoserver.catalog.FailedRequestError('Failed Request')
+
+        # Execute
+        response = self.engine.get_layer(layer_id=self.layer_names[0], debug=self.debug)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertFalse(response['success'])
+
+        # Extract Result
+        r = response['error']
+
+        self.assertEqual(r, 'Failed Request')
+
+        mc.get_layer.assert_called_with(name=self.layer_names[0])
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_get_layer_group(self, mock_catalog):
         mc = mock_catalog()
         mc.get_layergroup.return_value = self.mock_layer_groups[0]
@@ -749,40 +805,12 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         mc.get_layergroup.assert_called_with(name=self.layer_group_names[0])
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
-    def test_get_store(self, mock_catalog):
+    def test_get_layer_group_none(self, mock_catalog):
         mc = mock_catalog()
-        mc.get_store.return_value = self.mock_store_names[0]
+        mc.get_layergroup.return_value = None
 
         # Execute
-        response = self.engine.get_store(store_id=self.store_names[0], debug=self.debug)
-
-        # Validate response object
-        self.assert_valid_response_object(response)
-
-        # Success
-        self.assertTrue(response['success'])
-
-        # Extract Result
-        r = response['result']
-
-        # Type
-        self.assertIsInstance(r, dict)
-
-        # Properties
-        self.assertIn('name', r)
-        self.assertIn(r['name'], self.store_names)
-        self.assertIn('workspace', r)
-        self.assertEqual(self.workspace_name, r['workspace'])
-
-        mc.get_store.assert_called_with(name=self.store_names[0], workspace=None)
-
-    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
-    def test_get_store_none(self, mock_catalog):
-        mc = mock_catalog()
-        mc.get_store.return_value = None
-
-        # Execute
-        response = self.engine.get_store(store_id=self.store_names[0], debug=self.debug)
+        response = self.engine.get_layer_group(layer_group_id=self.layer_group_names[0], debug=self.debug)
 
         # Validate response object
         self.assert_valid_response_object(response)
@@ -795,15 +823,15 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         self.assertIn('not found', r)
 
-        mc.get_store.assert_called_with(name=self.store_names[0], workspace=None)
+        mc.get_layergroup.assert_called_with(name=self.layer_group_names[0])
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
-    def test_get_store_failed_request_error(self, mock_catalog):
+    def test_get_layer_group_failed_request_error(self, mock_catalog):
         mc = mock_catalog()
-        mc.get_store.side_effect = geoserver.catalog.FailedRequestError('Failed Request')
+        mc.get_layergroup.side_effect = geoserver.catalog.FailedRequestError('Failed Request')
 
         # Execute
-        response = self.engine.get_store(store_id=self.store_names[0], debug=self.debug)
+        response = self.engine.get_layer_group(layer_group_id=self.layer_group_names[0], debug=self.debug)
 
         # Validate response object
         self.assert_valid_response_object(response)
@@ -814,9 +842,12 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         # Extract Result
         r = response['error']
 
-        self.assertIn('Failed Request', r)
+        self.assertEqual(r, 'Failed Request')
 
-        mc.get_store.assert_called_with(name=self.store_names[0], workspace=None)
+        mc.get_layergroup.assert_called_with(name=self.layer_group_names[0])
+
+    def test_get_store(self):
+        raise NotImplementedError()
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_get_style(self, mock_catalog):
@@ -1320,14 +1351,83 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         mc.get_layergroup.assert_called_with(name=self.layer_group_names[0])
         mc.delete.assert_called_with(config_object=self.mock_layer_groups[0], purge=False, recurse=False)
 
-    def test_delete_workspace(self):
-        raise NotImplementedError()
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_delete_workspace(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_workspace.return_value = self.mock_workspaces[0]
 
-    def test_delete_store(self):
-        raise NotImplementedError()
+        # Do delete
+        response = self.engine.delete_workspace(workspace_id=self.workspace_names[0])
 
-    def test_delete_style(self):
-        pass
+        # Should succeed
+        self.assert_valid_response_object(response)
+        self.assertTrue(response['success'])
+        self.assertIsNone(response['result'])
+
+        mc.get_workspace.assert_called_with(self.workspace_names[0])
+        mc.delete.assert_called_with(config_object=self.mock_workspaces[0], purge=False, recurse=False)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_delete_store(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_store.return_value = self.mock_store_names[0]
+
+        # Do delete
+        response = self.engine.delete_store(store_id=self.store_names[0])
+
+        # Should succeed
+        self.assert_valid_response_object(response)
+        self.assertTrue(response['success'])
+        self.assertIsNone(response['result'])
+
+        mc.get_store.assert_called_with(name=self.store_names[0], workspace=None)
+        mc.delete.assert_called_with(config_object=self.mock_store_names[0], purge=False, recurse=False)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_delete_store_failed_request(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_store.side_effect = geoserver.catalog.FailedRequestError('Failed Request')
+
+        # Do delete
+        response = self.engine.delete_store(store_id=self.store_names[0])
+
+        # Failure Check
+        self.assert_valid_response_object(response)
+        self.assertFalse(response['success'])
+        self.assertIs('Failed Request', response['error'])
+
+        mc.get_store.assert_called_with(name=self.store_names[0], workspace=None)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_delete_style(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_style.return_value = self.mock_styles[0]
+
+        # Do delete
+        response = self.engine.delete_style(style_id=self.style_names[0])
+
+        # Should succeed
+        self.assert_valid_response_object(response)
+        self.assertTrue(response['success'])
+        self.assertIsNone(response['result'])
+
+        mc.get_style.assert_called_with(name=self.style_names[0], workspace=None)
+        mc.delete.assert_called_with(config_object=self.mock_styles[0], purge=False, recurse=False)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_delete_style_failed_request(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_style.side_effect = geoserver.catalog.FailedRequestError('Failed Request')
+
+        # Do delete
+        response = self.engine.delete_style(style_id=self.style_names[0])
+
+        # Failure Check
+        self.assert_valid_response_object(response)
+        self.assertFalse(response['success'])
+        self.assertIs('Failed Request', response['error'])
+
+        mc.get_style.assert_called_with(name=self.style_names[0], workspace=None)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_create_layer_group(self, mock_catalog):
@@ -1365,10 +1465,10 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         # False
         self.assertFalse(response['success'])
 
-        # Expect Error
+        # Extract Result
         r = response['error']
 
-        # Properties
+        # Check Properties
         self.assertIn('Conflicting Data Error', r)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
@@ -1385,33 +1485,243 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         # False
         self.assertFalse(response['success'])
 
-        # Expect Error
+        # Extract Result
         r = response['error']
 
-        # Properties
+        # Check Properties
         self.assertIn('Failed Request', r)
 
-    # @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
-    # def test_create_shapefile_resource(self, mock_catalog):
-    #     mc = mock_catalog()
-    #     mc.create_shapefile_resource.return_value = mock.NonCallableMagicMock(
-    #         store=self.store_name,
-    #         title='foo',
-    #         geometry='points'
-    #     )
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.put')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_shapefile_resource(self, mock_catalog, mock_put):
+        mock_put.return_value = MockResponse(201)
+        mc = mock_catalog()
+        mc.get_default_workspace().name = self.workspace_name[0]
+        mc.get_resource.return_value = self.mock_resources[0]
+
+        # Setup
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        shapefile_name = os.path.join(dir_path, 'files', 'shapefile', 'test')
+        store_id = self.store_name[0]
+
+        # Execute
+        response = self.engine.create_shapefile_resource(store_id=store_id,
+                                                         shapefile_base=shapefile_name,
+                                                         overwrite=True
+                                                         )
+        # Should succeed
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+        self.assertIn(self.mock_resources[0].name, r['name'])
+        self.assertIn(self.store_name[0], r['store'])
+
+        mc.get_default_workspace.assert_called_with()
+        mc.get_resource.assert_called_with(name=self.store_name[0], workspace=self.workspace_name[0])
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.put')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_shapefile_resource_zipfile(self, mock_catalog, mock_put):
+        mock_put.return_value = MockResponse(201)
+        mc = mock_catalog()
+        mc.get_resource.return_value = self.mock_resources[0]
+
+        # Setup
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        shapefile_name = os.path.join(dir_path, 'files', 'shapefile', 'test1.zip')
+        # Workspace is given
+        store_id = '{}:{}'.format(self.workspace_name, self.store_name[0])
+
+        # Execute
+        response = self.engine.create_shapefile_resource(store_id=store_id,
+                                                         shapefile_zip=shapefile_name,
+                                                         overwrite=True,
+                                                         charset='ISO - 8559 - 1',
+                                                         )
+        # Should succeed
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+        self.assertIn(self.mock_resources[0].name, r['name'])
+        self.assertIn(self.store_name[0], r['store'])
+
+        mc.get_resource.assert_called_with(name=self.store_name[0], workspace=self.workspace_name)
+
+    def test_create_shapefile_resource_zipfile_typeerror(self):
+        # Setup
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        shapefile_name = os.path.join(dir_path, 'files', 'shapefile', 'test.shp')
+        # Workspace is given
+        store_id = '{}:{}'.format(self.workspace_name, self.store_name[0])
+
+        # Should Fail
+        self.assertRaises(TypeError,
+                          self.engine.create_shapefile_resource,
+                          store_id=store_id,
+                          shapefile_zip=shapefile_name,
+                          overwrite=True)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_shapefile_resource_overwrite_store_exists(self, mock_catalog):
+        # Setup
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        shapefile_name = os.path.join(dir_path, 'files', 'shapefile', 'test')
+        store_id = '{}:{}'.format(self.workspace_name, self.store_name[0])
+
+        # Execute
+        response = self.engine.create_shapefile_resource(store_id=store_id,
+                                                         shapefile_base=shapefile_name,
+                                                         overwrite=False
+                                                         )
+        # Should Fail
+        self.assertFalse(response['success'])
+
+        # Extract Result
+        r = response['error']
+
+        # Check error message
+        error_message = 'There is already a store named ' + self.store_name[0] + ' in ' + self.workspace_name
+        self.assertIn(error_message, r)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.put')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_shapefile_resource_overwrite_store_not_exists(self, mock_catalog, mock_put):
+        mock_put.return_value = MockResponse(201)
+        mc = mock_catalog()
+        mc.get_store.side_effect = geoserver.catalog.FailedRequestError()
+        mc.get_resource.return_value = self.mock_resources[0]
+
+        # Setup
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        shapefile_name = os.path.join(dir_path, 'files', 'shapefile', 'test')
+        # Workspace is given
+        store_id = '{}:{}'.format(self.workspace_name, self.store_name[0])
+
+        # Execute
+        response = self.engine.create_shapefile_resource(store_id=store_id,
+                                                         shapefile_base=shapefile_name,
+                                                         overwrite=False
+                                                         )
+        # Should succeed
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+        self.assertIn(self.mock_resources[0].name, r['name'])
+        self.assertIn(self.store_name[0], r['store'])
+
+        mc.get_resource.assert_called_with(name=self.store_name[0], workspace=self.workspace_name)
+
+    def test_create_shapefile_resource_validate_shapefile_args(self):
+        self.assertRaises(ValueError,
+                          self.engine.create_shapefile_resource,
+                          store_id='foo')
+        self.assertRaises(ValueError,
+                          self.engine.create_shapefile_resource,
+                          store_id='foo',
+                          shapefile_zip='zipfile',
+                          shapefile_upload='su',
+                          shapefile_base='base')
+        self.assertRaises(ValueError,
+                          self.engine.create_shapefile_resource,
+                          store_id='foo',
+                          shapefile_upload='su',
+                          shapefile_base='base')
+        self.assertRaises(ValueError,
+                          self.engine.create_shapefile_resource,
+                          store_id='foo',
+                          shapefile_zip='zipfile',
+                          shapefile_base='base')
+        self.assertRaises(ValueError,
+                          self.engine.create_shapefile_resource,
+                          store_id='foo',
+                          shapefile_zip='zipfile',
+                          shapefile_upload='su')
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.put')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_shapefile_resource_failure(self, _, mock_put):
+        mock_put.return_value = MockResponse(404, reason='Failure')
+
+        # Setup
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        shapefile_name = os.path.join(dir_path, 'files', 'shapefile', 'test')
+        store_id = '{}:{}'.format(self.workspace_name, self.store_name[0])
+
+        # Execute
+        response = self.engine.create_shapefile_resource(store_id=store_id,
+                                                         shapefile_base=shapefile_name,
+                                                         overwrite=True
+                                                         )
+        # Should succeed
+        self.assertFalse(response['success'])
+
+        # Extract Result
+        r = response['error']
+
+        # Check Response
+        self.assertIn('404', r)
+        self.assertIn('Failure', r)
+
+    def test_type_property(self):
+        response = self.engine.type
+        expected_response = 'GEOSERVER'
+
+        # Check Response
+        self.assertEqual(response, expected_response)
+
+    def test_gwc_endpoint_property(self):
+        response = self.engine.gwc_endpoint
+        expected_endpoint = 'http://localhost:8181/geoserver/gwc/rest/'
+
+        # Check Response
+        self.assertEqual(expected_endpoint, response)
+
+    def test_ini_no_slash_endpoint(self):
+        self.engine = GeoServerSpatialDatasetEngine(
+            endpoint='http://localhost:8181/geoserver/rest',
+            username=TEST_GEOSERVER_DATASET_SERVICE['USERNAME'],
+            password=TEST_GEOSERVER_DATASET_SERVICE['PASSWORD']
+        )
+
+        expected_endpoint = 'http://localhost:8181/geoserver/gwc/rest/'
+
+        # Check Response
+        self.assertEqual(expected_endpoint, self.engine.gwc_endpoint)
+
+    # @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.get')
+    # def test_validate(self, mock_get):
+    #     #401 Code
+    #     mock_get.return_value = MockResponse('401')
     #
-    #     # Setup
-    #     shapefile_name = random_string_generator(15)
-    #     shapefile_base = shapefile_name + ".shp"
-    #     shapefile_zip = shapefile_name + ".zip"
+    #     # self.engine.validate()
+    #     self.assertRaises(AssertionError,
+    #                       self.engine.validate
+    #                       )
     #
-    #     # Execute
-    #     response = self.engine.create_shapefile_resource(store_id=self.store_name,
-    #                                                      shapefile_base=shapefile_base,
-    #                                                      shapefile_zip=shapefile_zip,
-    #                                                      debug=self.debug)
+    #     #!201 Code
+    #     mock_get.return_value = MockResponse('200')
     #
-    #     print response
+    #     # self.engine.validate()
+    #     self.assertRaises(AssertionError,
+    #                       self.engine.validate
+    #                       )
+    #
+    #     #200 Code
+    #     mock_get.return_value = MockResponse('200')
+    #
+    #     response = self.engine.validate()
 
     def test_create_coverage_resource(self):
         raise NotImplementedError()

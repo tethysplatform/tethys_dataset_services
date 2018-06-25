@@ -1410,8 +1410,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
             except geoserver.catalog.FailedRequestError:
                 pass
-            except Exception:
-                raise
 
         # Prepare files
         temp_archive = None
@@ -1448,10 +1446,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                     zfile.writestr(filename, file.read())
 
             files = {'file': zip_file_in_memory.getvalue()}
-
-        else:
-            raise TypeError('Shapefile error. Check that you are using the correct shapefile argument and that the '
-                            'files are formatted correctly.')
 
         # Prepare headers
         headers = {
