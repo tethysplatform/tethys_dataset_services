@@ -1403,28 +1403,6 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         # Properties
         self.assertIn('Failed Request', r)
 
-    # @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
-    # def test_create_shapefile_resource(self, mock_catalog):
-    #     mc = mock_catalog()
-    #     mc.create_shapefile_resource.return_value = mock.NonCallableMagicMock(
-    #         store=self.store_name,
-    #         title='foo',
-    #         geometry='points'
-    #     )
-    #
-    #     # Setup
-    #     shapefile_name = random_string_generator(15)
-    #     shapefile_base = shapefile_name + ".shp"
-    #     shapefile_zip = shapefile_name + ".zip"
-    #
-    #     # Execute
-    #     response = self.engine.create_shapefile_resource(store_id=self.store_name,
-    #                                                      shapefile_base=shapefile_base,
-    #                                                      shapefile_zip=shapefile_zip,
-    #                                                      debug=self.debug)
-    #
-    #     print response
-
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.put')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_create_coverage_resource(self, mock_catalog, mock_put):
@@ -1475,6 +1453,198 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         )
         expected_headers = {
             "Content-type": "image/geotiff",
+            "Accept": "application/xml"
+        }
+        expected_params = {
+            'update': 'overwrite',
+            'coverageName': coverage_name
+        }
+        self.assertEqual(expected_url, put_call_args[0][1]['url'])
+        self.assertEqual(expected_headers, put_call_args[0][1]['headers'])
+        self.assertEqual(expected_params, put_call_args[0][1]['params'])
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.put')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_coverage_resource_upload_zip_file(self, mock_catalog, mock_put):
+        expected_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+        expected_coverage_type = 'arcgrid'
+        coverage_file_name = 'precip30min.zip'
+        coverage_name = coverage_file_name.split('.')[0]
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        coverage_file = os.path.join(dir_path, "files", "arc_sample", coverage_file_name)
+
+        mc = mock_catalog()
+        mock_resource = mock.NonCallableMagicMock(workspace=self.workspace_names[0])
+        mock_resource.name = coverage_name
+        mc.get_resource.return_value = mock_resource
+        mock_put.return_value = MockResponse(201)
+
+        with open(coverage_file, 'rb') as coverage_upload:
+            # Execute
+            response = self.engine.create_coverage_resource(store_id=expected_store_id,
+                                                            coverage_type=expected_coverage_type,
+                                                            coverage_upload=coverage_upload,
+                                                            overwrite=True,
+                                                            debug=False)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        # Values
+        self.assertEqual(coverage_name, r['name'])
+        self.assertEqual(self.workspace_names[0], r['workspace'])
+
+        mc.get_resource.assert_called_with(name=coverage_name, workspace=self.workspace_names[0])
+
+        # PUT Tests
+        put_call_args = mock_put.call_args_list
+        expected_url = '{endpoint}workspaces/{w}/coveragestores/{s}/file.{ext}'.format(
+            endpoint=self.endpoint,
+            w=self.workspace_names[0],
+            s=self.store_names[0],
+            ext=expected_coverage_type
+        )
+        expected_headers = {
+            "Content-type": "application/zip",
+            "Accept": "application/xml"
+        }
+        expected_params = {
+            'update': 'overwrite',
+            'coverageName': coverage_name
+        }
+        self.assertEqual(expected_url, put_call_args[0][1]['url'])
+        self.assertEqual(expected_headers, put_call_args[0][1]['headers'])
+        self.assertEqual(expected_params, put_call_args[0][1]['params'])
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.put')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_coverage_resource_upload_image(self, mock_catalog, mock_put):
+        expected_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+        expected_coverage_type = 'geotiff'
+        coverage_file_name = 'adem.tif'
+        coverage_name = coverage_file_name.split('.')[0]
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        coverage_file = os.path.join(dir_path, "files", coverage_file_name)
+
+        mc = mock_catalog()
+        mock_resource = mock.NonCallableMagicMock(workspace=self.workspace_names[0])
+        mock_resource.name = coverage_name
+        mc.get_resource.return_value = mock_resource
+        mock_put.return_value = MockResponse(201)
+
+        with open(coverage_file, 'rb') as coverage_upload:
+            # Execute
+            response = self.engine.create_coverage_resource(store_id=expected_store_id,
+                                                            coverage_type=expected_coverage_type,
+                                                            coverage_upload=coverage_upload,
+                                                            overwrite=True,
+                                                            debug=False)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        # Values
+        self.assertEqual(coverage_name, r['name'])
+        self.assertEqual(self.workspace_names[0], r['workspace'])
+
+        mc.get_resource.assert_called_with(name=coverage_name, workspace=self.workspace_names[0])
+
+        # PUT Tests
+        put_call_args = mock_put.call_args_list
+        expected_url = '{endpoint}workspaces/{w}/coveragestores/{s}/file.{ext}'.format(
+            endpoint=self.endpoint,
+            w=self.workspace_names[0],
+            s=self.store_names[0],
+            ext=expected_coverage_type
+        )
+        expected_headers = {
+            "Content-type": "image/geotiff",
+            "Accept": "application/xml"
+        }
+        expected_params = {
+            'update': 'overwrite',
+            'coverageName': coverage_name
+        }
+        self.assertEqual(expected_url, put_call_args[0][1]['url'])
+        self.assertEqual(expected_headers, put_call_args[0][1]['headers'])
+        self.assertEqual(expected_params, put_call_args[0][1]['params'])
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.put')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_coverage_resource_upload_multiple_files_in_memory(self, mock_catalog, mock_put):
+        expected_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+        expected_coverage_type = 'arcgrid'
+        coverage_file_name = 'precip30min.asc'
+        prj_file_name = 'precip30min.prj'
+        coverage_name = coverage_file_name.split('.')[0]
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        arc_sample = os.path.join(dir_path, "files", "arc_sample")
+        coverage_file = os.path.join(arc_sample, coverage_file_name)
+        prj_file = os.path.join(arc_sample, prj_file_name)
+
+        mc = mock_catalog()
+        mock_resource = mock.NonCallableMagicMock(workspace=self.workspace_names[0])
+        mock_resource.name = coverage_name
+        mc.get_resource.return_value = mock_resource
+        mock_put.return_value = MockResponse(201)
+
+        with open(coverage_file, 'rb') as coverage_upload:
+            with open(prj_file, 'rb') as prj_upload:
+                upload_list = [coverage_upload, prj_upload]
+
+                # Execute
+                response = self.engine.create_coverage_resource(store_id=expected_store_id,
+                                                                coverage_type=expected_coverage_type,
+                                                                coverage_upload=upload_list,
+                                                                overwrite=True,
+                                                                debug=False)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        # Values
+        self.assertEqual(coverage_name, r['name'])
+        self.assertEqual(self.workspace_names[0], r['workspace'])
+
+        mc.get_resource.assert_called_with(name=coverage_name, workspace=self.workspace_names[0])
+
+        # PUT Tests
+        put_call_args = mock_put.call_args_list
+        expected_url = '{endpoint}workspaces/{w}/coveragestores/{s}/file.{ext}'.format(
+            endpoint=self.endpoint,
+            w=self.workspace_names[0],
+            s=self.store_names[0],
+            ext=expected_coverage_type
+        )
+        expected_headers = {
+            "Content-type": "application/zip",
             "Accept": "application/xml"
         }
         expected_params = {

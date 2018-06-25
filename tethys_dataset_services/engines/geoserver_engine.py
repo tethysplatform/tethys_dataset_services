@@ -1712,11 +1712,18 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             if files is None and data is None:
                 # Write files in memory to zipfile in memory
                 zip_file_in_memory = BytesIO()
+                in_memory_coverage_name = None
 
                 with ZipFile(zip_file_in_memory, 'w') as zfile:
                     for f in coverage_upload:
-                        zfile.writestr(f.name, f.read())
+                        zfile.writestr(os.path.basename(f.name), f.read())
+                        if 'prj' not in f.name:
+                            in_memory_coverage_name = os.path.basename(f.name).split('.')[0]
+
                 files = {'file': zip_file_in_memory.getvalue()}
+
+                if not coverage_name and in_memory_coverage_name:
+                    coverage_name = in_memory_coverage_name
 
         # Prepare headers
         extension = coverage_type
