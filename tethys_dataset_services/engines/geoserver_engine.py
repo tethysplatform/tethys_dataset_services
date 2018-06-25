@@ -225,9 +225,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             response_dict['success'] = False
             response_dict['error'] = 'GeoServer object does not exist: "{0}".'.format(identifier)
 
-        # Refresh the catalog
-        catalog.reload()
-
         self._handle_debug(response_dict, debug)
         return response_dict
 
@@ -1083,7 +1080,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             while attempts < MAX_ATTEMPTS:
                 attempts += 1
                 try:
-                    catalog.reload()
                     new_store = catalog.get_store(name=name, workspace=workspace)
                     if not new_store:
                         raise geoserver.catalog.FailedRequestError()
@@ -1148,7 +1144,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             return response_dict
 
         # Wrap up successfully
-        catalog.reload()
         new_resource = catalog.get_resource(name=table, store=name)
         resource_dict = self._transcribe_geoserver_object(new_resource)
 
@@ -1227,7 +1222,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             return response_dict
 
         # Wrap up successfully
-        catalog.reload()
         new_store = catalog.get_store(name=name, workspace=workspace)
         resource_dict = self._transcribe_geoserver_object(new_store)
 
@@ -1298,7 +1292,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         catalog.publish_featuretype(feature_type_name, store, epsg_code, jdbc_virtual_table=sql_view)
 
         # Wrap Up
-        catalog.reload()
         r_feature_layer = catalog.get_layer(feature_type_name)
 
         if default_style_id is None:
@@ -1317,7 +1310,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         style = catalog.get_style(style_name, workspace=style_workspace)
         r_feature_layer.default_style = style
         catalog.save(r_feature_layer)
-        catalog.reload()
         resource_dict = self._transcribe_geoserver_object(r_feature_layer)
         response_dict = {'success': True,
                          'result': resource_dict}
@@ -1494,7 +1486,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             return response_dict
 
         # Wrap up successfully
-        catalog.reload()
         new_resource = catalog.get_resource(name=name, workspace=workspace)
         resource_dict = self._transcribe_geoserver_object(new_resource)
 
@@ -1505,7 +1496,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
     def create_coverage_resource(self, store_id, coverage_type, coverage_file=None,
                                  coverage_upload=None, coverage_name=None,
-                                 overwrite=False, debug=False):
+                                 overwrite=False, query_after_success=True, debug=False):
         """
         Use this method to add coverage resources to GeoServer.
 
@@ -1519,6 +1510,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
           coverage_name (string): Name of the coverage resource and subsequent layer that are created. If unspecified, these will match the name of the image file that is uploaded.  # noqa: E501
           overwrite (bool, optional): Overwrite the file if it already exists.
           charset (string, optional): Specify the character encoding of the file being uploaded (e.g.: ISO-8559-1)
+          query_after_success(bool, optional): Query geoserver for resource objects after successful upload. Defaults to True.
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Note
@@ -1568,7 +1560,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         catalog = self._get_geoserver_catalog_object()
 
         # Process identifier
-        workspace, name = self._process_identifier(store_id)
+        workspace, store_name = self._process_identifier(store_id)
 
         # Get default work space if none is given
         if not workspace:
@@ -1577,8 +1569,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Throw error if overwrite is not true and store already exists
         if not overwrite:
             try:
-                catalog.get_store(name=name, workspace=workspace)
-                message = "There is already a store named " + name
+                catalog.get_store(name=store_name, workspace=workspace)
+                message = "There is already a store named " + store_name
                 if workspace:
                     message += " in " + workspace
 
@@ -1594,8 +1586,18 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Prepare files
         working_dir = None
 
-        if coverage_type == 'grassgrid' and coverage_file is not None:
+        if coverage_type == 'grassgrid':
+
+            # Validation
+            if coverage_file is None:
+                raise ValueError('The coverage_file parameter is required for coverage_type "grassgrid".')
+
+            if not is_zipfile(coverage_file):
+                raise ValueError('The coverage_file parameter must be a path to a valid zip archive for '
+                                 'coverage_type "grassgrid".')
+
             working_dir = os.path.join(os.path.dirname(coverage_file), '.gstmp')
+            original_coverage_filename = os.path.basename(coverage_file)
 
             # Unzip
             zip_file = ZipFile(coverage_file)
@@ -1607,17 +1609,15 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             for f in os.listdir(working_dir):
                 if 'prj' not in f:
                     # Defaults
-                    contents = ''
                     north = 90.0
                     south = -90.0
                     east = -180.0
                     rows = 360
                     cols = 720
+                    corrupt_file = False
 
                     with open(os.path.join(working_dir, f), 'r') as f:
                         contents = f.readlines()
-
-                    corrupt_file = False
 
                     for line in contents[0:6]:
                         if 'north' in line:
@@ -1654,9 +1654,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                         contents.pop(0)
                     contents = header + contents
 
-                    with open(os.path.join(working_dir, f), 'w') as f:
+                    with open(os.path.join(working_dir, f.name), 'w') as o:
                         for line in contents:
-                            f.write(line)
+                            o.write(line)
 
                     valid_grass_file = True
 
@@ -1669,10 +1669,10 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                               'formatted or included.')
 
             # New coverage zip file (rezip)
-            coverage_file = os.path.join(working_dir, 'foo.zip')
+            coverage_file = os.path.join(working_dir, original_coverage_filename)
             with ZipFile(coverage_file, 'w') as zf:
                 for f in os.listdir(working_dir):
-                    if f != 'foo.zip':
+                    if f != original_coverage_filename:
                         zf.write(os.path.join(working_dir, f), f)
 
         # Prepare file(s) for upload
@@ -1687,6 +1687,10 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                 content_type = 'image/{0}'.format(coverage_type)
                 data = open(coverage_file, 'rb')
 
+            if not coverage_name:
+                coverage_filename = os.path.basename(coverage_file)
+                coverage_name = coverage_filename.split('.')[0]
+
         elif coverage_upload is not None:
             content_type = 'application/zip'
 
@@ -1697,6 +1701,10 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                 else:
                     content_type = 'image/{0}'.format(coverage_type)
                     data = coverage_upload
+
+                if not coverage_name:
+                    coverage_filename = os.path.basename(coverage_upload.name)
+                    coverage_name = coverage_filename.split('.')[0]
 
             except AttributeError:
                 pass
@@ -1722,7 +1730,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         }
 
         # Prepare URL
-        url = self._assemble_url('workspaces', workspace, 'coveragestores', name, 'file.{0}'.format(extension))
+        url = self._assemble_url('workspaces', workspace, 'coveragestores', store_name, 'file.{0}'.format(extension))
 
         # Set params
         params = {}
@@ -1739,7 +1747,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                                 data=data,
                                 headers=headers,
                                 params=params,
-                                auth=HTTPBasicAuth(username=self.username, password=self.password))
+                                auth=(self.username, self.password))
 
         # Clean up
         if working_dir:
@@ -1755,9 +1763,13 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             return response_dict
 
         # Wrap up successfully
-        catalog.reload()
-        new_resource = catalog.get_resource(name=name, workspace=workspace)
-        resource_dict = self._transcribe_geoserver_object(new_resource)
+        # NOTE: On success response returns xml representation of object, which we don't handle currently
+        # So we use gsconfg to get the resource object
+        if query_after_success:
+            new_resource = catalog.get_resource(name=coverage_name, workspace=workspace)
+            resource_dict = self._transcribe_geoserver_object(new_resource)
+        else:
+            resource_dict = None
 
         response_dict = {'success': True,
                          'result': resource_dict}
@@ -1899,7 +1911,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             if upload_error:
                 raise upload_error
 
-            catalog.reload()
             style = catalog.get_style(name=name, workspace=workspace)
 
             style_dict = self._transcribe_geoserver_object(style)

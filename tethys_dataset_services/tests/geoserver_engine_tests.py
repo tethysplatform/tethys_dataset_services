@@ -34,6 +34,17 @@ def mock_get_style(name, workspace=None):
     return mock_style
 
 
+class MockResponse(object):
+    def __init__(self, status_code, text=None, json=None, reason=None):
+        self.status_code = status_code
+        self.text = text
+        self.json_obj = json
+        self.reason = reason
+
+    def json(self):
+        return self.json_obj
+
+
 class TestGeoServerDatasetEngine(unittest.TestCase):
 
     def setUp(self):
@@ -47,7 +58,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.shapefile_base = os.path.join(self.files_root, 'shapefile', self.shapefile_name)
 
         # Create Test Engine
-        self.engine = GeoServerSpatialDatasetEngine(endpoint=TEST_GEOSERVER_DATASET_SERVICE['ENDPOINT'],
+        self.endpoint = TEST_GEOSERVER_DATASET_SERVICE['ENDPOINT']
+        self.engine = GeoServerSpatialDatasetEngine(endpoint=self.endpoint,
                                                     username=TEST_GEOSERVER_DATASET_SERVICE['USERNAME'],
                                                     password=TEST_GEOSERVER_DATASET_SERVICE['PASSWORD'])
 
@@ -55,7 +67,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.catalog_endpoint = 'http://localhost:8181/geoserver/'
         self.mock_catalog = mock.NonCallableMagicMock(gs_base_url=self.catalog_endpoint)
 
-        # Mock Objects
+        # Workspaces
         self.workspace_name = 'a-workspace'
 
         # Store
@@ -1413,14 +1425,603 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     #
     #     print response
 
-    def test_create_coverage_resource(self):
-        raise NotImplementedError()
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.put')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_coverage_resource(self, mock_catalog, mock_put):
+        expected_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+        expected_coverage_type = 'geotiff'
+        coverage_file_name = 'adem.tif'
+        coverage_name = coverage_file_name.split('.')[0]
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        coverage_file = os.path.join(dir_path, "files", coverage_file_name)
 
-    def test_create_workspace(self):
-        raise NotImplementedError()
+        mc = mock_catalog()
+        mock_resource = mock.NonCallableMagicMock(workspace=self.workspace_names[0])
+        mock_resource.name = coverage_name
+        mc.get_resource.return_value = mock_resource
+        mock_put.return_value = MockResponse(201)
 
-    def test_create_style(self):
-        raise NotImplementedError()
+        # Execute
+        response = self.engine.create_coverage_resource(store_id=expected_store_id,
+                                                        coverage_type=expected_coverage_type,
+                                                        coverage_file=coverage_file,
+                                                        overwrite=True,
+                                                        debug=False)
+        # Validate response object
+        self.assert_valid_response_object(response)
 
-    def test_create_sql_view(self):
-        raise NotImplementedError()
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        # Values
+        self.assertEqual(coverage_name, r['name'])
+        self.assertEqual(self.workspace_names[0], r['workspace'])
+
+        mc.get_resource.assert_called_with(name=coverage_name, workspace=self.workspace_names[0])
+
+        # PUT Tests
+        put_call_args = mock_put.call_args_list
+        expected_url = '{endpoint}workspaces/{w}/coveragestores/{s}/file.{ext}'.format(
+            endpoint=self.endpoint,
+            w=self.workspace_names[0],
+            s=self.store_names[0],
+            ext=expected_coverage_type
+        )
+        expected_headers = {
+            "Content-type": "image/geotiff",
+            "Accept": "application/xml"
+        }
+        expected_params = {
+            'update': 'overwrite',
+            'coverageName': coverage_name
+        }
+        self.assertEqual(expected_url, put_call_args[0][1]['url'])
+        self.assertEqual(expected_headers, put_call_args[0][1]['headers'])
+        self.assertEqual(expected_params, put_call_args[0][1]['params'])
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_coverage_resource_no_overwrite_store_exists(self, _):
+        expected_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+        expected_coverage_type = 'geotiff'
+        coverage_file_name = 'adem.tif'
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        coverage_file = os.path.join(dir_path, "files", coverage_file_name)
+        # Execute
+        response = self.engine.create_coverage_resource(store_id=expected_store_id,
+                                                        coverage_type=expected_coverage_type,
+                                                        coverage_file=coverage_file,
+                                                        overwrite=False,
+                                                        debug=False)
+        # Validate response object
+        self.assert_valid_response_object(response)
+        # Success
+        self.assertFalse(response['success'])
+        # Extract Result
+        r = response['error']
+
+        # Type
+        self.assertIsInstance(r, str)
+
+        self.assertIn('There is already a store named', r)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.put')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_coverage_resource_no_overwrite_store_not_exists(self, mock_catalog, mock_put):
+        mc = mock_catalog()
+        mc.get_store.side_effect = geoserver.catalog.FailedRequestError('FailedRequest')
+
+        expected_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+        expected_coverage_type = 'geotiff'
+        coverage_file_name = 'adem.tif'
+        coverage_name = coverage_file_name.split('.')[0]
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        coverage_file = os.path.join(dir_path, "files", coverage_file_name)
+
+        mock_resource = mock.NonCallableMagicMock(workspace=self.workspace_names[0])
+        mock_resource.name = coverage_name
+        mc.get_resource.return_value = mock_resource
+        mock_put.return_value = MockResponse(201)
+        # Execute
+        response = self.engine.create_coverage_resource(store_id=expected_store_id,
+                                                        coverage_type=expected_coverage_type,
+                                                        coverage_file=coverage_file,
+                                                        overwrite=False,
+                                                        debug=False)
+        # Validate response object
+        self.assert_valid_response_object(response)
+        # Success
+        self.assertTrue(response['success'])
+        # Extract Result
+        r = response['result']
+        # Type
+        self.assertIsInstance(r, dict)
+        # Values
+        self.assertEqual(coverage_name, r['name'])
+        self.assertEqual(self.workspace_names[0], r['workspace'])
+        mc.get_resource.assert_called_with(name=coverage_name, workspace=self.workspace_names[0])
+
+        # PUT Tests
+        put_call_args = mock_put.call_args_list
+        expected_url = '{endpoint}workspaces/{w}/coveragestores/{s}/file.{ext}'.format(
+            endpoint=self.endpoint,
+            w=self.workspace_names[0],
+            s=self.store_names[0],
+            ext=expected_coverage_type
+        )
+        expected_headers = {
+            "Content-type": "image/geotiff",
+            "Accept": "application/xml"
+        }
+        expected_params = {
+            'coverageName': coverage_name
+        }
+        self.assertEqual(expected_url, put_call_args[0][1]['url'])
+        self.assertEqual(expected_headers, put_call_args[0][1]['headers'])
+        self.assertEqual(expected_params, put_call_args[0][1]['params'])
+
+    def test_create_coverage_resource_invalid_coverage_type(self):
+        expected_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+        expected_coverage_type = 'test1'
+        coverage_file_name = 'adem.tif'
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        coverage_file = os.path.join(dir_path, "files", coverage_file_name)
+
+        # Raise ValueError
+        self.assertRaises(ValueError, self.engine.create_coverage_resource, store_id=expected_store_id,
+                          coverage_type=expected_coverage_type,
+                          coverage_file=coverage_file,
+                          overwrite=False,
+                          debug=False)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.put')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_coverage_resource_no_store_workspace(self, mock_catalog, mock_put):
+        default_workspace_name = 'default-workspace'
+        mock_default_workspace = mock.NonCallableMagicMock()
+        mock_default_workspace.name = default_workspace_name
+        mc = mock_catalog()
+        mc.get_default_workspace.return_value = mock_default_workspace
+
+        expected_store_id = self.store_names[0]
+        expected_coverage_type = 'geotiff'
+        coverage_file_name = 'adem.tif'
+        coverage_name = coverage_file_name.split('.')[0]
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        coverage_file = os.path.join(dir_path, "files", coverage_file_name)
+
+        mock_resource = mock.NonCallableMagicMock(workspace=default_workspace_name)
+        mock_resource.name = coverage_name
+        mc.get_resource.return_value = mock_resource
+        mock_put.return_value = MockResponse(201)
+
+        # Execute
+        response = self.engine.create_coverage_resource(store_id=expected_store_id,
+                                                        coverage_type=expected_coverage_type,
+                                                        coverage_file=coverage_file,
+                                                        overwrite=True,
+                                                        debug=False)
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        # Values
+        self.assertEqual(coverage_name, r['name'])
+        self.assertEqual(default_workspace_name, r['workspace'])
+        mc.get_default_workspace.assert_called()
+        mc.get_resource.assert_called_with(name=coverage_name, workspace=default_workspace_name)
+
+        # PUT Tests
+        put_call_args = mock_put.call_args_list
+        expected_url = '{endpoint}workspaces/{w}/coveragestores/{s}/file.{ext}'.format(
+            endpoint=self.endpoint,
+            w=default_workspace_name,
+            s=self.store_names[0],
+            ext=expected_coverage_type
+        )
+        expected_headers = {
+            "Content-type": "image/geotiff",
+            "Accept": "application/xml"
+        }
+        expected_params = {
+            'update': 'overwrite',
+            'coverageName': coverage_name
+        }
+        self.assertEqual(expected_url, put_call_args[0][1]['url'])
+        self.assertEqual(expected_headers, put_call_args[0][1]['headers'])
+        self.assertEqual(expected_params, put_call_args[0][1]['params'])
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.put')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_coverage_resources_zip_file(self, mock_catalog, mock_put):
+        expected_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+        expected_coverage_type = 'arcgrid'
+        coverage_file_name = 'precip30min.zip'
+        coverage_name = coverage_file_name.split('.')[0]
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        coverage_file = os.path.join(dir_path, "files", "arc_sample", coverage_file_name)
+
+        mc = mock_catalog()
+        mock_resource = mock.NonCallableMagicMock(workspace=self.workspace_names[0])
+        mock_resource.name = coverage_name
+        mc.get_resource.return_value = mock_resource
+        mock_put.return_value = MockResponse(201)
+
+        # Execute
+        response = self.engine.create_coverage_resource(store_id=expected_store_id,
+                                                        coverage_type=expected_coverage_type,
+                                                        coverage_file=coverage_file,
+                                                        overwrite=True,
+                                                        debug=False)
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        # Tests
+        self.assertEqual(coverage_name, r['name'])
+        self.assertEqual(self.workspace_names[0], r['workspace'])
+
+        mc.get_resource.assert_called_with(name=coverage_name, workspace=self.workspace_names[0])
+
+        # PUT Tests
+        put_call_args = mock_put.call_args_list
+        expected_url = '{endpoint}workspaces/{w}/coveragestores/{s}/file.{ext}'.format(
+            endpoint=self.endpoint,
+            w=self.workspace_names[0],
+            s=self.store_names[0],
+            ext=expected_coverage_type
+        )
+        expected_headers = {
+            "Content-type": "application/zip",
+            "Accept": "application/xml"
+        }
+        expected_params = {
+            'update': 'overwrite',
+            'coverageName': coverage_name
+        }
+        self.assertEqual(expected_url, put_call_args[0][1]['url'])
+        self.assertEqual(expected_headers, put_call_args[0][1]['headers'])
+        self.assertEqual(expected_params, put_call_args[0][1]['params'])
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.put')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_coverage_resource_not_query_after_success(self, _, mock_put):
+        expected_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+        expected_coverage_type = 'geotiff'
+        coverage_file_name = 'adem.tif'
+        coverage_name = coverage_file_name.split('.')[0]
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        coverage_file = os.path.join(dir_path, "files", coverage_file_name)
+        mock_put.return_value = MockResponse(201)
+
+        # Execute
+        response = self.engine.create_coverage_resource(store_id=expected_store_id,
+                                                        coverage_type=expected_coverage_type,
+                                                        coverage_file=coverage_file,
+                                                        overwrite=True,
+                                                        debug=False,
+                                                        query_after_success=False)
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsNone(r)
+
+        # PUT Tests
+        put_call_args = mock_put.call_args_list
+        expected_url = '{endpoint}workspaces/{w}/coveragestores/{s}/file.{ext}'.format(
+            endpoint=self.endpoint,
+            w=self.workspace_names[0],
+            s=self.store_names[0],
+            ext=expected_coverage_type
+        )
+        expected_headers = {
+            "Content-type": "image/geotiff",
+            "Accept": "application/xml"
+        }
+        expected_params = {
+            'update': 'overwrite',
+            'coverageName': coverage_name
+        }
+        self.assertEqual(expected_url, put_call_args[0][1]['url'])
+        self.assertEqual(expected_headers, put_call_args[0][1]['headers'])
+        self.assertEqual(expected_params, put_call_args[0][1]['params'])
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.put')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_coverage_resource_not_201(self, _, mock_put):
+        expected_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+        expected_coverage_type = 'geotiff'
+        coverage_file_name = 'adem.tif'
+        coverage_name = coverage_file_name.split('.')[0]
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        coverage_file = os.path.join(dir_path, "files", coverage_file_name)
+
+        mock_put.return_value = MockResponse(401)
+
+        # Execute
+        response = self.engine.create_coverage_resource(store_id=expected_store_id,
+                                                        coverage_type=expected_coverage_type,
+                                                        coverage_file=coverage_file,
+                                                        overwrite=True,
+                                                        debug=False)
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertFalse(response['success'])
+
+        # PUT Tests
+        put_call_args = mock_put.call_args_list
+        expected_url = '{endpoint}workspaces/{w}/coveragestores/{s}/file.{ext}'.format(
+            endpoint=self.endpoint,
+            w=self.workspace_names[0],
+            s=self.store_names[0],
+            ext=expected_coverage_type
+        )
+        expected_headers = {
+            "Content-type": "image/geotiff",
+            "Accept": "application/xml"
+        }
+        expected_params = {
+            'update': 'overwrite',
+            'coverageName': coverage_name
+        }
+        self.assertEqual(expected_url, put_call_args[0][1]['url'])
+        self.assertEqual(expected_headers, put_call_args[0][1]['headers'])
+        self.assertEqual(expected_params, put_call_args[0][1]['params'])
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.put')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_coverage_resource_grass_grid(self, mock_catalog, mock_put):
+        expected_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+        expected_coverage_type = 'grassgrid'
+        coverage_file_name = 'my_grass.zip'
+        coverage_name = coverage_file_name.split('.')[0]
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        coverage_file = os.path.join(dir_path, "files", "grass_ascii", coverage_file_name)
+
+        mc = mock_catalog()
+        mock_resource = mock.NonCallableMagicMock(workspace=self.workspace_names[0])
+        mock_resource.name = coverage_name
+        mc.get_resource.return_value = mock_resource
+        mock_put.return_value = MockResponse(201)
+
+        # Execute
+        response = self.engine.create_coverage_resource(store_id=expected_store_id,
+                                                        coverage_type=expected_coverage_type,
+                                                        coverage_file=coverage_file,
+                                                        overwrite=True,
+                                                        debug=False)
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        # Tests
+        self.assertEqual(coverage_name, r['name'])
+        self.assertEqual(self.workspace_names[0], r['workspace'])
+
+        mc.get_resource.assert_called_with(name=coverage_name, workspace=self.workspace_names[0])
+
+        # PUT Tests
+        put_call_args = mock_put.call_args_list
+        expected_url = '{endpoint}workspaces/{w}/coveragestores/{s}/file.{ext}'.format(
+            endpoint=self.endpoint,
+            w=self.workspace_names[0],
+            s=self.store_names[0],
+            ext='arcgrid'
+        )
+        expected_headers = {
+            "Content-type": "application/zip",
+            "Accept": "application/xml"
+        }
+        expected_params = {
+            'update': 'overwrite',
+            'coverageName': coverage_name
+        }
+        self.assertEqual(expected_url, put_call_args[0][1]['url'])
+        self.assertEqual(expected_headers, put_call_args[0][1]['headers'])
+        self.assertEqual(expected_params, put_call_args[0][1]['params'])
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_coverage_resource_grass_grid_invalid_file(self, _):
+        expected_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+        expected_coverage_type = 'grassgrid'
+        coverage_file_name = 'my_grass_invalid.zip'
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        coverage_file = os.path.join(dir_path, "files", "grass_ascii", coverage_file_name)
+
+        # Execute
+        self.assertRaises(IOError, self.engine.create_coverage_resource,
+                          store_id=expected_store_id,
+                          coverage_type=expected_coverage_type,
+                          coverage_file=coverage_file,
+                          overwrite=True,
+                          debug=False)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_coverage_resource_grass_grid_no_coverage_file(self, _):
+        expected_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+        expected_coverage_type = 'grassgrid'
+
+        # Execute
+        self.assertRaises(ValueError, self.engine.create_coverage_resource,
+                          store_id=expected_store_id,
+                          coverage_type=expected_coverage_type,
+                          coverage_file=None,
+                          overwrite=True,
+                          debug=False)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_coverage_resource_grass_grid_coverage_file_not_zip(self, _):
+        expected_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+        expected_coverage_type = 'grassgrid'
+        coverage_file_name = 'my_grass.asc'
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        coverage_file = os.path.join(dir_path, "files", "grass_ascii", coverage_file_name)
+
+        # Execute
+        self.assertRaises(ValueError, self.engine.create_coverage_resource,
+                          store_id=expected_store_id,
+                          coverage_type=expected_coverage_type,
+                          coverage_file=coverage_file,
+                          overwrite=True,
+                          debug=False)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_workspace(self, mock_catalog):
+        mc = mock_catalog()
+        expected_uri = 'http:www.example.com/b-workspace'
+
+        mc.create_workspace.return_value = self.mock_workspaces[0]
+
+        # Execute
+        response = self.engine.create_workspace(workspace_id=self.workspace_names[0],
+                                                uri=expected_uri)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        self.assertIn('name', r)
+        self.assertEqual(self.workspace_names[0], r['name'])
+
+        mc.create_workspace.assert_called_with(self.workspace_names[0], expected_uri)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_workspace_assertion_error(self, mock_catalog):
+        mc = mock_catalog()
+        expected_uri = 'http:www.example.com/b-workspace'
+        mc.create_workspace.side_effect = AssertionError('AssertionError')
+
+        # Execute
+        response = self.engine.create_workspace(workspace_id=self.workspace_names[0],
+                                                uri=expected_uri)
+        # False
+        self.assertFalse(response['success'])
+        # Expect Error
+        r = response['error']
+        # Properties
+        self.assertIn('AssertionError', r)
+        mc.create_workspace.assert_called_with(self.workspace_names[0], expected_uri)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_style(self, mock_catalog):
+        expected_style_id = 'style1'
+        expected_sld = 'Style one test'
+
+        mc = mock_catalog()
+
+        # Execute
+        response = self.engine.create_style(style_id=expected_style_id, sld=expected_sld)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        mc.create_style.assert_called_with(name=expected_style_id, data=expected_sld, workspace=None, overwrite=False)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_style_assertion_error(self, mock_catalog):
+        mc = mock_catalog()
+        expected_style_id = 'style1'
+        expected_sld = 'Style one test'
+        mc.create_style.side_effect = AssertionError('Upload error')
+
+        # Execute
+        response = self.engine.create_style(style_id=expected_style_id, sld=expected_sld)
+
+        # False
+        self.assertFalse(response['success'])
+        # Expect Error
+        r = response['error']
+        # Properties
+        self.assertIn('Upload error', r)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_style_conflicting_data_error(self, mock_catalog):
+        mc = mock_catalog()
+        expected_style_id = 'style1'
+        expected_sld = 'Style one test'
+        mc.create_style.side_effect = geoserver.catalog.ConflictingDataError('Conflictingdata error')
+
+        # Execute
+        response = self.engine.create_style(style_id=expected_style_id, sld=expected_sld)
+
+        # False
+        self.assertFalse(response['success'])
+        # Expect Error
+        r = response['error']
+        # Properties
+        self.assertIn('Conflictingdata error', r)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_sqlview(self, mock_catalog):
+        pass
+        # mc = mock_catalog()
+        #
+        # expected_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+        #
+        # store = self.engine.get_store(expected_store_id, workspace=self.workspace_names[0])
+        #
+        # epsg_code = 2246
+        #
+        # mock_geometry = "point"
+        #
+        # mc.JDBCVirtualTable.return_value = mock.NonCallableMagicMock(
+        #     # feature_type_name=,
+        #     # sql='foo',
+        #     # geometry='points'
+        # )
+        #
