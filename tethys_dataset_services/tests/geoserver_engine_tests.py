@@ -22,12 +22,6 @@ def random_string_generator(size):
     return ''.join(random.choice(chars) for _ in range(size))
 
 
-def pause(seconds):
-    # Pause
-    for i in range(0, 10000 * seconds):
-        pass
-
-
 def mock_get_style(name, workspace=None):
     mock_style = mock.NonCallableMagicMock(workspace=workspace)
     mock_style.name = name
@@ -139,58 +133,6 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
             mock_store_name = mock.NonCallableMagicMock(workspace=self.workspace_name)
             mock_store_name.name = sn
             self.mock_store_names.append(mock_store_name)
-
-        # # Create Test Workspaces
-        # # self.test_resource_workspace = random_string_generator(10)
-        # self.test_resource_workspace = random_string_generator(10)
-        # self.engine.create_workspace(workspace_id=self.test_resource_workspace, uri=random_string_generator(5))
-        #
-        # # Create Test Stores/Resources/Layers
-        # # Shapefile
-        #
-        # # Store name
-        # self.test_resource_store = random_string_generator(10)
-        #
-        # # Resource and Layer will take the name of the file
-        # self.test_resource_name = self.test_resource_store
-        # self.test_layer_name = self.test_resource_store
-        #
-        # # Identifiers of the form 'workspace:item'
-        # self.test_store_identifier = '{0}:{1}'.format(self.test_resource_workspace, self.test_resource_store)
-        # self.test_resource_identifier = '{0}:{1}'.format(self.test_resource_workspace, self.test_resource_name)
-        #
-        # # Do create shapefile
-        # self.engine.create_shapefile_resource(self.test_store_identifier, shapefile_base=self.shapefile_base,
-        #                                       overwrite=True)
-        #
-        # # Coverage
-        #
-        # # Create Test Style
-        # self.test_style_name = 'point'
-        #
-        # # Create Test Layer Groups
-        # self.test_layer_group_name = random_string_generator(10)
-        # self.engine.create_layer_group(layer_group_id=self.test_layer_group_name,
-        #                                layers=(self.test_layer_name,),
-        #                                styles=(self.test_style_name,))
-        #
-        # # Pause
-        # pause(10)
-        pass
-
-    def tearDown(self):
-        # # Delete test layer groups
-        # self.engine.delete_layer_group(layer_group_id=self.test_layer_group_name)
-        #
-        # # Delete test resources & layers
-        # self.engine.delete_resource(self.test_resource_identifier, recurse=True)
-        #
-        # # Delete stores
-        # self.engine.delete_store(self.test_store_identifier)
-        #
-        # # Delete test workspace
-        # self.engine.delete_workspace(self.test_resource_workspace)
-        pass
 
     def assert_valid_response_object(self, response_object):
         # Response object should be a dictionary with the keys 'success' and either 'result' if success is True
@@ -489,6 +431,9 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
             self.assertIn(r, self.store_names)
 
         mc.get_stores.assert_called_with(workspace=None)
+
+    def test_list_stores_invalid_workspace(self):
+        raise NotImplementedError()
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_list_styles(self, mock_catalog):
@@ -854,6 +799,9 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     def test_get_store(self):
         raise NotImplementedError()
 
+    def test_get_store_failed_request_error(self):
+        raise NotImplementedError()
+
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_get_style(self, mock_catalog):
         mc = mock_catalog()
@@ -1192,6 +1140,15 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         mc.get_layer.assert_called_with(name=self.layer_names[0])
         mc.save.assert_called()
+
+    def test_update_layer_failed_request_error(self):
+        raise NotImplementedError()
+
+    def test_update_layer_with_tile_caching_params(self):
+        raise NotImplementedError()
+
+    def test_update_layer_with_tile_caching_params_not_200(self):
+        raise NotImplementedError()
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_update_layer_group(self, mock_catalog):
@@ -2500,6 +2457,9 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         r = response['error']
         # Properties
         self.assertIn('Conflictingdata error', r)
+
+    def test_create_style_upload_error(self):
+        raise NotImplementedError()
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_create_sqlview(self, mock_catalog):
