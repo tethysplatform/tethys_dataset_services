@@ -695,10 +695,13 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     def test_get_resource_multiple_with_name(self):
         raise NotImplementedError()
 
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.get')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
-    def test_get_layer(self, mock_catalog):
+    def test_get_layer(self, mock_catalog, mock_get):
         mc = mock_catalog()
         mc.get_layer.return_value = self.mock_layers[0]
+
+        mock_get.return_value = MockResponse(200, text='<GeoServerLayer><foo>bar</foo></GeoServerLayer>')
 
         # Execute
         response = self.engine.get_layer(layer_id=self.layer_names[0], debug=self.debug)
@@ -727,7 +730,11 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         for s in r['styles']:
             self.assertIn(s, w_styles)
 
+        self.assertIn('tile_caching', r)
+        self.assertEqual({'foo': 'bar'}, r['tile_caching'])
+
         mc.get_layer.assert_called_with(name=self.layer_names[0])
+        mock_get.assert_called()
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_get_layer_group(self, mock_catalog):
