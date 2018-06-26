@@ -6,4 +6,5 @@ requests
 requests_toolbelt
 coverage
 sqlalchemy
+mock
 flake8
