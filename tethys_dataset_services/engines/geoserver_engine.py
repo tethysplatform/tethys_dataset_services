@@ -663,7 +663,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         except AttributeError:
             response_dict = {'success': False,
-                             'result': 'Invalid workspace "{0}".'.format(workspace)}
+                             'error': 'Invalid workspace "{0}".'.format(workspace)}
         self._handle_debug(response_dict, debug)
         return response_dict
 
@@ -1269,11 +1269,10 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Get a catalog object
         catalog = self._get_geoserver_catalog_object()
 
+        # Process identifier
+        store_workspace_name, store_name = self._process_identifier(postgis_store_id)
+
         # Get Existing PostGIS Store
-        store_name = postgis_store_id
-        store_workspace_name = None
-        if ':' in postgis_store_id:
-            store_workspace_name, store_name = postgis_store_id.split(':')
         store = catalog.get_store(store_name, workspace=store_workspace_name)
 
         # Define virtual table / sql view
@@ -1302,11 +1301,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             return response_dict
 
         # Associate Style
-        style_name = default_style_id
-        style_workspace = None
-
-        if ':' in default_style_id:
-            style_workspace, style_name = default_style_id.split(':')
+        style_workspace, style_name = self._process_identifier(default_style_id)
         style = catalog.get_style(style_name, workspace=style_workspace)
         r_feature_layer.default_style = style
         catalog.save(r_feature_layer)
@@ -1895,22 +1890,20 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         try:
             # Do create
             num_attempts = 0
-            upload_error = True
 
-            while num_attempts < 5 and upload_error:
-
+            while True:
                 try:
                     catalog.create_style(name=name,
                                          data=sld,
                                          workspace=workspace,
                                          overwrite=overwrite)
-                    upload_error = False
+                    break
+
                 except geoserver.catalog.UploadError as e:
                     num_attempts += 1
-                    upload_error = e
 
-            if upload_error:
-                raise upload_error
+                    if num_attempts >= 5:
+                        raise e
 
             style = catalog.get_style(name=name, workspace=workspace)
 

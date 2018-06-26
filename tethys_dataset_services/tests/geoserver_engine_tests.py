@@ -50,6 +50,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     def setUp(self):
         # Globals
         self.debug = False
+        self.counter = 0
 
         # Files
         self.tests_root = os.path.abspath(os.path.dirname(__file__))
@@ -134,11 +135,11 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         # Stores
         self.store_names = ['b-store', 'c-store']
-        self.mock_store_names = []
+        self.mock_stores = []
         for sn in self.store_names:
             mock_store_name = mock.NonCallableMagicMock(workspace=self.workspace_name)
             mock_store_name.name = sn
-            self.mock_store_names.append(mock_store_name)
+            self.mock_stores.append(mock_store_name)
 
         # # Create Test Workspaces
         # # self.test_resource_workspace = random_string_generator(10)
@@ -191,6 +192,12 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         # # Delete test workspace
         # self.engine.delete_workspace(self.test_resource_workspace)
         pass
+
+    def mock_upload_fail_three_times(self, *args, **kwargs):
+        self.counter += 1
+
+        if self.counter < 3:
+            raise geoserver.catalog.UploadError()
 
     def assert_valid_response_object(self, response_object):
         # Response object should be a dictionary with the keys 'success' and either 'result' if success is True
@@ -466,7 +473,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_list_stores(self, mock_catalog):
         mc = mock_catalog()
-        mc.get_stores.return_value = self.mock_store_names
+        mc.get_stores.return_value = self.mock_stores
 
         # Execute
         response = self.engine.list_stores(debug=self.debug)
@@ -489,6 +496,25 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
             self.assertIn(r, self.store_names)
 
         mc.get_stores.assert_called_with(workspace=None)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_list_stores_invalid_workspace(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_stores.return_value = self.mock_stores
+        mc.get_stores.side_effect = AttributeError()
+
+        workspace = 'invalid'
+
+        # Execute
+        response = self.engine.list_stores(workspace=workspace, debug=self.debug)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # False
+        self.assertFalse(response['success'])
+        self.assertIn('Invalid workspace', response['error'])
+        mc.get_stores.assert_called_with(workspace=workspace)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_list_styles(self, mock_catalog):
@@ -851,8 +877,73 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         mc.get_layergroup.assert_called_with(name=self.layer_group_names[0])
 
-    def test_get_store(self):
-        raise NotImplementedError()
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_get_store(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_store.return_value = self.mock_stores[0]
+
+        # Execute
+        response = self.engine.get_store(store_id=self.store_names[0], debug=self.debug)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        # Properties
+        self.assertIn('name', r)
+        self.assertIn(r['name'], self.store_names)
+        self.assertIn('workspace', r)
+        self.assertEqual(self.workspace_name, r['workspace'])
+
+        mc.get_store.assert_called_with(name=self.store_names[0], workspace=None)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_get_store_failed_request_error(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_store.return_value = self.mock_stores[0]
+        mc.get_store.side_effect = geoserver.catalog.FailedRequestError('Failed Request')
+
+        # Execute
+        response = self.engine.get_store(store_id=self.store_names[0], debug=self.debug)
+
+        # Success
+        self.assertFalse(response['success'])
+
+        # Extract Result
+        r = response['error']
+
+        self.assertIn('Failed Request', r)
+
+        mc.get_store.assert_called_with(name=self.store_names[0], workspace=None)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_get_store_none(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_store.return_value = None
+
+        # Execute
+        response = self.engine.get_store(store_id=self.store_names[0], debug=self.debug)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertFalse(response['success'])
+
+        # Extract Result
+        r = response['error']
+
+        self.assertIn('not found', r)
+
+        mc.get_store.assert_called_with(name=self.store_names[0], workspace=None)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_get_style(self, mock_catalog):
@@ -1375,7 +1466,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_delete_store(self, mock_catalog):
         mc = mock_catalog()
-        mc.get_store.return_value = self.mock_store_names[0]
+        mc.get_store.return_value = self.mock_stores[0]
 
         # Do delete
         response = self.engine.delete_store(store_id=self.store_names[0])
@@ -1386,7 +1477,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertIsNone(response['result'])
 
         mc.get_store.assert_called_with(name=self.store_names[0], workspace=None)
-        mc.delete.assert_called_with(config_object=self.mock_store_names[0], purge=False, recurse=False)
+        mc.delete.assert_called_with(config_object=self.mock_stores[0], purge=False, recurse=False)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_delete_store_failed_request(self, mock_catalog):
@@ -2502,21 +2593,179 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertIn('Conflictingdata error', r)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
-    def test_create_sqlview(self, mock_catalog):
-        pass
-        # mc = mock_catalog()
-        #
-        # expected_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
-        #
-        # store = self.engine.get_store(expected_store_id, workspace=self.workspace_names[0])
-        #
-        # epsg_code = 2246
-        #
-        # mock_geometry = "point"
-        #
-        # mc.JDBCVirtualTable.return_value = mock.NonCallableMagicMock(
-        #     # feature_type_name=,
-        #     # sql='foo',
-        #     # geometry='points'
-        # )
-        #
+    def test_create_style_upload_error(self, mock_catalog):
+        mc = mock_catalog()
+        mc.create_style.side_effect = geoserver.catalog.UploadError()
+        expected_style_id = 'style1'
+        expected_sld = 'Style one test'
+
+        # Should Fail
+        self.assertRaises(geoserver.catalog.UploadError,
+                          self.engine.create_style,
+                          style_id=expected_style_id,
+                          sld=expected_sld)
+
+        mc.create_style.assert_called_with(name=expected_style_id, data=expected_sld, workspace=None, overwrite=False)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_style_upload_error_recover(self, mock_catalog):
+        mc = mock_catalog()
+        mc.create_style.side_effect = self.mock_upload_fail_three_times
+        expected_style_id = 'style1'
+        expected_sld = 'Style one test'
+
+        # Should Fail
+        response = self.engine.create_style(style_id=expected_style_id, sld=expected_sld)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        mc.create_style.assert_called_with(name=expected_style_id, data=expected_sld, workspace=None, overwrite=False)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.JDBCVirtualTable')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.JDBCVirtualTableGeometry')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.JDBCVirtualTableParam')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_sql_view(self, mock_catalog, _, __, ___):
+
+        mc = mock_catalog()
+
+        feature_type_name = 'foo'
+        sql_input = 'Select * from pipes'
+        geometry_column = 'geometry'
+        geometry_type = 'LineString'
+        geometry_srid = 4326
+
+        expected_postgis_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+
+        mc.get_store.return_value = self.mock_stores[0]
+        mock_layer = mock.NonCallableMagicMock()
+        mock_layer.name = feature_type_name
+        mc.get_layer.return_value = mock_layer
+
+        response = self.engine.create_sql_view(feature_type_name=feature_type_name,
+                                               postgis_store_id=expected_postgis_store_id,
+                                               sql=sql_input,
+                                               geometry_column=geometry_column,
+                                               geometry_type=geometry_type,
+                                               geometry_srid=geometry_srid)
+
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        self.assertIn('name', r)
+        self.assertEqual(feature_type_name, r['name'])
+
+        mc.get_store.assert_called_with(self.store_names[0], workspace=self.workspace_names[0])
+        mc.get_layer.assert_called_with(feature_type_name)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.JDBCVirtualTable')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.JDBCVirtualTableGeometry')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.JDBCVirtualTableParam')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_sql_view_default_style_id(self, mock_catalog, _, __, ___):
+
+        mc = mock_catalog()
+
+        feature_type_name = 'foo'
+        sql_input = 'Select * from pipes'
+        geometry_column = 'geometry'
+        geometry_type = 'LineString'
+        geometry_srid = 4326
+        default_style_id = '{}:{}'.format(self.workspace_names[0], 'pipes')
+
+        expected_postgis_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+
+        mc.get_store.return_value = self.mock_stores[0]
+        mock_layer = mock.NonCallableMagicMock()
+        mock_layer.name = feature_type_name
+        mock_layer.default_style = ''
+        mc.get_layer.return_value = mock_layer
+        mock_style = mock.NonCallableMagicMock(workspace=self.workspace_names[0])
+        mock_style.name = 'pipes'
+        mc.get_style.return_value = mock_style
+
+        response = self.engine.create_sql_view(feature_type_name=feature_type_name,
+                                               postgis_store_id=expected_postgis_store_id,
+                                               sql=sql_input,
+                                               geometry_column=geometry_column,
+                                               geometry_type=geometry_type,
+                                               geometry_srid=geometry_srid,
+                                               default_style_id=default_style_id)
+
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        self.assertIn('name', r)
+        self.assertEqual(feature_type_name, r['name'])
+        self.assertIn('default_style', r)
+        self.assertEqual(default_style_id, r['default_style'])
+
+        mc.get_store.assert_called_with(self.store_names[0], workspace=self.workspace_names[0])
+        mc.get_layer.assert_called_with(feature_type_name)
+        mc.get_style.assert_called_with('pipes', workspace=self.workspace_names[0])
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.JDBCVirtualTable')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.JDBCVirtualTableGeometry')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.JDBCVirtualTableParam')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_sql_view_with_parameters(self, mock_catalog, _, __, ____):
+
+        mc = mock_catalog()
+
+        feature_type_name = 'foo'
+        sql_input = 'Select * from pipes'
+        geometry_column = 'geometry'
+        geometry_type = 'LineString'
+        geometry_srid = 4326
+        default_style_id = '{}:{}'.format(self.workspace_names[0], 'pipes')
+        parameters = [('column1', 'pressure', '>100'), ('column2', 'temperature', '<20')]
+
+        expected_postgis_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+
+        mc.get_store.return_value = self.mock_stores[0]
+        mock_layer = mock.NonCallableMagicMock()
+        mock_layer.name = feature_type_name
+        mc.get_layer.return_value = mock_layer
+
+        response = self.engine.create_sql_view(feature_type_name=feature_type_name,
+                                               postgis_store_id=expected_postgis_store_id,
+                                               sql=sql_input,
+                                               geometry_column=geometry_column,
+                                               geometry_type=geometry_type,
+                                               geometry_srid=geometry_srid,
+                                               default_style_id=default_style_id,
+                                               parameters=parameters)
+
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+        self.assertIn('name', r)
+        self.assertEqual(feature_type_name, r['name'])
+
+        mc.get_store.assert_called_with(self.store_names[0], workspace=self.workspace_names[0])
+
+        mc.get_layer.assert_called_with(feature_type_name)
