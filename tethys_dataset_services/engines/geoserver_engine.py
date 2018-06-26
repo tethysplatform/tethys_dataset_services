@@ -959,7 +959,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         return response_dict
 
     def link_sqlalchemy_db_to_geoserver(self, store_id, sqlalchemy_engine, docker=False, debug=False,
-                                        docker_ip_address='172.17.42.1'):
+                                        docker_ip_address='172.17.0.1'):
         """
         Helper function to simplify linking postgis databases to geoservers using the sqlalchemy engine object.
 

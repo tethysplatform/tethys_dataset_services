@@ -1,7 +1,6 @@
 include LICENSE
-include README.rst
-recursive-include tethys_datasets/static *
-recursive-include tethys_datasets/templates *
-recursive-include tethys_datasets/tests/support *
-recursive-include tethys_datasets/tests/files *
-exclude tethys_datasets/tests/test_config.py
+include README.md
+recursive-include tethys_dataset_services/static *
+recursive-include tethys_dataset_services/templates *
+recursive-include tethys_dataset_services/tests/support *
+recursive-include tethys_dataset_services/tests/files *

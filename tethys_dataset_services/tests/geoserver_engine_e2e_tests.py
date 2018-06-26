@@ -6,14 +6,32 @@
 * Copyright: (c) Aquaveo 2018
 ********************************************************************************
 """
-# import os
 import random
 import string
 import unittest
-# import geoserver
+from sqlalchemy.engine import create_engine
+from sqlalchemy.orm import Session
+from geoserver.catalog import Catalog as GeoServerCatalog
+
 # from tethys_dataset_services.engines import GeoServerSpatialDatasetEngine
-# from tethys_dataset_services.tests.test_config import TEST_GEOSERVER_DATASET_SERVICE
-# from tethys_dataset_services.tests.test_config import TEST_POSTGIS_SERVICE
+from tethys_dataset_services.tests.test_config import TEST_GEOSERVER_DATASET_SERVICE
+from tethys_dataset_services.tests.test_config import TEST_POSTGIS_SERVICE
+
+
+def setUpModule():
+    global transaction, connection, engine
+
+    # Connect to the database and create the schema within a transaction
+    engine = create_engine(TEST_POSTGIS_SERVICE['URL'])
+    connection = engine.connect()
+    transaction = connection.begin()
+
+
+def tearDownModule():
+    # Roll back the top level transaction and disconnect from the database
+    transaction.rollback()
+    connection.close()
+    engine.dispose()
 
 
 def random_string_generator(size):
@@ -24,10 +42,29 @@ def random_string_generator(size):
 class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
     def setUp(self):
-        pass
+        # GeoServer
+        self.gs_endpoint = TEST_GEOSERVER_DATASET_SERVICE['ENDPOINT']
+        self.gs_username = TEST_GEOSERVER_DATASET_SERVICE['USERNAME']
+        self.gs_password = TEST_GEOSERVER_DATASET_SERVICE['PASSWORD']
+        self.catalog = GeoServerCatalog(self.gs_endpoint, username=self.gs_username, password=self.gs_password)
+
+        # Setup a testing workspace
+        self.workspace_name = random_string_generator(10)
+        self.workspace_uri = 'http://www.tethysplatform.org/tds-test-workspace'
+        self.catalog.create_workspace(self.workspace_name, self.workspace_uri)
+
+        # Setup Postgis database connection
+        self.transaction = connection.begin_nested()
+        self.session = Session(connection)
 
     def tearDown(self):
-        pass
+        # Clean up GeoServer
+        workspace = self.catalog.get_workspace(self.workspace_name)
+        self.catalog.delete(workspace, recurse=True, purge=True)
+
+        # Clean up Postgis database
+        self.session.close()
+        self.transaction.rollback()
 
     def test_create_shapefile_resource_base(self):
         # DO NOT MOCK
@@ -93,7 +130,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
     def test_create_workspace(self):
         # DO NOT MOCK
-        # workspace_id='tds_test_workspace' uri='http://www.tethysplatform.org/test'
+        # workspace_id='this_is_a_test' uri='http://www.tethysplatform.org/test'
         # call methods: create_workspace, list_workspaces, get_workspace, delete_workspace
         raise NotImplementedError()
 
