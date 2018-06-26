@@ -1460,6 +1460,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                                 auth=HTTPBasicAuth(username=self.username, password=self.password))
 
         # Clean up file stuff
+        if shapefile_base or shapefile_zip:
+            files['file'].close()
+
         if temp_archive:
             os.remove(temp_archive)
 
@@ -1746,6 +1749,12 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                                 auth=(self.username, self.password))
 
         # Clean up
+        if coverage_file:
+            if is_zipfile(coverage_file):
+                files['file'].close()
+            else:
+                data.close()
+
         if working_dir:
             for f in os.listdir(working_dir):
                 os.remove(os.path.join(working_dir, f))
