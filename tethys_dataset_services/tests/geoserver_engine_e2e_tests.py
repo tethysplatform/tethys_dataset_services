@@ -45,6 +45,11 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         self.connection = self.engine.connect()
         self.transaction = self.connection.begin()
 
+        self.postgis_table_name = 'points'
+        self.geometry_column = 'geometry'
+        self.geometry_type = 'Point'
+        self.srid = 4326
+
     def tearDown(self):
         # Clean up GeoServer
         workspace = self.catalog.get_workspace(self.workspace_name)
@@ -57,10 +62,9 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
     def setup_postgis_table(self):
         """
-        Creates table in the database named "points" with two points added to it. The table has three columns:
+        Creates table in the database named "points" with two entries. The table has three columns:
         "id", "name", and "geometry." Use this table for the tests that require a database.
         """
-        self.postgis_table_name = 'points'
         geom_table_sql = "CREATE TABLE {table} (" \
                          "id integer CONSTRAINT points_primary_key PRIMARY KEY, " \
                          "name varchar(20)" \
@@ -165,17 +169,19 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
     def test_link_sqlalchemy_db_to_geoserver(self):
         # DO NOT MOCK
         # Use testing_config.TEST_POSTGIS_SERVICE for db credentials
-        # call methods: link_sqlalchemy_db_to_geoserver, list_stores, get_store, delete_store
+        # call methods: link_sqlalchemy_db_to_geoserver, add_table_to_postgis_store, list_stores, get_store, delete_store
 
         # DB table setup
         self.setup_postgis_table()
+        table = self.postgis_table_name
         raise NotImplementedError()
 
     def test_create_postgis_feature_resource(self):
         # DO NOT MOCK
         # Use testing_config.TEST_POSTGIS_SERVICE for db credentials
-        # call methods: create_postgis_feature_resource, list_stores, get_store, delete_store
+        # call methods: create_postgis_feature_resource (with table), list_stores, get_store, delete_store
         self.setup_postgis_table()
+        table = self.postgis_table_name
         raise NotImplementedError()
 
     def test_create_sql_view(self):
@@ -183,4 +189,8 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Use testing_config.TEST_POSTGIS_SERVICE for db credentials
         # call methods: create_sql_view, list_resources, list_stores, list_layers
         self.setup_postgis_table()
+        sql = "SELECT * FROM {table}".format(self.postgis_table_name)
+        geometry_column = self.geometry_column
+        geometry_type = self.geometry_type
+        srid = self.srid
         raise NotImplementedError()
