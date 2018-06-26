@@ -5,4 +5,5 @@ gsconfig-py3>=1.0.0,<1.1.0
 requests
 requests_toolbelt
 coverage
+sqlalchemy
 flake8
