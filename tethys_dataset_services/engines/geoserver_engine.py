@@ -1,3 +1,7 @@
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from builtins import *  # noqa: F403, F401
+
 import os
 import pprint
 import requests
@@ -60,7 +64,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         catalog = self._get_geoserver_catalog_object()
 
         # Make the changes
-        for attribute, value in attributes_dict.iteritems():
+        for attribute, value in attributes_dict.items():
             if hasattr(gs_object, attribute):
                 if attribute == 'styles':
                     styles_objects = []
@@ -959,7 +963,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         return response_dict
 
     def link_sqlalchemy_db_to_geoserver(self, store_id, sqlalchemy_engine, docker=False, debug=False,
-                                        docker_ip_address='172.17.42.1'):
+                                        docker_ip_address='172.17.0.1'):
         """
         Helper function to simplify linking postgis databases to geoservers using the sqlalchemy engine object.
 
@@ -1408,7 +1412,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             temp_archive = '{0}.zip'.format(os.path.join(os.path.split(shapefile_base)[0], name))
 
             with ZipFile(temp_archive, 'w') as zfile:
-                for extension, filepath in shapefile_plus_sidecars.iteritems():
+                for extension, filepath in shapefile_plus_sidecars.items():
                     filename = '{0}.{1}'.format(name, extension)
                     zfile.write(filename=filepath, arcname=filename)
 
@@ -1460,6 +1464,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                                 auth=HTTPBasicAuth(username=self.username, password=self.password))
 
         # Clean up file stuff
+        if shapefile_base or shapefile_zip:
+            files['file'].close()
+
         if temp_archive:
             os.remove(temp_archive)
 
@@ -1746,6 +1753,12 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                                 auth=(self.username, self.password))
 
         # Clean up
+        if coverage_file:
+            if is_zipfile(coverage_file):
+                files['file'].close()
+            else:
+                data.close()
+
         if working_dir:
             for f in os.listdir(working_dir):
                 os.remove(os.path.join(working_dir, f))
@@ -2060,7 +2073,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             layer_group = catalog.get_layergroup(name=layer_group_id)
 
             # Make the changes
-            for attribute, value in kwargs.iteritems():
+            for attribute, value in kwargs.items():
                 if hasattr(layer_group, attribute):
                     setattr(layer_group, attribute, value)
 
