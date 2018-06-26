@@ -1,3 +1,7 @@
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from builtins import *  # noqa: F403, F401
+
 import os
 import random
 import string
@@ -1442,7 +1446,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         # Failure Check
         self.assert_valid_response_object(response)
         self.assertFalse(response['success'])
-        self.assertIs('Failed Request', response['error'])
+        self.assertIn('Failed Request', response['error'])
 
         mc.get_store.assert_called_with(name=self.store_names[0], workspace=None)
 
@@ -1473,7 +1477,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         # Failure Check
         self.assert_valid_response_object(response)
         self.assertFalse(response['success'])
-        self.assertIs('Failed Request', response['error'])
+        self.assertIn('Failed Request', response['error'])
 
         mc.get_style.assert_called_with(name=self.style_names[0], workspace=None)
 
