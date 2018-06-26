@@ -661,9 +661,6 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
                                            store=self.store_name,
                                            workspace=self.workspace_name)
 
-    def test_get_resource_multiple_with_name(self):
-        raise NotImplementedError()
-
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.get')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_get_layer(self, mock_catalog, mock_get):
@@ -1227,14 +1224,111 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         mc.get_layer.assert_called_with(name=self.layer_names[0])
         mc.save.assert_called()
 
-    def test_update_layer_failed_request_error(self):
-        raise NotImplementedError()
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_update_layer_failed_request_error(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_layer.side_effect = geoserver.catalog.FailedRequestError('Failed Request')
+        mc.get_layer.return_value = mock.NonCallableMagicMock(
+            name=self.layer_names[0],
+            title='foo',
+            geometry='points'
+        )
 
-    def test_update_layer_with_tile_caching_params(self):
-        raise NotImplementedError()
+        # Setup
+        new_title = random_string_generator(15)
+        new_geometry = 'lines'
 
-    def test_update_layer_with_tile_caching_params_not_200(self):
-        raise NotImplementedError()
+        # Execute
+        response = self.engine.update_layer(layer_id=self.layer_names[0],
+                                            title=new_title,
+                                            geometry=new_geometry,
+                                            debug=self.debug)
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Fail
+        self.assertFalse(response['success'])
+
+        # Expect Error
+        r = response['error']
+
+        # Properties
+        self.assertIn('Failed Request', r)
+
+        mc.get_layer.assert_called_with(name=self.layer_names[0])
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_update_layer_with_tile_caching_params(self, mock_catalog, mock_post):
+        mc = mock_catalog()
+        mc.get_layer.return_value = mock.NonCallableMagicMock(
+            name=self.layer_names[0],
+            title='foo',
+            geometry='points'
+        )
+        mock_post.return_value = MockResponse(200)
+
+        # Setup
+        new_title = random_string_generator(15)
+        new_geometry = 'lines'
+        tile_caching = {'foo': 'bar'}
+
+        # Execute
+        response = self.engine.update_layer(layer_id=self.layer_names[0],
+                                            title=new_title,
+                                            geometry=new_geometry,
+                                            debug=self.debug,
+                                            tile_caching=tile_caching)
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        result = response['result']
+
+        # Properties
+        self.assertEqual(result['title'], new_title)
+        self.assertEqual(result['geometry'], new_geometry)
+        self.assertIn('foo', result['tile_caching'])
+        self.assertEqual(result['tile_caching']['foo'], 'bar')
+
+        mc.get_layer.assert_called_with(name=self.layer_names[0])
+        mc.save.assert_called()
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_update_layer_with_tile_caching_params_not_200(self, mock_catalog, mock_post):
+        mc = mock_catalog()
+        mc.get_layer.return_value = mock.NonCallableMagicMock(
+            name=self.layer_names[0],
+            title='foo',
+            geometry='points'
+        )
+        mock_post.return_value = MockResponse(500, text='server error')
+
+        # Setup
+        new_title = random_string_generator(15)
+        new_geometry = 'lines'
+        tile_caching = {'foo': 'bar'}
+
+        # Execute
+        response = self.engine.update_layer(layer_id=self.layer_names[0],
+                                            title=new_title,
+                                            geometry=new_geometry,
+                                            debug=self.debug,
+                                            tile_caching=tile_caching)
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertFalse(response['success'])
+
+        # Extract Result
+        self.assertIn('server error', response['error'])
+
+        mc.get_layer.assert_called_with(name=self.layer_names[0])
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_update_layer_group(self, mock_catalog):
