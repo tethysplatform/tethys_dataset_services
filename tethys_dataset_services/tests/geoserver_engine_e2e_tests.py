@@ -109,8 +109,14 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # call methods: link_sqlalchemy_db_to_geoserver, list_stores, get_store, delete_store
         raise NotImplementedError()
 
-    def create_postgis_feature_resource(self):
+    def test_create_postgis_feature_resource(self):
         # DO NOT MOCK
         # Use testing_config.TEST_POSTGIS_SERVICE for db credentials
         # call methods: create_postgis_feature_resource, list_stores, get_store, delete_store
+        raise NotImplementedError()
+
+    def test_create_sql_view(self):
+        # DO NOT MOCK
+        # Use testing_config.TEST_POSTGIS_SERVICE for db credentials
+        # call methods: create_sql_view, list_resources, list_stores, list_layers
         raise NotImplementedError()
