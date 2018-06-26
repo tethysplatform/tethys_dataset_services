@@ -169,11 +169,12 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
     def test_link_sqlalchemy_db_to_geoserver(self):
         # DO NOT MOCK
         # Use testing_config.TEST_POSTGIS_SERVICE for db credentials
-        # call methods: link_sqlalchemy_db_to_geoserver, add_table_to_postgis_store, list_stores, get_store, delete_store
+        # call methods: link_sqlalchemy_db_to_geoserver, add_table_to_postgis_store,
+        # list_stores, get_store, delete_store
 
         # DB table setup
         self.setup_postgis_table()
-        table = self.postgis_table_name
+        # table = self.postgis_table_name
         raise NotImplementedError()
 
     def test_create_postgis_feature_resource(self):
@@ -181,7 +182,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Use testing_config.TEST_POSTGIS_SERVICE for db credentials
         # call methods: create_postgis_feature_resource (with table), list_stores, get_store, delete_store
         self.setup_postgis_table()
-        table = self.postgis_table_name
+        # table = self.postgis_table_name
         raise NotImplementedError()
 
     def test_create_sql_view(self):
@@ -189,8 +190,8 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Use testing_config.TEST_POSTGIS_SERVICE for db credentials
         # call methods: create_sql_view, list_resources, list_stores, list_layers
         self.setup_postgis_table()
-        sql = "SELECT * FROM {table}".format(self.postgis_table_name)
-        geometry_column = self.geometry_column
-        geometry_type = self.geometry_type
-        srid = self.srid
+        # sql = "SELECT * FROM {table}".format(self.postgis_table_name)
+        # geometry_column = self.geometry_column
+        # geometry_type = self.geometry_type
+        # srid = self.srid
         raise NotImplementedError()
