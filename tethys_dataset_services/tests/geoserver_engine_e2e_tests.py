@@ -6,14 +6,14 @@
 * Copyright: (c) Aquaveo 2018
 ********************************************************************************
 """
-import os
+# import os
 import random
 import string
 import unittest
-import geoserver
-from tethys_dataset_services.engines import GeoServerSpatialDatasetEngine
-from tethys_dataset_services.tests.test_config import TEST_GEOSERVER_DATASET_SERVICE
-from tethys_dataset_services.tests.test_config import TEST_POSTGIS_SERVICE
+# import geoserver
+# from tethys_dataset_services.engines import GeoServerSpatialDatasetEngine
+# from tethys_dataset_services.tests.test_config import TEST_GEOSERVER_DATASET_SERVICE
+# from tethys_dataset_services.tests.test_config import TEST_POSTGIS_SERVICE
 
 
 def random_string_generator(size):
@@ -85,7 +85,9 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
     def test_create_layer_group(self):
         # DO NOT MOCK
-        # Use existing layers and styles in geoserver: layers: sf:roads, sf:bugsites, sf:streams; styles: simple_roads, capitals, simple_streams
+        # Use existing layers and styles in geoserver:
+        # layers: sf:roads, sf:bugsites, sf:streams;
+        # styles: simple_roads, capitals, simple_streams
         # call methods: create_layer_group, list_layer_groups, get_layer_group, delete_layer_group
         raise NotImplementedError()
 

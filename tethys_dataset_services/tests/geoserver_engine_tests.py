@@ -2589,9 +2589,6 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         # Properties
         self.assertIn('Conflictingdata error', r)
 
-    def test_create_style_upload_error(self):
-        raise NotImplementedError()
-
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_create_style_upload_error(self, mock_catalog):
         mc = mock_catalog()
