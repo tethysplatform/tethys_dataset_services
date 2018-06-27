@@ -7,4 +7,5 @@ requests_toolbelt
 mock
 coverage
 sqlalchemy
+psycopg2
 flake8

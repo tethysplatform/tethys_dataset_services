@@ -1920,12 +1920,16 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
                           self.engine.validate
                           )
 
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.get')
+    def test_validate_401(self, mock_get):
         # 401 Code
         mock_get.return_value = MockResponse(401)
         self.assertRaises(AssertionError,
                           self.engine.validate
                           )
 
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.get')
+    def test_validate_not_200(self, mock_get):
         # !201 Code
         mock_get.return_value = MockResponse(201)
 
@@ -1933,6 +1937,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
                           self.engine.validate
                           )
 
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.get')
+    def test_validate_not_geoserver(self, mock_get):
         # text
         mock_get.return_value = MockResponse(200, text="Bad text")
         self.assertRaises(AssertionError,
