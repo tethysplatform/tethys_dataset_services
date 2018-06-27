@@ -1,4 +1,8 @@
 # Credits: http://code.activestate.com/recipes/573463-converting-xml-to-dictionary-and-back/
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from builtins import *  # noqa: F403, F401
+
 from xml.etree import ElementTree
 
 
@@ -31,7 +35,7 @@ class XmlDictObject(dict):
         """
 
         if isinstance(x, dict):
-            return XmlDictObject((k, XmlDictObject.Wrap(v)) for (k, v) in x.iteritems())
+            return XmlDictObject((k, XmlDictObject.Wrap(v)) for (k, v) in x.items())
         elif isinstance(x, list):
             return [XmlDictObject.Wrap(v) for v in x]
         else:
@@ -40,7 +44,7 @@ class XmlDictObject(dict):
     @staticmethod
     def _UnWrap(x):
         if isinstance(x, dict):
-            return dict((k, XmlDictObject._UnWrap(v)) for (k, v) in x.iteritems())
+            return dict((k, XmlDictObject._UnWrap(v)) for (k, v) in x.items())
         elif isinstance(x, list):
             return [XmlDictObject._UnWrap(v) for v in x]
         else:
@@ -58,7 +62,7 @@ def _ConvertDictToXmlRecurse(parent, dictitem):
     assert not isinstance(dictitem, type([]))
 
     if isinstance(dictitem, dict):
-        for (tag, child) in dictitem.iteritems():
+        for (tag, child) in dictitem.items():
             if str(tag) == '_text':
                 parent.text = str(child)
             elif isinstance(child, type([])):
@@ -79,8 +83,7 @@ def ConvertDictToXml(xmldict):
     """
     Converts a dictionary to an XML ElementTree Element
     """
-
-    roottag = xmldict.keys()[0]
+    roottag = list(xmldict)[0]
     root = ElementTree.Element(roottag)
     _ConvertDictToXmlRecurse(root, xmldict[roottag])
     return root
