@@ -9,6 +9,7 @@ import unittest
 import mock
 import geoserver
 import requests
+from sqlalchemy import create_engine
 
 from tethys_dataset_services.engines import GeoServerSpatialDatasetEngine
 
@@ -31,6 +32,18 @@ def mock_get_style(name, workspace=None):
     mock_style = mock.NonCallableMagicMock(workspace=workspace)
     mock_style.name = name
     return mock_style
+
+
+def mock_get_resource_create_postgis_feature_resource(name, **kwargs):
+    if 'workspace' in kwargs:
+        raise geoserver.catalog.FailedRequestError()
+    elif 'store' in kwargs:
+        mock_resource = mock.NonCallableMagicMock()
+        mock_resource.name = name
+        mock_resource.store = kwargs['store']
+        return mock_resource
+    else:
+        raise AssertionError('Did not get expected keyword arguments: {}'.format(list(kwargs)))
 
 
 class MockResponse(object):
@@ -2824,9 +2837,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.JDBCVirtualTableParam')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_create_sql_view_with_parameters(self, mock_catalog, _, __, ____):
-
         mc = mock_catalog()
-
         feature_type_name = 'foo'
         sql_input = 'Select * from pipes'
         geometry_column = 'geometry'
@@ -3068,3 +3079,335 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         resource_att = self.resource_names[0]
         self.assertIn(resource_att, resource_dict['resource'])
         self.assertIn(self.default_style_name, resource_dict['default_style'])
+
+    def test_link_sqlalchemy_db_to_geoserver(self):
+        self.engine.create_postgis_feature_resource = mock.MagicMock()
+        url = 'postgres://user:pass@localhost:5432/foo'
+        engine = create_engine(url)
+        self.engine.link_sqlalchemy_db_to_geoserver(store_id=self.store_names[0], sqlalchemy_engine=engine)
+        self.engine.create_postgis_feature_resource.assert_called_with(store_id=self.store_names[0],
+                                                                       host='localhost',
+                                                                       port=5432,
+                                                                       database='foo',
+                                                                       user='user',
+                                                                       password='pass',
+                                                                       debug=False)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_postgis_feature_resource(self, mock_catalog, mock_post):
+        mc = mock_catalog()
+        mc.get_store.return_value = self.mock_stores[0]
+
+        store_id = self.store_names[0]
+        host = 'localhost'
+        port = 5432
+        database = 'foo'
+        user = 'user'
+        password = 'pass'
+        table_name = 'points'
+
+        mc.get_store.return_value = self.mock_store[0]
+        mc.get_resource.side_effect = mock_get_resource_create_postgis_feature_resource
+
+        mock_post.return_value = MockResponse(201)
+
+        response = self.engine.create_postgis_feature_resource(store_id=store_id,
+                                                               host=host,
+                                                               port=port,
+                                                               database=database,
+                                                               user=user,
+                                                               password=password,
+                                                               table=table_name,
+                                                               debug=False)
+
+        expected_url = '{endpoint}workspaces/{w}/datastores/{s}/featuretypes'.format(
+            endpoint=self.endpoint,
+            w=self.workspace_names[0],
+            s=self.store_names[0]
+        )
+        expected_headers = {
+            "Content-type": "text/xml",
+            "Accept": "application/xml"
+        }
+
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        self.assertIn('name', r)
+        self.assertIn(table_name, r['name'])
+        self.assertIn('store', r)
+        self.assertEqual(self.store_names[0], r['store'])
+
+        post_call_args = mock_post.call_args_list
+        self.assertEqual(expected_url, post_call_args[0][1]['url'])
+        self.assertEqual(expected_headers, post_call_args[0][1]['headers'])
+
+        mc.get_store.assert_called_with(name=self.store_names[0], workspace=None)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_postgis_feature_resource_no_store(self, mock_catalog, mock_post):
+        mc = mock_catalog()
+        store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+        host = 'localhost'
+        port = 5432
+        database = 'foo'
+        user = 'user'
+        password = 'pass'
+        table_name = 'points'
+
+        mc.get_store.return_value = None
+        mc.get_resource.side_effect = mock_get_resource_create_postgis_feature_resource
+        mock_post.return_value = MockResponse(201)
+
+        response = self.engine.create_postgis_feature_resource(store_id=store_id,
+                                                               host=host,
+                                                               port=port,
+                                                               database=database,
+                                                               user=user,
+                                                               password=password,
+                                                               table=table_name,
+                                                               debug=False)
+
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        self.assertIn('name', r)
+        self.assertIn(table_name, r['name'])
+        self.assertIn('store', r)
+        self.assertEqual(self.store_names[0], r['store'])
+
+        expected_headers = {
+            "Content-type": "text/xml",
+            "Accept": "application/xml"
+        }
+
+        post_call_args = mock_post.call_args_list
+
+        # Execute: POST /workspaces/<ws>/datastores
+        expected_url = '{endpoint}workspaces/{w}/datastores'.format(
+            endpoint=self.endpoint,
+            w=self.workspace_names[0],
+        )
+        self.assertEqual(expected_url, post_call_args[0][1]['url'])
+        self.assertEqual(expected_headers, post_call_args[0][1]['headers'])
+
+        # Execute: POST /workspaces/<ws>/datastores/<ds>/featuretypes
+        expected_url = '{endpoint}workspaces/{w}/datastores/{s}/featuretypes'.format(
+            endpoint=self.endpoint,
+            w=self.workspace_names[0],
+            s=self.store_names[0]
+        )
+        self.assertEqual(expected_url, post_call_args[1][1]['url'])
+        self.assertEqual(expected_headers, post_call_args[1][1]['headers'])
+
+        mc.get_store.assert_called_with(name=self.store_names[0], workspace=self.workspace_names[0])
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_postgis_feature_resource_no_store_not_201(self, mock_catalog, mock_post):
+        mc = mock_catalog()
+        mc.get_store.return_value = self.mock_stores[0]
+
+        store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+        host = 'localhost'
+        port = 5432
+        database = 'foo'
+        user = 'user'
+        password = 'pass'
+        table_name = 'points'
+
+        mc.get_store.return_value = None
+        mc.get_resource.side_effect = mock_get_resource_create_postgis_feature_resource
+        mock_post.return_value = MockResponse(500)
+
+        response = self.engine.create_postgis_feature_resource(store_id=store_id,
+                                                               host=host,
+                                                               port=port,
+                                                               database=database,
+                                                               user=user,
+                                                               password=password,
+                                                               table=table_name,
+                                                               debug=False)
+
+        self.assertFalse(response['success'])
+
+        expected_headers = {
+            "Content-type": "text/xml",
+            "Accept": "application/xml"
+        }
+
+        # Execute: POST /workspaces/<ws>/datastores
+        expected_url = '{endpoint}workspaces/{w}/datastores'.format(
+            endpoint=self.endpoint,
+            w=self.workspace_names[0],
+        )
+
+        post_call_args = mock_post.call_args_list
+        self.assertEqual(expected_url, post_call_args[0][1]['url'])
+        self.assertEqual(expected_headers, post_call_args[0][1]['headers'])
+
+        mc.get_store.assert_called_with(name=self.store_names[0], workspace=self.workspace_names[0])
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_postgis_feature_resource_table_none(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_store.return_value = self.mock_stores[0]
+
+        store_id = '{}:{}'.format(self.workspace_name, self.store_names[0])
+        host = 'localhost'
+        port = 5432
+        database = 'foo'
+        user = 'user'
+        password = 'pass'
+        table_name = None
+
+        response = self.engine.create_postgis_feature_resource(store_id=store_id,
+                                                               host=host,
+                                                               port=port,
+                                                               database=database,
+                                                               user=user,
+                                                               password=password,
+                                                               table=table_name,
+                                                               debug=False)
+
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        self.assertIn('name', r)
+        self.assertIn(self.store_names[0], r['name'])
+        self.assertIn('workspace', r)
+        self.assertEqual(self.workspace_name, r['workspace'])
+
+        mc.get_store.assert_called_with(name=self.store_names[0], workspace=self.workspace_name)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_postgis_feature_resource_table_none_no_store(self, mock_catalog, mock_post):
+        mc = mock_catalog()
+        mc.get_store.return_value = None
+
+        mock_post.return_value = MockResponse(201)
+
+        store_id = '{}:{}'.format(self.workspace_name, self.store_names[0])
+        host = 'localhost'
+        port = 5432
+        database = 'foo'
+        user = 'user'
+        password = 'pass'
+        table_name = None
+
+        response = self.engine.create_postgis_feature_resource(store_id=store_id,
+                                                               host=host,
+                                                               port=port,
+                                                               database=database,
+                                                               user=user,
+                                                               password=password,
+                                                               table=table_name,
+                                                               debug=False)
+
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertEqual({}, r)
+
+        mc.get_store.assert_called_with(name=self.store_names[0], workspace=self.workspace_name)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_postgis_feature_resource_not_201(self, mock_catalog, mock_post):
+        mc = mock_catalog()
+        mc.get_store.return_value = self.mock_stores[0]
+
+        store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+        host = 'localhost'
+        port = 5432
+        database = 'foo'
+        user = 'user'
+        password = 'pass'
+        table_name = 'points'
+
+        mc.get_resource.side_effect = mock_get_resource_create_postgis_feature_resource
+
+        mock_post.return_value = MockResponse(500)
+
+        response = self.engine.create_postgis_feature_resource(store_id=store_id,
+                                                               host=host,
+                                                               port=port,
+                                                               database=database,
+                                                               user=user,
+                                                               password=password,
+                                                               table=table_name,
+                                                               debug=False)
+
+        expected_url = '{endpoint}workspaces/{w}/datastores/{s}/featuretypes'.format(
+            endpoint=self.endpoint,
+            w=self.workspace_names[0],
+            s=self.store_names[0]
+        )
+        expected_headers = {
+            "Content-type": "text/xml",
+            "Accept": "application/xml"
+        }
+
+        self.assertFalse(response['success'])
+
+        post_call_args = mock_post.call_args_list
+        self.assertEqual(expected_url, post_call_args[0][1]['url'])
+        self.assertEqual(expected_headers, post_call_args[0][1]['headers'])
+
+        mc.get_store.assert_called_with(name=self.store_names[0], workspace=self.workspace_names[0])
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_create_postgis_feature_resource_already_exist(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_store.return_value = self.mock_stores[0]
+        mc.get_resource.side_effect = mock.MagicMock()
+
+        store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+        host = 'localhost'
+        port = 5432
+        database = 'foo'
+        user = 'user'
+        password = 'pass'
+        table_name = 'points'
+
+        response = self.engine.create_postgis_feature_resource(store_id=store_id,
+                                                               host=host,
+                                                               port=port,
+                                                               database=database,
+                                                               user=user,
+                                                               password=password,
+                                                               table=table_name,
+                                                               debug=False)
+
+        self.assertFalse(response['success'])
+
+        # Extract Result
+        r = response['error']
+
+        self.assertIn('There is already a resource named', r)
+
+        mc.get_store.assert_called_with(name=self.store_names[0], workspace=self.workspace_names[0])
+
+    def test_add_table_to_postgis_store(self):
+        pass

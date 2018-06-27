@@ -1028,13 +1028,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             workspace = catalog.get_default_workspace().name
 
         # Determine if store exists
-        try:
-            store = catalog.get_store(name=name, workspace=workspace)
-            if not store:
-                raise geoserver.catalog.FailedRequestError()
-            store_exists = True
-        except geoserver.catalog.FailedRequestError:
-            store_exists = False
+        store = catalog.get_store(name=name, workspace=workspace)
+        store_exists = store is not None
 
         # Create the store if it doesn't exist already
         if not store_exists:
@@ -1133,7 +1128,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Prepare URL
         url = self._assemble_url('workspaces', workspace, 'datastores', name, 'featuretypes')
 
-        # Execute: POST /workspaces/<ws>/datastores
+        # Execute: POST /workspaces/<ws>/datastores/<ds>/featuretypes
         response = requests.post(url=url,
                                  data=xml,
                                  headers=headers,
