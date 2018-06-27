@@ -3,6 +3,7 @@ from __future__ import (absolute_import, division,
 from builtins import *  # noqa: F403, F401
 
 import os
+import sys
 import random
 import string
 import unittest
@@ -3018,10 +3019,12 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     def test_handle_debug(self):
         test_object = self.style_names
 
-        import StringIO
-        import sys
+        if sys.version_info > (3, 0):
+            from io import StringIO
+        else:
+            from StringIO import StringIO
 
-        captured_output = StringIO.StringIO()
+        captured_output = StringIO()
         sys.stdout = captured_output
         self.engine._handle_debug(test_object, debug=True)
         sys.stdout = sys.__stdout__
@@ -3299,9 +3302,10 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         mc.get_store.assert_called_with(name=self.store_names[0], workspace=self.workspace_name)
 
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.time')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
-    def test_create_postgis_feature_resource_table_none_no_store(self, mock_catalog, mock_post):
+    def test_create_postgis_feature_resource_table_none_no_store(self, mock_catalog, mock_post, mock_time):
         mc = mock_catalog()
         mc.get_store.return_value = None
 
@@ -3333,6 +3337,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertEqual({}, r)
 
         mc.get_store.assert_called_with(name=self.store_names[0], workspace=self.workspace_name)
+        mock_time.sleep.assert_called_with(1)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
