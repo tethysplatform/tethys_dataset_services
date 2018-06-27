@@ -153,7 +153,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
         # Execute
         result = self.engine.create_resource(dataset_id=self.test_dataset_name, file=file_to_upload, console=False)
-        print result
+
         # Verify Success
         self.assertTrue(result['success'], result)
 
@@ -230,7 +230,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
         # Execute
         result = self.engine.update_resource(resource_id=self.test_resource['id'], file=file_to_upload, console=False)
-        print result
+
         # Verify Success
         self.assertTrue(result['success'])
 
