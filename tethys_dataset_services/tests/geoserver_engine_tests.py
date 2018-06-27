@@ -2864,3 +2864,207 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         mc.get_store.assert_called_with(self.store_names[0], workspace=self.workspace_names[0])
 
         mc.get_layer.assert_called_with(feature_type_name)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_apply_changes_to_gs_object(self, mock_catalog):
+        mc = mock_catalog()
+        gs_object = mock.NonCallableMagicMock(
+            layer_id=self.layer_names[0],
+            styles=self.style_names,
+            default_style='d_styles'
+        )
+        # new style
+        new_gs_args = {'styles': ['style1:style1a', 'style2'], 'default_style': 'dstyle1'}
+
+        # mock get_style to return value
+        mc.get_style.return_value = self.mock_styles[0]
+
+        # Execute
+        new_gs_object = self.engine._apply_changes_to_gs_object(new_gs_args, gs_object)
+
+        style = new_gs_object.styles[0].name
+        d_style = new_gs_object.default_style.name
+
+        # validate
+        self.assertIn(self.mock_styles[0].name, style)
+        self.assertIn(self.mock_styles[0].name, d_style)
+
+        # test default case with :
+        new_gs_args = {'default_style': 'dstyle1: dstyle2'}
+
+        # mock get_style to return value
+        mc.get_style.return_value = self.mock_styles[0]
+
+        # Execute
+        new_gs_object = self.engine._apply_changes_to_gs_object(new_gs_args, gs_object)
+
+        d_style = new_gs_object.default_style.name
+
+        # validate
+        self.assertIn(self.mock_styles[0].name, d_style)
+
+    def test_get_non_rest_endpoint(self):
+        self.engine = GeoServerSpatialDatasetEngine(
+            endpoint='http://localhost:8181/geoserver/rest/',
+        )
+
+        expected_endpoint = 'http://localhost:8181/geoserver'
+        endpoint = self.engine._get_non_rest_endpoint()
+
+        # Check Response
+        self.assertEqual(expected_endpoint, endpoint)
+
+    def test_get_wms_url(self):
+        self.engine = GeoServerSpatialDatasetEngine(
+            endpoint='http://localhost:8181/geoserver/rest/',
+        )
+
+        # tiled and transparent are set as default value
+        wms_url = self.engine._get_wms_url(layer_id=self.layer_names[0],
+                                           style=self.style_names[0],
+                                           srs='EPSG:4326',
+                                           bbox='-180,-90,180,90',
+                                           version='1.1.0',
+                                           width='512',
+                                           height='512',
+                                           output_format='image/png',
+                                           tiled=False, transparent=True)
+
+        expected_url = 'http://localhost:8181/geoserver/wms?service=WMS&version=1.1.0&' \
+                       'request=GetMap&layers={0}&styles={1}&transparent=true&' \
+                       'tiled=no&srs=EPSG:4326&bbox=-180,-90,180,90&' \
+                       'width=512&height=512&format=image/png'.format(self.layer_names[0], self.style_names[0])
+
+        # check wms_url
+        self.assertEqual(expected_url, wms_url)
+
+        # tiled and transparent are set as default value
+        wms_url = self.engine._get_wms_url(layer_id=self.layer_names[0],
+                                           style=self.style_names[0],
+                                           srs='EPSG:4326',
+                                           bbox='-180,-90,180,90',
+                                           version='1.1.0',
+                                           width='512',
+                                           height='512',
+                                           output_format='image/png',
+                                           tiled=True, transparent=False)
+
+        expected_url = 'http://localhost:8181/geoserver/wms?service=WMS&version=1.1.0&' \
+                       'request=GetMap&layers={0}&styles={1}&transparent=false&' \
+                       'tiled=yes&srs=EPSG:4326&bbox=-180,-90,180,90&' \
+                       'width=512&height=512&format=image/png'.format(self.layer_names[0], self.style_names[0])
+
+        # check wms_url
+        self.assertEqual(expected_url, wms_url)
+
+    def test_get_wcs_url(self):
+        self.engine = GeoServerSpatialDatasetEngine(
+            endpoint='http://localhost:8181/geoserver/rest/',
+        )
+
+        wcs_url = self.engine._get_wcs_url(resource_id=self.resource_names[0],
+                                           srs='EPSG:4326', bbox='-180,-90,180,90',
+                                           output_format='png', namespace=self.store_name,
+                                           width='512', height='512')
+
+        expected_wcs_url = 'http://localhost:8181/geoserver/wcs?service=WCS&version=1.1.0&' \
+                           'request=GetCoverage&identifier={0}&srs=EPSG:4326&' \
+                           'BoundingBox=-180,-90,180,90&width=512&' \
+                           'height=512&format=png&namespace={1}'.format(self.resource_names[0], self.store_name)
+
+        # check wcs_url
+        self.assertEqual(expected_wcs_url, wcs_url)
+
+    def test_get_wfs_url(self):
+        self.engine = GeoServerSpatialDatasetEngine(
+            endpoint='http://localhost:8181/geoserver/rest/',
+        )
+
+        # GML3 Case
+        wfs_url = self.engine._get_wfs_url(resource_id=self.resource_names[0], output_format='GML3')
+        expected_wfs_url = 'http://localhost:8181/geoserver/wfs?service=WFS&' \
+                           'version=2.0.0&request=GetFeature&' \
+                           'typeNames={0}'.format(self.resource_names[0])
+        # check wcs_url
+        self.assertEqual(expected_wfs_url, wfs_url)
+
+        # GML2 Case
+        wfs_url = self.engine._get_wfs_url(resource_id=self.resource_names[0], output_format='GML2')
+        expected_wfs_url = 'http://localhost:8181/geoserver/wfs?service=WFS&' \
+                           'version=1.0.0&request=GetFeature&' \
+                           'typeNames={0}&outputFormat={1}'.format(self.resource_names[0], 'GML2')
+        # check wcs_url
+        self.assertEqual(expected_wfs_url, wfs_url)
+
+        # Other format Case
+        wfs_url = self.engine._get_wfs_url(resource_id=self.resource_names[0], output_format='Other')
+        expected_wfs_url = 'http://localhost:8181/geoserver/wfs?service=WFS&' \
+                           'version=2.0.0&request=GetFeature&' \
+                           'typeNames={0}&outputFormat={1}'.format(self.resource_names[0], 'Other')
+        # check wcs_url
+        self.assertEqual(expected_wfs_url, wfs_url)
+
+    def test_handle_debug(self):
+        test_object = self.style_names
+
+        import StringIO
+        import sys
+
+        captured_output = StringIO.StringIO()
+        sys.stdout = captured_output
+        self.engine._handle_debug(test_object, debug=True)
+        sys.stdout = sys.__stdout__
+
+        output = captured_output.getvalue()
+
+        # check results
+        self.assertIn(self.style_names[0], output)
+
+    def test_transcribe_geoserver_object(self):
+
+        # NAMED_OBJECTS
+        gs_object_store = mock.NonCallableMagicMock(
+            store=self.store_name,
+        )
+        store_dict = self.engine._transcribe_geoserver_object(gs_object_store)
+
+        # check if type is dic
+        self.assertIsInstance(store_dict, dict)
+
+        # check properties
+        self.assertIn(self.store_name, store_dict['store'])
+
+        # NAMED_OBJECTS_WITH_WORKSPACE
+        gs_sub_object_resource = mock.NonCallableMagicMock(workspace=self.workspace_name)
+        gs_sub_object_resource.name = self.resource_names[0]
+        gs_object_resource = mock.NonCallableMagicMock(
+            resource=gs_sub_object_resource,
+            default_style=self.default_style_name,
+        )
+        resource_dict = self.engine._transcribe_geoserver_object(gs_object_resource)
+
+        # check if type is dic
+        self.assertIsInstance(resource_dict, dict)
+
+        # check properties
+        resource_att = '{0}:{1}'.format(self.workspace_name, self.resource_names[0])
+        self.assertIn(resource_att, resource_dict['resource'])
+        self.assertIn(self.default_style_name, resource_dict['default_style'])
+
+        # NAMED_OBJECTS_WITH_NO_WORKSPACE to Cover if sub_object.workspace is not true
+        gs_sub_object_resource = mock.NonCallableMagicMock(styles=self.style_names[0])
+        gs_sub_object_resource.name = self.resource_names[0]
+        gs_object_resource = mock.NonCallableMagicMock(
+            resource=gs_sub_object_resource,
+            default_style=self.default_style_name,
+        )
+        resource_dict = self.engine._transcribe_geoserver_object(gs_object_resource)
+
+        print(resource_dict)
+        # check if type is dic
+        self.assertIsInstance(resource_dict, dict)
+
+        # check properties
+        resource_att = self.resource_names[0]
+        self.assertIn(resource_att, resource_dict['resource'])
+        self.assertIn(self.default_style_name, resource_dict['default_style'])
