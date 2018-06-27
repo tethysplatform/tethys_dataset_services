@@ -1668,6 +1668,9 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
                                                          shapefile_base=shapefile_name,
                                                          overwrite=True
                                                          )
+        # Validate response object
+        self.assert_valid_response_object(response)
+
         # Should succeed
         self.assertTrue(response['success'])
 
@@ -1701,6 +1704,9 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
                                                          overwrite=True,
                                                          charset='ISO - 8559 - 1',
                                                          )
+        # Validate response object
+        self.assert_valid_response_object(response)
+
         # Should succeed
         self.assertTrue(response['success'])
 
@@ -1742,6 +1748,9 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
                                                              shapefile_upload=upload_list,
                                                              overwrite=True,
                                                              )
+        # Validate response object
+        self.assert_valid_response_object(response)
+
         # Should succeed
         self.assertTrue(response['success'])
 
@@ -1864,6 +1873,9 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
                                                          shapefile_base=shapefile_name,
                                                          overwrite=True
                                                          )
+        # Validate response object
+        self.assert_valid_response_object(response)
+
         # Should succeed
         self.assertFalse(response['success'])
 
@@ -2634,8 +2646,12 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         # Execute
         response = self.engine.create_workspace(workspace_id=self.workspace_names[0],
                                                 uri=expected_uri)
+        # Validate response object
+        self.assert_valid_response_object(response)
+
         # False
         self.assertFalse(response['success'])
+
         # Expect Error
         r = response['error']
         # Properties
@@ -2766,6 +2782,9 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
                                                geometry_column=geometry_column,
                                                geometry_type=geometry_type,
                                                geometry_srid=geometry_srid)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
 
         self.assertTrue(response['success'])
 
@@ -3107,8 +3126,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         password = 'pass'
         table_name = 'points'
 
-        mc.get_store.return_value = self.mock_store[0]
         mc.get_resource.side_effect = mock_get_resource_create_postgis_feature_resource
+        mc.get_default_workspace.return_value = self.mock_workspaces[0]
 
         mock_post.return_value = MockResponse(201)
 
@@ -3131,6 +3150,9 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
             "Accept": "application/xml"
         }
 
+        # Validate response object
+        self.assert_valid_response_object(response)
+
         self.assertTrue(response['success'])
 
         # Extract Result
@@ -3148,7 +3170,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertEqual(expected_url, post_call_args[0][1]['url'])
         self.assertEqual(expected_headers, post_call_args[0][1]['headers'])
 
-        mc.get_store.assert_called_with(name=self.store_names[0], workspace=None)
+        mc.get_store.assert_called_with(name=self.store_names[0], workspace=self.mock_workspaces[0].name)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
@@ -3369,6 +3391,9 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
             "Accept": "application/xml"
         }
 
+        # Validate response object
+        self.assert_valid_response_object(response)
+
         self.assertFalse(response['success'])
 
         post_call_args = mock_post.call_args_list
@@ -3400,6 +3425,9 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
                                                                table=table_name,
                                                                debug=False)
 
+        # Validate response object
+        self.assert_valid_response_object(response)
+
         self.assertFalse(response['success'])
 
         # Extract Result
@@ -3409,5 +3437,112 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         mc.get_store.assert_called_with(name=self.store_names[0], workspace=self.workspace_names[0])
 
-    def test_add_table_to_postgis_store(self):
-        pass
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_add_table_to_postgis_store(self, mock_catalog, mock_post):
+        mc = mock_catalog()
+
+        mc.get_store.return_value = self.mock_stores[0]
+        mc.get_default_workspace.return_value = self.mock_workspaces[0]
+
+        store_id = self.store_names[0]
+
+        mock_post.return_value = MockResponse(201)
+
+        table_name = 'points'
+
+        response = self.engine.add_table_to_postgis_store(store_id=store_id,
+                                                          table=table_name,
+                                                          debug=False)
+
+        expected_url = '{endpoint}workspaces/{w}/datastores/{s}/featuretypes'.format(
+            endpoint=self.endpoint,
+            w=self.workspace_names[0],
+            s=self.store_names[0]
+        )
+        expected_headers = {
+            "Content-type": "text/xml",
+            "Accept": "application/xml"
+        }
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        self.assertIn('name', r)
+        self.assertIn(self.store_names[0], r['name'])
+
+        post_call_args = mock_post.call_args_list
+        self.assertEqual(expected_url, post_call_args[0][1]['url'])
+        self.assertEqual(expected_headers, post_call_args[0][1]['headers'])
+
+        mc.get_store.assert_called_with(name=self.store_names[0], workspace=self.workspace_names[0])
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_add_table_to_postgis_store_fail_request(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_store.side_effect = geoserver.catalog.FailedRequestError()
+        store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+
+        table_name = 'points'
+
+        response = self.engine.add_table_to_postgis_store(store_id=store_id,
+                                                          table=table_name,
+                                                          debug=False)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        self.assertFalse(response['success'])
+
+        # Extract Result
+        r = response['error']
+
+        self.assertIn('There is no store named', r)
+
+        mc.get_store.assert_called_with(name=self.store_names[0], workspace=self.workspace_names[0])
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_add_table_to_postgis_store_not_201(self, mock_catalog, mock_post):
+        mc = mock_catalog()
+
+        mc.get_store.return_value = self.mock_stores[0]
+
+        store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
+
+        mock_post.return_value = MockResponse(500)
+
+        table_name = 'points'
+
+        response = self.engine.add_table_to_postgis_store(store_id=store_id,
+                                                          table=table_name,
+                                                          debug=False)
+
+        expected_url = '{endpoint}workspaces/{w}/datastores/{s}/featuretypes'.format(
+            endpoint=self.endpoint,
+            w=self.workspace_names[0],
+            s=self.store_names[0]
+        )
+        expected_headers = {
+            "Content-type": "text/xml",
+            "Accept": "application/xml"
+        }
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        self.assertFalse(response['success'])
+
+        post_call_args = mock_post.call_args_list
+        self.assertEqual(expected_url, post_call_args[0][1]['url'])
+        self.assertEqual(expected_headers, post_call_args[0][1]['headers'])
+
+        mc.get_store.assert_called_with(name=self.store_names[0], workspace=self.workspace_names[0])
