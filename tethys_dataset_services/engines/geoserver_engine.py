@@ -350,7 +350,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                                 else:
                                     styles_names.append(style.name)
                             else:
-                                object_dictionary[attribute] = getattr(gs_object, attribute)
+                                styles_names = getattr(gs_object, attribute)
 
                     object_dictionary[attribute] = styles_names
 
