@@ -117,7 +117,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Get endpoint without the "rest".
         """
         endpoint = self.endpoint
-
         # Eliminate trailing slash if necessary
         if endpoint[-1] == '/':
             endpoint = endpoint[:-1]
@@ -342,6 +341,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                 elif attribute == 'styles':
                     styles = getattr(gs_object, attribute)
                     styles_names = []
+
                     for style in styles:
                         if style is not None:
                             if not isinstance(style, str):
@@ -350,8 +350,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                                 else:
                                     styles_names.append(style.name)
                             else:
-                                object_dictionary[attribute] = getattr(gs_object, attribute)
-
+                                styles_names = getattr(gs_object, attribute)
                     object_dictionary[attribute] = styles_names
 
                 # Store attribute properties as is
