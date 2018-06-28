@@ -3085,6 +3085,77 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertIn(resource_att, resource_dict['resource'])
         self.assertIn(self.default_style_name, resource_dict['default_style'])
 
+        # resource_type with workspace
+        gs_object_resource = mock.NonCallableMagicMock(
+            resource_type='featureType',
+            workspace=self.workspace_name,
+        )
+        gs_object_resource.name = "test_name"
+        resource_type_dict = self.engine._transcribe_geoserver_object(gs_object_resource)
+
+        self.assertIn('gml3', resource_type_dict['wfs'])
+
+        # resource_type with no workspace
+        gs_object_resource = mock.NonCallableMagicMock(
+            resource_type='featureType',
+            workspace=None,
+        )
+        gs_object_resource.name = "test_name"
+        resource_type_dict = self.engine._transcribe_geoserver_object(gs_object_resource)
+
+        self.assertIn('gml3', resource_type_dict['wfs'])
+
+        # resource_type with no workspace and coverage
+        gs_sub_object_resource = mock.NonCallableMagicMock(native_bbox=['0', '1', '2', '3'])
+        gs_object_resource = mock.NonCallableMagicMock(
+            resource=gs_sub_object_resource,
+            resource_type='coverage',
+            workspace=None,
+        )
+        gs_object_resource.name = "test_name"
+        resource_type_dict = self.engine._transcribe_geoserver_object(gs_object_resource)
+
+        self.assertIn('png', resource_type_dict['wcs'])
+
+        # resource_type with workspace and coverage -wcs
+        gs_sub_object_resource = mock.NonCallableMagicMock(native_bbox=['0', '1', '2', '3'])
+        gs_object_resource = mock.NonCallableMagicMock(
+            resource=gs_sub_object_resource,
+            resource_type='coverage',
+            workspace=self.workspace_name,
+        )
+        gs_object_resource.name = "test_name"
+        resource_type_dict = self.engine._transcribe_geoserver_object(gs_object_resource)
+
+        self.assertIn('png', resource_type_dict['wcs'])
+
+        # resource_type with workspace and layer - wms
+        gs_sub_object_resource = mock.NonCallableMagicMock(native_bbox=['0', '1', '2', '3'])
+        gs_object_resource = mock.NonCallableMagicMock(
+            resource=gs_sub_object_resource,
+            resource_type='layer',
+            workspace=self.workspace_name,
+            default_style=self.default_style_name
+        )
+        gs_object_resource.name = "test_name"
+        resource_type_dict = self.engine._transcribe_geoserver_object(gs_object_resource)
+
+        self.assertIn('png', resource_type_dict['wms'])
+
+        # resource_type with workspace and layer - wms with bounds
+        gs_sub_object_resource = mock.NonCallableMagicMock(native_bbox=['0', '1', '2', '3'])
+        gs_object_resource = mock.NonCallableMagicMock(
+            resource=gs_sub_object_resource,
+            bounds=['0', '1', '2', '3', '4'],
+            resource_type='layerGroup',
+            workspace=self.workspace_name,
+            default_style=self.default_style_name
+        )
+        gs_object_resource.name = "test_name"
+        resource_type_dict = self.engine._transcribe_geoserver_object(gs_object_resource)
+
+        self.assertIn('png', resource_type_dict['wms'])
+
     def test_link_sqlalchemy_db_to_geoserver(self):
         self.engine.create_postgis_feature_resource = mock.MagicMock()
         url = 'postgres://user:pass@localhost:5432/foo'
