@@ -688,7 +688,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         mock_get.return_value = MockResponse(200, text='<GeoServerLayer><foo>bar</foo></GeoServerLayer>')
 
         # Execute
-        response = self.engine.get_layer(layer_id=self.layer_names[0], debug=self.debug)
+        response = self.engine.get_layer(layer_id=self.layer_names[0], store=self.store_name, debug=self.debug)
 
         # Validate response object
         self.assert_valid_response_object(response)
@@ -724,9 +724,12 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     def test_get_layer_none(self, mock_catalog):
         mc = mock_catalog()
         mc.get_layer.return_value = None
+        mock_default_workspace = mock.NonCallableMagicMock()
+        mock_default_workspace.name = self.workspace_name
+        mc.get_default_workspace.return_value = mock_default_workspace
 
         # Execute
-        response = self.engine.get_layer(layer_id=self.layer_names[0], debug=self.debug)
+        response = self.engine.get_layer(layer_id=self.layer_names[0], store=self.store_name, debug=self.debug)
 
         # Validate response object
         self.assert_valid_response_object(response)
@@ -739,7 +742,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         self.assertIn('not found', r)
 
-        mc.get_layer.assert_called_with(name=self.layer_names[0])
+        mc.get_layer.assert_called_with(name=self.layer_names[0], workspace=self.workspace_name)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_get_layer_failed_request_error(self, mock_catalog):
@@ -747,7 +750,9 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         mc.get_layer.side_effect = geoserver.catalog.FailedRequestError('Failed Request')
 
         # Execute
-        response = self.engine.get_layer(layer_id=self.layer_names[0], debug=self.debug)
+        response = self.engine.get_layer(layer_id=self.layer_names[0],
+                                         store=self.store_name,
+                                         debug=self.debug)
 
         # Validate response object
         self.assert_valid_response_object(response)
@@ -791,7 +796,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertEqual(self.layer_names, r['layers'])
         self.assertNotIn('dom', r)
 
-        mc.get_layergroup.assert_called_with(name=self.layer_group_names[0])
+        mc.get_layergroup.assert_called_with(name=self.layer_group_names[0], workspace=None)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_get_layer_group_none(self, mock_catalog):
@@ -812,7 +817,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         self.assertIn('not found', r)
 
-        mc.get_layergroup.assert_called_with(name=self.layer_group_names[0])
+        mc.get_layergroup.assert_called_with(name=self.layer_group_names[0], workspace=None)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_get_layer_group_failed_request_error(self, mock_catalog):
@@ -833,7 +838,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         self.assertEqual(r, 'Failed Request')
 
-        mc.get_layergroup.assert_called_with(name=self.layer_group_names[0])
+        mc.get_layergroup.assert_called_with(name=self.layer_group_names[0], workspace=None)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_get_store(self, mock_catalog):
@@ -1405,7 +1410,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         # Properties
         self.assertIn('Failed Request', r)
 
-        mc.get_layergroup.assert_called_with(name=self.mock_layer_groups[0])
+        mc.get_layergroup.assert_called_with(name=self.mock_layer_groups[0], workspace=None)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_delete_resource_with_workspace(self, mock_catalog):
@@ -1415,14 +1420,15 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         resource_id = '{}:{}'.format(self.workspace_name, self.resource_names[0])
 
         # Execute
-        response = self.engine.delete_resource(resource_id)
+        response = self.engine.delete_resource(resource_id, store=self.mock_store)
 
         # Validate response object
         self.assert_valid_response_object(response)
 
         # Success
         self.assertTrue(response['success'])
-        mc.get_resource.assert_called_with(name=self.resource_names[0], store=None, workspace=self.workspace_name)
+        mc.get_resource.assert_called_with(name=self.resource_names[0], store=self.mock_store,
+                                           workspace=self.workspace_name)
         mc.delete.assert_called_with(config_object=self.mock_resources[0], purge=False, recurse=False)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
@@ -1433,14 +1439,14 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         resource_id = self.resource_names[0]
 
         # Execute
-        response = self.engine.delete_resource(resource_id)
+        response = self.engine.delete_resource(resource_id, store=self.mock_store)
 
         # Validate response object
         self.assert_valid_response_object(response)
 
         # Success
         self.assertTrue(response['success'])
-        mc.get_resource.assert_called_with(name=self.resource_names[0], store=None, workspace=None)
+        mc.get_resource.assert_called_with(name=self.resource_names[0], store=self.mock_store, workspace=None)
         mc.delete.assert_called_with(config_object=self.mock_resources[0], purge=False, recurse=False)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
@@ -1452,7 +1458,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         resource_id = '{}:{}'.format(self.workspace_name, self.resource_names[0])
 
         # Execute
-        response = self.engine.delete_resource(resource_id)
+        response = self.engine.delete_resource(resource_id, store=self.mock_store)
 
         # Validate response object
         self.assert_valid_response_object(response)
@@ -1460,7 +1466,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         # Success
         self.assertFalse(response['success'])
         mc.delete.assert_called_with(config_object=self.mock_resources[0], purge=False, recurse=False)
-        mc.get_resource.assert_called_with(name=self.resource_names[0], store=None, workspace=self.workspace_name)
+        mc.get_resource.assert_called_with(name=self.resource_names[0], store=self.mock_store,
+                                           workspace=self.workspace_name)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_delete_resource_does_not_exist(self, mock_catalog):
@@ -1470,7 +1477,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         resource_id = '{}:{}'.format(self.workspace_name, self.resource_names[0])
 
         # Execute
-        response = self.engine.delete_resource(resource_id)
+        response = self.engine.delete_resource(resource_id, store=self.store_name)
 
         # Validate response object
         self.assert_valid_response_object(response)
@@ -1478,7 +1485,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         # Success
         self.assertFalse(response['success'])
         self.assertIn('GeoServer object does not exist', response['error'])
-        mc.get_resource.assert_called_with(name=self.resource_names[0], store=None, workspace=self.workspace_name)
+        mc.get_resource.assert_called_with(name=self.resource_names[0], store=self.store_name,
+                                           workspace=self.workspace_name)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_delete_layer(self, mock_catalog):
@@ -1486,7 +1494,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         mc.get_layer.return_value = self.mock_layers[0]
 
         # Execute
-        response = self.engine.delete_layer(self.layer_names[0])
+        response = self.engine.delete_layer(self.layer_names[0], store=self.store_name)
 
         # Validate response object
         self.assert_valid_response_object(response)
@@ -1508,7 +1516,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assert_valid_response_object(response)
         self.assertTrue(response['success'])
         self.assertIsNone(response['result'])
-        mc.get_layergroup.assert_called_with(name=self.layer_group_names[0])
+        mc.get_layergroup.assert_called_with(name=self.layer_group_names[0], workspace=None)
         mc.delete.assert_called_with(config_object=self.mock_layer_groups[0], purge=False, recurse=False)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
@@ -1531,6 +1539,9 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     def test_delete_store(self, mock_catalog):
         mc = mock_catalog()
         mc.get_store.return_value = self.mock_stores[0]
+        mock_workspace = mock.NonCallableMagicMock()
+        mock_workspace.name = self.workspace_name
+        mc.get_default_workspace.return_value = mock_workspace
 
         # Do delete
         response = self.engine.delete_store(store_id=self.store_names[0])
@@ -1540,13 +1551,17 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertTrue(response['success'])
         self.assertIsNone(response['result'])
 
-        mc.get_store.assert_called_with(name=self.store_names[0], workspace=None)
+        mc.get_store.assert_called_with(name=self.store_names[0], workspace=self.workspace_name)
         mc.delete.assert_called_with(config_object=self.mock_stores[0], purge=False, recurse=False)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_delete_store_failed_request(self, mock_catalog):
         mc = mock_catalog()
         mc.get_store.side_effect = geoserver.catalog.FailedRequestError('Failed Request')
+
+        mock_workspace = mock.NonCallableMagicMock()
+        mock_workspace.name = self.workspace_name
+        mc.get_default_workspace.return_value = mock_workspace
 
         # Do delete
         response = self.engine.delete_store(store_id=self.store_names[0])
@@ -1556,7 +1571,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertFalse(response['success'])
         self.assertIn('Failed Request', response['error'])
 
-        mc.get_store.assert_called_with(name=self.store_names[0], workspace=None)
+        mc.get_store.assert_called_with(name=self.store_names[0], workspace=self.workspace_name)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_delete_style(self, mock_catalog):
@@ -1662,7 +1677,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         # Setup
         dir_path = os.path.dirname(os.path.realpath(__file__))
         shapefile_name = os.path.join(dir_path, 'files', 'shapefile', 'test')
-        store_id = self.store_name[0]
+        store_id = self.store_names[0]
 
         # Execute
         response = self.engine.create_shapefile_resource(store_id=store_id,
@@ -1681,7 +1696,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertIn(self.store_name[0], r['store'])
 
         mc.get_default_workspace.assert_called_with()
-        mc.get_resource.assert_called_with(name=self.store_name[0], workspace=self.workspace_name[0])
+        mc.get_resource.assert_called_with(name=self.store_names[0], store=self.store_names[0],
+                                           workspace=self.workspace_name[0])
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.put')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
@@ -1694,7 +1710,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         shapefile_name = os.path.join(dir_path, 'files', 'shapefile', 'test1.zip')
         # Workspace is given
-        store_id = '{}:{}'.format(self.workspace_name, self.store_name[0])
+        store_id = '{}:{}'.format(self.workspace_name, self.store_names[0])
 
         # Execute
         response = self.engine.create_shapefile_resource(store_id=store_id,
@@ -1713,7 +1729,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertIn(self.mock_resources[0].name, r['name'])
         self.assertIn(self.store_name[0], r['store'])
 
-        mc.get_resource.assert_called_with(name=self.store_name[0], workspace=self.workspace_name)
+        mc.get_resource.assert_called_with(name='test1', store=self.store_names[0], workspace=self.workspace_name)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.put')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
@@ -1731,7 +1747,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         shapefile_shx = os.path.join(dir_path, 'files', 'shapefile', 'test.shx')
 
         # Workspace is given
-        store_id = '{}:{}'.format(self.workspace_name, self.store_name[0])
+        store_id = '{}:{}'.format(self.workspace_name, self.store_names[0])
 
         with open(shapefile_cst, 'rb') as cst_upload,\
                 open(shapefile_dbf, 'rb') as dbf_upload,\
@@ -1754,7 +1770,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertIn(self.mock_resources[0].name, r['name'])
         self.assertIn(self.store_name[0], r['store'])
 
-        mc.get_resource.assert_called_with(name=self.store_name[0], workspace=self.workspace_name)
+        mc.get_resource.assert_called_with(name=self.store_names[0], store=self.store_names[0],
+                                           workspace=self.workspace_name)
 
     def test_create_shapefile_resource_zipfile_typeerror(self):
         # Setup
@@ -1775,7 +1792,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         # Setup
         dir_path = os.path.dirname(os.path.realpath(__file__))
         shapefile_name = os.path.join(dir_path, 'files', 'shapefile', 'test')
-        store_id = '{}:{}'.format(self.workspace_name, self.store_name[0])
+        store_id = '{}:{}'.format(self.workspace_name, self.store_names[0])
 
         # Execute
         response = self.engine.create_shapefile_resource(store_id=store_id,
@@ -1789,7 +1806,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         r = response['error']
 
         # Check error message
-        error_message = 'There is already a store named ' + self.store_name[0] + ' in ' + self.workspace_name
+        error_message = 'There is already a store named ' + self.store_names[0] + ' in ' + self.workspace_name
         self.assertIn(error_message, r)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.put')
@@ -1804,7 +1821,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         shapefile_name = os.path.join(dir_path, 'files', 'shapefile', 'test')
         # Workspace is given
-        store_id = '{}:{}'.format(self.workspace_name, self.store_name[0])
+        store_id = '{}:{}'.format(self.workspace_name, self.store_names[0])
 
         # Execute
         response = self.engine.create_shapefile_resource(store_id=store_id,
@@ -1822,7 +1839,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertIn(self.mock_resources[0].name, r['name'])
         self.assertIn(self.store_name[0], r['store'])
 
-        mc.get_resource.assert_called_with(name=self.store_name[0], workspace=self.workspace_name)
+        mc.get_resource.assert_called_with(name=self.store_names[0], store=self.store_names[0],
+                                           workspace=self.workspace_name)
 
     def test_create_shapefile_resource_validate_shapefile_args(self):
         self.assertRaises(ValueError,
@@ -1972,7 +1990,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertEqual(coverage_name, r['name'])
         self.assertEqual(self.workspace_names[0], r['workspace'])
 
-        mc.get_resource.assert_called_with(name=coverage_name, workspace=self.workspace_names[0])
+        mc.get_resource.assert_called_with(name=coverage_name, store=self.store_names[0],
+                                           workspace=self.workspace_names[0])
 
         # PUT Tests
         put_call_args = mock_put.call_args_list
@@ -2034,7 +2053,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertEqual(coverage_name, r['name'])
         self.assertEqual(self.workspace_names[0], r['workspace'])
 
-        mc.get_resource.assert_called_with(name=coverage_name, workspace=self.workspace_names[0])
+        mc.get_resource.assert_called_with(name=coverage_name, store=self.store_names[0],
+                                           workspace=self.workspace_names[0])
 
         # PUT Tests
         put_call_args = mock_put.call_args_list
@@ -2096,7 +2116,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertEqual(coverage_name, r['name'])
         self.assertEqual(self.workspace_names[0], r['workspace'])
 
-        mc.get_resource.assert_called_with(name=coverage_name, workspace=self.workspace_names[0])
+        mc.get_resource.assert_called_with(name=coverage_name, store=self.store_names[0],
+                                           workspace=self.workspace_names[0])
 
         # PUT Tests
         put_call_args = mock_put.call_args_list
@@ -2164,7 +2185,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertEqual(coverage_name, r['name'])
         self.assertEqual(self.workspace_names[0], r['workspace'])
 
-        mc.get_resource.assert_called_with(name=coverage_name, workspace=self.workspace_names[0])
+        mc.get_resource.assert_called_with(name=coverage_name, store=self.store_names[0],
+                                           workspace=self.workspace_names[0])
 
         # PUT Tests
         put_call_args = mock_put.call_args_list
@@ -2245,7 +2267,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         # Values
         self.assertEqual(coverage_name, r['name'])
         self.assertEqual(self.workspace_names[0], r['workspace'])
-        mc.get_resource.assert_called_with(name=coverage_name, workspace=self.workspace_names[0])
+        mc.get_resource.assert_called_with(name=coverage_name, store=self.store_names[0],
+                                           workspace=self.workspace_names[0])
 
         # PUT Tests
         put_call_args = mock_put.call_args_list
@@ -2323,7 +2346,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertEqual(coverage_name, r['name'])
         self.assertEqual(default_workspace_name, r['workspace'])
         mc.get_default_workspace.assert_called()
-        mc.get_resource.assert_called_with(name=coverage_name, workspace=default_workspace_name)
+        mc.get_resource.assert_called_with(name=coverage_name, store=self.store_names[0],
+                                           workspace=default_workspace_name)
 
         # PUT Tests
         put_call_args = mock_put.call_args_list
@@ -2383,7 +2407,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertEqual(coverage_name, r['name'])
         self.assertEqual(self.workspace_names[0], r['workspace'])
 
-        mc.get_resource.assert_called_with(name=coverage_name, workspace=self.workspace_names[0])
+        mc.get_resource.assert_called_with(name=coverage_name, store=self.store_names[0],
+                                           workspace=self.workspace_names[0])
 
         # PUT Tests
         put_call_args = mock_put.call_args_list
@@ -2537,7 +2562,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertEqual(coverage_name, r['name'])
         self.assertEqual(self.workspace_names[0], r['workspace'])
 
-        mc.get_resource.assert_called_with(name=coverage_name, workspace=self.workspace_names[0])
+        mc.get_resource.assert_called_with(name=coverage_name, store=self.store_names[0],
+                                           workspace=self.workspace_names[0])
 
         # PUT Tests
         put_call_args = mock_put.call_args_list
