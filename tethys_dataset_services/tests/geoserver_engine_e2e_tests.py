@@ -110,8 +110,6 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
             )
             self.connection.execute(sql)
 
-        self.transaction.commit()
-
     def test_create_shapefile_resource_base(self):
         # call methods: create_shapefile_resource, list_resources, get_resource, delete_resource
 
@@ -1078,10 +1076,18 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         pass
 
         # # DO NOT MOCK
+
         # # Use testing_config.TEST_POSTGIS_SERVICE for db credentials
         # # call methods: link_sqlalchemy_db_to_geoserver, add_table_to_postgis_store,
         # # list_stores, get_store, delete_store
-        #
+
+        # TEST link_sqlalchemy_db_to_geoserver
+        store_id_name = random_string_generator(10)
+        store_id = '{}:{}'.format(self.workspace_name, store_id_name)
+
+        self.geoserver_engine.link_sqlalchemy_db_to_geoserver(store_id=store_id,
+                                                              sqlalchemy_engine=self.geoserver_engine)
+
         # # DB table setup
         # self.setup_postgis_table()
         # # table = self.postgis_table_name
@@ -1090,7 +1096,8 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
     def test_create_postgis_feature_resource(self):
         # Use testing_config.TEST_POSTGIS_SERVICE for db credentials
         # call methods: create_postgis_feature_resource (with table), list_stores, get_store, delete_store
-        # self.setup_postgis_table()
+        self.setup_postgis_table()
+        # TEST create_postgis_feature_resource (with table)
         store_id_name = random_string_generator(10)
         store_id = '{}:{}'.format(self.workspace_name, store_id_name)
         host = '172.17.0.1'
@@ -1114,35 +1121,104 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # Type
         self.assertIsInstance(r, dict)
-        self.assertIn('name', r)
-        self.assertIn(table_name, r['name'])
+        self.assertIn('workspace', r)
+        self.assertIn(self.workspace_name, r['workspace'])
         self.assertIn('store', r)
         self.assertEqual(store_id_name, r['store'])
 
+        # TEST list_stores
+
+        # Execute
+
+        response = self.geoserver_engine.list_stores()
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        result = response['result']
+
+        # list of strings
+        if len(result) > 0:
+            self.assertIsInstance(result[0], basestring)
+
+        # layer group listed
+        self.assertIn(store_id_name, result)
+
+        # TEST get store
+
+        # Execute
+        response = self.geoserver_engine.get_store(store_id=store_id)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        # Properties
+        self.assertIn('name', r)
+        self.assertIn(store_id_name, r['name'])
+        self.assertIn('workspace', r)
+        self.assertEqual(self.workspace_name, r['workspace'])
+
+        # TEST delete_store
+        response = self.geoserver_engine.delete_store(store_id=store_id, purge=True, recurse=True)
+
+        # Failure Check
+        self.assert_valid_response_object(response)
+        self.assertTrue(response['success'])
+
     def test_create_sql_view(self):
-        # DO NOT MOCK
-        pass
         # Use testing_config.TEST_POSTGIS_SERVICE for db credentials
 
         # call methods: create_sql_view, list_resources, list_stores, list_layers
+
+        # TEST create_postgis_feature_resource (with table)
+        store_id_name = random_string_generator(10)
+        store_id = '{}:{}'.format(self.workspace_name, store_id_name)
+        host = '172.17.0.1'
+        port = 5435
+        database = 'tds_tests'
+        user = 'tethys_super'
+        password = 'pass'
+        table_name = 'points'
+
+        response = self.geoserver_engine.create_postgis_feature_resource(store_id=store_id,
+                                                                         host=host,
+                                                                         port=port,
+                                                                         database=database,
+                                                                         user=user,
+                                                                         table=table_name,
+                                                                         password=password)
+        self.assertTrue(response['success'])
+
         # self.setup_postgis_table()
-        # self.setup_postgis_store()
-        # sql = "SELECT * FROM {}".format(self.postgis_table_name)
-        # geometry_column = self.geometry_column
-        # geometry_type = self.geometry_type
-        # store_id = random_string_generator(10)
-        # # postgis_store_id = '{}:{}'.format(self.workspace_name, store_id)
-        # postgis_store_id = '{}:{}'.format('epanet', '0fde3d83_68c8_4e6d_b692_b7f963a9fe3c')
-        #
-        # response = self.geoserver_engine.create_sql_view(feature_type_name='0fde3d83_68c8_4e6d_b692_b7f963a9fe3c',
-        #                                                  postgis_store_id=postgis_store_id,
-        #                                                  sql=sql,
-        #                                                  geometry_column=geometry_column,
-        #                                                  geometry_type=geometry_type)
-        #
-        # self.assertTrue(response['success'])
-        #
-        # # Extract Result
+        feature_type_name = random_string_generator(10)
+        postgis_store_id = '{}:{}'.format(self.workspace_name, store_id_name)
+        sql = "SELECT * FROM {}".format(self.postgis_table_name)
+        geometry_column = self.geometry_column
+        geometry_type = self.geometry_type
+
+        response = self.geoserver_engine.create_sql_view(feature_type_name=feature_type_name,
+                                                         postgis_store_id=postgis_store_id,
+                                                         sql=sql,
+                                                         geometry_column=geometry_column,
+                                                         geometry_type=geometry_type,
+                                                         debug=True)
+
+        self.assertTrue(response['success'])
+
+        # Extract Result
         # r = response['result']
         #
         # # Type
