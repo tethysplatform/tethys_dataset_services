@@ -85,6 +85,13 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         Creates table in the database named "points" with two entries. The table has three columns:
         "id", "name", and "geometry." Use this table for the tests that require a database.
         """
+
+        # Clean up
+        delete_sql = "DROP TABLE IF EXISTS {table}".\
+            format(table=self.postgis_table_name)
+        self.connection.execute(delete_sql)
+
+        # Create table
         geom_table_sql = "CREATE TABLE IF NOT EXISTS {table} (" \
                          "id integer CONSTRAINT points_primary_key PRIMARY KEY, " \
                          "name varchar(20)" \
@@ -109,6 +116,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
                 lon=r['lon']
             )
             self.connection.execute(sql)
+        self.transaction.commit()
 
     def test_create_shapefile_resource_base(self):
         # call methods: create_shapefile_resource, list_resources, get_resource, delete_resource
@@ -1072,11 +1080,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         self.assertTrue(response['success'])
         self.assertIsNone(response['result'])
 
-    def test_link_sqlalchemy_db_to_geoserver(self):
-        pass
-
-        # # DO NOT MOCK
-
+    def test_link_and_add_table(self):
         # # Use testing_config.TEST_POSTGIS_SERVICE for db credentials
         # # call methods: link_sqlalchemy_db_to_geoserver, add_table_to_postgis_store,
         # # list_stores, get_store, delete_store
@@ -1084,14 +1088,78 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # TEST link_sqlalchemy_db_to_geoserver
         store_id_name = random_string_generator(10)
         store_id = '{}:{}'.format(self.workspace_name, store_id_name)
+        sqlalchemy_engine = self.engine
 
-        self.geoserver_engine.link_sqlalchemy_db_to_geoserver(store_id=store_id,
-                                                              sqlalchemy_engine=self.geoserver_engine)
+        # sqlalchemy_engine = create_engine()
 
-        # # DB table setup
-        # self.setup_postgis_table()
-        # # table = self.postgis_table_name
-        # raise NotImplementedError()
+        response = self.geoserver_engine.link_sqlalchemy_db_to_geoserver(store_id=store_id,
+                                                                         sqlalchemy_engine=sqlalchemy_engine,
+                                                                         docker=True)
+
+        # Check for success response
+        self.assertTrue(response['success'])
+
+        # TEST add_table_to_postgis_store
+        table_name = self.postgis_table_name
+
+        # Execute
+        response = self.geoserver_engine.add_table_to_postgis_store(store_id=store_id,
+                                                                    table=table_name)
+
+        # Check for success response
+        self.assertTrue(response['success'])
+
+        # TEST list_stores
+
+        # Execute
+
+        response = self.geoserver_engine.list_stores()
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        result = response['result']
+
+        # list of strings
+        if len(result) > 0:
+            self.assertIsInstance(result[0], basestring)
+
+        # layer group listed
+        self.assertIn(store_id_name, result)
+
+        # TEST get store
+
+        # Execute
+        response = self.geoserver_engine.get_store(store_id=store_id)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        # Properties
+        self.assertIn('name', r)
+        self.assertIn(store_id_name, r['name'])
+        self.assertIn('workspace', r)
+        self.assertEqual(self.workspace_name, r['workspace'])
+
+        # TEST delete_store
+        response = self.geoserver_engine.delete_store(store_id=store_id, purge=True, recurse=True)
+
+        # Failure Check
+        self.assert_valid_response_object(response)
+        self.assertTrue(response['success'])
 
     def test_create_postgis_feature_resource(self):
         # Use testing_config.TEST_POSTGIS_SERVICE for db credentials
@@ -1114,17 +1182,8 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
                                                                          user=user,
                                                                          table=table_name,
                                                                          password=password)
+
         self.assertTrue(response['success'])
-
-        # Extract Result
-        r = response['result']
-
-        # Type
-        self.assertIsInstance(r, dict)
-        self.assertIn('workspace', r)
-        self.assertIn(self.workspace_name, r['workspace'])
-        self.assertIn('store', r)
-        self.assertEqual(store_id_name, r['store'])
 
         # TEST list_stores
 
@@ -1183,6 +1242,8 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # call methods: create_sql_view, list_resources, list_stores, list_layers
 
+        self.setup_postgis_table()
+
         # TEST create_postgis_feature_resource (with table)
         store_id_name = random_string_generator(10)
         store_id = '{}:{}'.format(self.workspace_name, store_id_name)
@@ -1191,14 +1252,12 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         database = 'tds_tests'
         user = 'tethys_super'
         password = 'pass'
-        table_name = 'points'
 
         response = self.geoserver_engine.create_postgis_feature_resource(store_id=store_id,
                                                                          host=host,
                                                                          port=port,
                                                                          database=database,
                                                                          user=user,
-                                                                         table=table_name,
                                                                          password=password)
         self.assertTrue(response['success'])
 
@@ -1213,16 +1272,76 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
                                                          postgis_store_id=postgis_store_id,
                                                          sql=sql,
                                                          geometry_column=geometry_column,
-                                                         geometry_type=geometry_type,
-                                                         debug=True)
+                                                         geometry_type=geometry_type)
 
         self.assertTrue(response['success'])
 
         # Extract Result
-        # r = response['result']
-        #
-        # # Type
-        # self.assertIsInstance(r, dict)
-        #
-        # self.assertIn('name', r)
-        # self.assertEqual('0fde3d83_68c8_4e6d_b692_b7f963a9fe3c', r['name'])
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        self.assertIn('name', r)
+        self.assertIn(feature_type_name, r['name'])
+
+        # TEST list_resources
+
+        # Execute
+        response = self.geoserver_engine.list_resources()
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        result = response['result']
+
+        # Returns list
+        self.assertIsInstance(result, list)
+
+        # List of strings
+        if len(result) > 0:
+            self.assertIsInstance(result[0], basestring)
+
+        # layer listed
+        self.assertIn(feature_type_name, result)
+
+        # TEST get_resources
+
+        # Execute
+        # Geoserver uses the store_id as the layer/resource name (not the filename)
+        resource_id_name = '{}:{}'.format(self.workspace_name, feature_type_name)
+        response = self.geoserver_engine.get_resource(resource_id=resource_id_name)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        # Properties
+        self.assertIn('name', r)
+        self.assertEquals(feature_type_name, r['name'])
+        self.assertIn(feature_type_name, r['wfs']['shapefile'])
+
+        # TEST delete_resource
+        # Execute
+        # This case the resource id is the same as the store id.
+        response = self.geoserver_engine.delete_resource(resource_id=resource_id_name,
+                                                         store=store_id_name)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        # TODO: delete_resource is returning a 403 error: not authorized.
+        # self.assertTrue(response['success'])
