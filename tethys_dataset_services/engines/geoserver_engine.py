@@ -1112,7 +1112,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         # Throw error if resource already exists
         try:
-            resource = catalog.get_resource(name=table, workspace=workspace)
+            resource = catalog.get_resource(name=table, store=name, workspace=workspace)
             if resource:
                 message = "There is already a resource named " + table
 
@@ -1159,7 +1159,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             return response_dict
 
         # Wrap up successfully
-        new_resource = catalog.get_resource(name=table, store=name)
+        new_resource = catalog.get_resource(name=table, store=name, workspace=workspace)
         resource_dict = self._transcribe_geoserver_object(new_resource)
 
         response_dict = {'success': True,
@@ -2119,13 +2119,13 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         self._handle_debug(response_dict, debug)
         return response_dict
 
-    def delete_resource(self, resource_id, store, purge=False, recurse=False, debug=False):
+    def delete_resource(self, resource_id, store_id, purge=False, recurse=False, debug=False):
         """
         Delete a resource.
 
         Args:
           resource_id (string): Identifier of the resource to delete. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").  # noqa: E501
-          store (string): Return only resources belonging to a certain store.
+          store_id (string): Return only resources belonging to a certain store.
           purge (bool, optional): Purge if True.
           recurse (bool, optional): Delete recursively any dependencies if True (i.e.: layers or layer groups it belongs to).  # noqa: E501
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
@@ -2146,7 +2146,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             workspace = catalog.get_default_workspace().name
 
         # Get resource
-        resource = catalog.get_resource(name=name, store=store, workspace=workspace)
+        resource = catalog.get_resource(name=name, store=store_id, workspace=workspace)
 
         # Handle delete
         return self._handle_delete(identifier=name, gs_object=resource, purge=purge,
