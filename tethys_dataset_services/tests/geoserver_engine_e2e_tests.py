@@ -202,7 +202,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Execute
         # This case the resource id is the same as the store id.
         response = self.geoserver_engine.delete_resource(resource_id=resource_id_name,
-                                                         store=store_id)
+                                                         store_id=store_id)
 
         # Validate response object
         self.assert_valid_response_object(response)
@@ -449,7 +449,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         resource_id = '{}:{}'.format(self.workspace_name, coverage_name)
 
         response = self.geoserver_engine.get_resource(resource_id=resource_id,
-                                                      store=store_name)
+                                                      store_id=store_name)
 
         # Validate response object
         self.assert_valid_response_object(response)
@@ -469,7 +469,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Execute
         resource_id = '{}:{}'.format(self.workspace_name, coverage_name)
         response = self.geoserver_engine.delete_resource(resource_id=resource_id,
-                                                         store=store_name)
+                                                         store_id=store_name)
 
         # # Validate response object
         self.assert_valid_response_object(response)
@@ -804,7 +804,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Execute
         resource_id = "{}:{}".format(self.workspace_name, coverage_name)
         response = self.geoserver_engine.get_resource(resource_id=resource_id,
-                                                      store=store_id_name)
+                                                      store_id=store_id_name)
 
         # Validate response object
         self.assert_valid_response_object(response)
@@ -829,7 +829,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # This case the resource id is the same as the filename.
         resource_id = '{}:{}'.format(self.workspace_name, coverage_name)
         response = self.geoserver_engine.delete_resource(resource_id=resource_id,
-                                                         store=store_id_name)
+                                                         store_id=store_id_name)
 
         # Validate response object
         self.assert_valid_response_object(response)
@@ -1337,7 +1337,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Execute
         # This case the resource id is the same as the store id.
         response = self.geoserver_engine.delete_resource(resource_id=resource_id_name,
-                                                         store=store_id_name)
+                                                         store_id=store_id_name)
 
         # Validate response object
         self.assert_valid_response_object(response)

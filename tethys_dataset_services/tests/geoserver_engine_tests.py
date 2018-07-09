@@ -672,7 +672,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         # Execute
         resource_id = self.workspace_name + ":" + self.resource_names[0]
         response = self.engine.get_resource(resource_id=resource_id,
-                                            store=self.store_name,
+                                            store_id=self.store_name,
                                             debug=self.debug)
 
         # Validate response object

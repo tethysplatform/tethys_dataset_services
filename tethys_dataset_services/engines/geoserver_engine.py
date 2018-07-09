@@ -695,7 +695,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         styles = catalog.get_styles(workspace=workspace)
         return self._handle_list(styles, with_properties, debug)
 
-    def get_resource(self, resource_id, store=None, debug=False):
+    def get_resource(self, resource_id, store_id=None, debug=False):
         """
         Retrieve a resource object.
 
@@ -726,7 +726,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         # Get resource
         try:
-            resource = catalog.get_resource(name=name, store=store, workspace=workspace)
+            resource = catalog.get_resource(name=name, store=store_id, workspace=workspace)
             if not resource:
                 response_dict = {'success': False,
                                  'error': 'Resource "{0}" not found.'.format(resource_id)}
