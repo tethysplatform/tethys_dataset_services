@@ -2,6 +2,8 @@ import os
 import random
 import string
 import unittest
+import json
+import mock
 
 from tethys_dataset_services.engines import CkanDatasetEngine
 
@@ -19,50 +21,84 @@ def random_string_generator(size):
     return ''.join(random.choice(chars) for _ in range(size))
 
 
+class MockJsonResponse(object):
+    def __init__(self, status_code, success=True, result=None, encoding='utf-8'):
+        self.status_code = status_code
+        data = dict()
+        data['success'] = success
+        data['result'] = result
+        data['encoding'] = encoding
+        # data['get'] = get_data
+        self.text = json.dumps(data)
+
+
 class TestCkanDatasetEngine(unittest.TestCase):
 
     def setUp(self):
         # Create Test Engine
+        # self.engine = CkanDatasetEngine(endpoint=TEST_CKAN_DATASET_SERVICE['ENDPOINT'],
+        #                                 apikey=TEST_CKAN_DATASET_SERVICE['APIKEY'],
+        #                                 username=TEST_CKAN_DATASET_SERVICE['USERNAME'],
+        #                                 password=TEST_CKAN_DATASET_SERVICE['PASSWORD'])
+
         self.engine = CkanDatasetEngine(endpoint=TEST_CKAN_DATASET_SERVICE['ENDPOINT'],
                                         apikey=TEST_CKAN_DATASET_SERVICE['APIKEY'])
 
         # Create Test Dataset
         self.test_dataset_name = random_string_generator(10)
-        dataset_result = self.engine.create_dataset(name=self.test_dataset_name, version='1.0')
-        self.test_dataset = dataset_result['result']
-
-        # Create Test Resource
+        # dataset_result = self.engine.create_dataset(name=self.test_dataset_name, version='1.0', owner_org='aquaveo')
+        # self.test_dataset = dataset_result['result']
+        #
+        # # Create Test Resource
         self.test_resource_name = random_string_generator(10)
         self.test_resource_url = 'http://home.byu.edu'
-        resource_result = self.engine.create_resource(self.test_dataset_name, url=self.test_resource_url, format='zip')
-        self.test_resource = resource_result['result']
+        # resource_result = self.engine.create_resource(self.test_dataset_name,
+        #                                               url=self.test_resource_url, format='zip')
+        # self.test_resource = resource_result['result']
 
     def tearDown(self):
+        pass
         # Delete test resource and dataset
-        self.engine.delete_resource(resource_id=self.test_resource['id'])
-        self.engine.delete_dataset(dataset_id=self.test_dataset_name)
+        # self.engine.delete_resource(resource_id=self.test_resource['id'])
+        # self.engine.delete_dataset(dataset_id=self.test_dataset_name)
 
-    def test_list_datasets_defaults(self):
+    @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
+    # @mock.patch('tethys_dataset_services.engines.ckan_engine.CkanDatasetEngine')
+    def test_list_datasets_defaults(self, mock_post):
+        mock_post.return_value = MockJsonResponse(200, result='Datasetname')
+
         # Execute
         result = self.engine.list_datasets()
 
         # Verify Success
         self.assertTrue(result['success'])
+        self.assertIn('Datasetname', result['result'])
 
-    def test_list_datasets_with_resources(self):
+    @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
+    def test_list_datasets_with_resources(self, mock_post):
+        mock_post.return_value = MockJsonResponse(200, result='Datasetname')
         # Execute
         result = self.engine.list_datasets(with_resources=True)
 
         # Verify Success
         self.assertTrue(result['success'])
+        self.assertIn('Datasetname', result['result'])
 
-    def test_list_datasets_with_params(self):
+    @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
+    def test_list_datasets_with_params(self, mock_post):
+        data_list=['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
+        mock_post.return_value = MockJsonResponse(200, result=data_list)
         # Setup
-        limit = 500
+        limit = 10
         number_all = len(self.engine.list_datasets()['result'])
 
         # Execute twice with offsets different
+        data_list=['2', '3', '4', '5', '6', '7', '8', '9', '10']
+        mock_post.return_value = MockJsonResponse(200, result=data_list)
         result_page_1 = self.engine.list_datasets(limit=limit, offset=1, console=False)
+
+        data_list=['3', '4', '5', '6', '7', '8', '9', '10']
+        mock_post.return_value = MockJsonResponse(200, result=data_list)
         result_page_2 = self.engine.list_datasets(limit=limit, offset=2)
 
         # Verify success
@@ -81,7 +117,10 @@ class TestCkanDatasetEngine(unittest.TestCase):
         if number_all > 5:
             self.assertNotEqual(result_page_1, result_page_2)
 
-    def test_search_resources(self):
+    @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
+    def test_search_resources(self, mock_post):
+        result_data = {'results': [{'format': 'ZIP'}, {'format': 'ZIP'}]}
+        mock_post.return_value = MockJsonResponse(200, result=result_data)
         # Execute
         result = self.engine.search_resources(query={'format': 'zip'})
 
@@ -95,9 +134,13 @@ class TestCkanDatasetEngine(unittest.TestCase):
             for result in search_results:
                 self.assertIn('zip', result['format'].lower())
 
-    def test_search_datasets(self):
-        # Execute
+    @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
+    def test_search_datasets(self, mock_post):
         version = '1.0'
+        result_data = {'results': [{'version': version}, {'version': version}]}
+        mock_post.return_value = MockJsonResponse(200, result=result_data)
+        # Execute
+
         result = self.engine.search_datasets(query={'version': version}, console=False)
 
         # Verify Success
@@ -111,9 +154,12 @@ class TestCkanDatasetEngine(unittest.TestCase):
                 self.assertIn('version', result)
                 self.assertEqual(result['version'], version)
 
-    def test_create_dataset(self):
+    @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
+    def test_create_dataset(self, mock_post):
         # Setup
         new_dataset_name = random_string_generator(10)
+        result_data = {'name': new_dataset_name}
+        mock_post.return_value = MockJsonResponse(200, result=result_data)
 
         # Execute
         result = self.engine.create_dataset(name=new_dataset_name)
@@ -127,10 +173,14 @@ class TestCkanDatasetEngine(unittest.TestCase):
         # Delete
         self.engine.delete_dataset(dataset_id=new_dataset_name)
 
-    def test_create_resource_url(self):
+    @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
+    def test_create_resource_url(self, mock_post):
         # Setup
         new_resource_name = random_string_generator(5)
         new_resource_url = 'http://home.byu.edu'
+        result_data = {'name': new_resource_name, 'url': new_resource_url,
+                       'id': self.test_dataset_name}
+        mock_post.return_value = MockJsonResponse(200, result=result_data)
 
         # Execute
         result = self.engine.create_resource(dataset_id=self.test_dataset_name,
@@ -147,10 +197,14 @@ class TestCkanDatasetEngine(unittest.TestCase):
         # Delete
         self.engine.delete_resource(resource_id=result['result']['id'])
 
-    def test_create_resource_file_upload(self):
+    @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
+    def test_create_resource_file_upload(self, mock_post):
         # Prepare
-        file_to_upload = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'support', 'upload_test.txt')
-
+        file_name = 'upload_test.txt'
+        file_to_upload = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'support', file_name)
+        result_data = {'name': file_name, 'url_type': 'upload',
+                       'id': self.test_dataset_name}
+        mock_post.return_value = MockJsonResponse(200, result=result_data)
         # Execute
         result = self.engine.create_resource(dataset_id=self.test_dataset_name, file=file_to_upload, console=False)
 
@@ -164,7 +218,10 @@ class TestCkanDatasetEngine(unittest.TestCase):
         # Delete
         self.engine.delete_resource(resource_id=result['result']['id'])
 
-    def test_get_dataset(self):
+    @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
+    def test_get_dataset(self, mock_post):
+        result_data = {'name': self.test_dataset_name, 'id': self.test_dataset_name}
+        mock_post.return_value = MockJsonResponse(200, result=result_data)
         # Execute
         result = self.engine.get_dataset(dataset_id=self.test_dataset_name, console=True)
 
@@ -174,9 +231,28 @@ class TestCkanDatasetEngine(unittest.TestCase):
         # Verify Name
         self.assertEqual(result['result']['name'], self.test_dataset_name)
 
-    def test_get_resource(self):
+    @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
+    def test_get_resource(self, mock_post):
+        result_data = {'name': self.test_dataset_name, 'url': self.test_resource_url}
+        mock_post.return_value = MockJsonResponse(200, result=result_data)
+
         # Execute
-        result = self.engine.get_resource(resource_id=self.test_resource['id'], console=True)
+        result = self.engine.get_resource(resource_id=self.test_resource_name, console=True)
+
+        # Verify Success
+        self.assertTrue(result['success'])
+
+        # Verify Properties
+        self.assertEqual(result['result']['url'], self.test_resource_url)
+
+    @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
+    def test_get_resource_get_error(self, mock_post):
+        result_data = {'name': self.test_dataset_name, 'url': self.test_resource_url}
+        get_data = {'error': {'message': 'failed message'}}
+        mock_post.return_value = MockJsonResponse(200, result=result_data, success=False)
+
+        # Execute
+        result = self.engine.get_resource(resource_id=self.test_resource_name, console=True)
 
         # Verify Success
         self.assertTrue(result['success'])
