@@ -598,16 +598,12 @@ class CkanDatasetEngine(DatasetEngine):
             api_endpoint = self.endpoint[:-8]
         else:
             api_endpoint = self.endpoint[:-7]
-
         try:
             r = requests.get(api_endpoint)
 
         except requests.exceptions.MissingSchema:
             raise AssertionError('The URL "{0}" provided for the CKAN dataset service endpoint '
                                  'is invalid.'.format(self.endpoint))
-
-        except Exception:
-            raise
 
         if r.status_code != 200:
             raise AssertionError('The URL "{0}" is not a valid endpoint for a CKAN dataset '

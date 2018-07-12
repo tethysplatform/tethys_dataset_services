@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+rm .coverage
 echo "Running Tests for GeoServer Engine..."
 coverage run -a --rcfile=coverage.ini setup.py test -s tethys_dataset_services.tests.geoserver_engine_tests.TestGeoServerDatasetEngine
 echo "Running Tests for CKAN Engine..."
