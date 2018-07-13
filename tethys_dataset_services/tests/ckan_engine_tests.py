@@ -54,31 +54,18 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
     def setUp(self):
         # Create Test Engine
-        # self.engine = CkanDatasetEngine(endpoint=TEST_CKAN_DATASET_SERVICE['ENDPOINT'],
-        #                                 apikey=TEST_CKAN_DATASET_SERVICE['APIKEY'],
-        #                                 username=TEST_CKAN_DATASET_SERVICE['USERNAME'],
-        #                                 password=TEST_CKAN_DATASET_SERVICE['PASSWORD'])
-
         self.engine = CkanDatasetEngine(endpoint=TEST_CKAN_DATASET_SERVICE['ENDPOINT'],
                                         apikey=TEST_CKAN_DATASET_SERVICE['APIKEY'])
 
-        # Create Test Dataset
+        # Test Dataset Name
         self.test_dataset_name = random_string_generator(10)
-        # dataset_result = self.engine.create_dataset(name=self.test_dataset_name, version='1.0', owner_org='aquaveo')
-        # self.test_dataset = dataset_result['result']
-        #
-        # # Create Test Resource
+
+        # Test Resource Variables
         self.test_resource_name = random_string_generator(10)
         self.test_resource_url = 'http://home.byu.edu'
-        # resource_result = self.engine.create_resource(self.test_dataset_name,
-        #                                               url=self.test_resource_url, format='zip')
-        # self.test_resource = resource_result['result']
 
     def tearDown(self):
         pass
-        # Delete test resource and dataset
-        # self.engine.delete_resource(resource_id=self.test_resource['id'])
-        # self.engine.delete_dataset(dataset_id=self.test_dataset_name)
 
     @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
     # @mock.patch('tethys_dataset_services.engines.ckan_engine.CkanDatasetEngine')
@@ -239,9 +226,6 @@ class TestCkanDatasetEngine(unittest.TestCase):
         # Should return the new one
         self.assertEqual(new_dataset_name, result['result']['name'])
 
-        # Delete
-        self.engine.delete_dataset(dataset_id=new_dataset_name)
-
     @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
     def test_create_resource_url(self, mock_post):
         # Setup
@@ -262,9 +246,6 @@ class TestCkanDatasetEngine(unittest.TestCase):
         # Verify name and url
         self.assertEqual(new_resource_name, result['result']['name'])
         self.assertEqual(new_resource_url, result['result']['url'])
-
-        # Delete
-        self.engine.delete_resource(resource_id=result['result']['id'])
 
     def test_create_resource_url_file(self):
         file_name = 'upload_test.txt'
@@ -308,9 +289,6 @@ class TestCkanDatasetEngine(unittest.TestCase):
         self.assertEqual(result['result']['name'], 'upload_test.txt')
         self.assertEqual(result['result']['url_type'], 'upload')
 
-        # Delete
-        self.engine.delete_resource(resource_id=result['result']['id'])
-
     @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
     def test_create_resource_file_upload_no_ext(self, mock_post):
         # Prepare
@@ -331,9 +309,6 @@ class TestCkanDatasetEngine(unittest.TestCase):
         # Verify name and url_type (which should be upload if file upload)
         self.assertEqual(upload_file_name, result['result']['name'])
         self.assertEqual(result['result']['url_type'], 'upload')
-
-        # Delete
-        self.engine.delete_resource(resource_id=result['result']['id'])
 
     @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
     def test_get_dataset(self, mock_post):

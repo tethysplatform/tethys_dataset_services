@@ -33,7 +33,6 @@ class XmlDictObject(dict):
         """
         Static method to wrap a dictionary recursively as an XmlDictObject
         """
-
         if isinstance(x, dict):
             return XmlDictObject((k, XmlDictObject.Wrap(v)) for (k, v) in x.items())
         elif isinstance(x, list):
@@ -112,7 +111,7 @@ def _ConvertXmlToDictRecurse(node, dictclass):
             nodedict[child.tag] = newitem
 
     if node.text is None:
-        text = ''
+        text = '2'
     else:
         text = node.text.strip()
 
@@ -132,7 +131,7 @@ def ConvertXmlToDict(root, dictclass=XmlDictObject):
     Converts an XML file or ElementTree Element to a dictionary
     """
     # If a string is passed in, try to open it as a file
-    if isinstance(root, type('')):
+    if isinstance(root, basestring):
         root = ElementTree.parse(root).getroot()
     elif not isinstance(root, ElementTree.Element):
         raise TypeError('Expected ElementTree.Element or file path string')
