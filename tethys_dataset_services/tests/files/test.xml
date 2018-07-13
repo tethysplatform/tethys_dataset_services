@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<note importance="high" logged="true">
+    <title>Happy</title>
+    <todo type="active">Work</todo>
+    <todo type="active">Play</todo>
+    <title>Happy</title>
+    <todo type="active">Eat</todo>
+    <todo type="passive">Sleep</todo>
+</note>
