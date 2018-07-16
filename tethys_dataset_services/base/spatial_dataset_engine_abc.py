@@ -46,6 +46,13 @@ class SpatialDatasetEngine:
         """
         return self._password
 
+    @property
+    def disable_ssl_certificate_validation(self):
+        """
+        disable ssl certificate validation.
+        """
+        return self._disable_ssl_certificate_validation
+
     @abstractproperty
     def type(self):
         """
@@ -53,7 +60,7 @@ class SpatialDatasetEngine:
         """
         return NotImplemented
 
-    def __init__(self, endpoint, apikey=None, username=None, password=None):
+    def __init__(self, endpoint, apikey=None, username=None, password=None, disable_ssl_certificate_validation=False):
         """
         Default constructor for Dataset Engines.
 
@@ -67,6 +74,7 @@ class SpatialDatasetEngine:
         self._apikey = apikey
         self._username = username
         self._password = password
+        self._disable_ssl_certificate_validation = disable_ssl_certificate_validation
 
     def __repr__(self):
         """

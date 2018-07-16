@@ -125,7 +125,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         """
         Internal method used to get the connection object to GeoServer.
         """
-        return GeoServerCatalog(self.endpoint, username=self.username, password=self.password)
+        return GeoServerCatalog(self.endpoint, username=self.username, password=self.password,
+                                disable_ssl_certificate_validation=self.disable_ssl_certificate_validation)
 
     def _get_wms_url(self, layer_id, style='', srs='EPSG:4326', bbox='-180,-90,180,90', version='1.1.0',
                      width='512', height='512', output_format='image/png', tiled=False, transparent=True):
@@ -738,7 +739,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                 # Get layer caching properties (gsconfig doesn't support this)
                 gwc_url = '{0}layers/{1}.xml'.format(self.gwc_endpoint, layer_id)
                 auth = (self.username, self.password)
-                r = requests.get(gwc_url, auth=auth)
+                r = requests.get(gwc_url, auth=auth, verify=not self.disable_ssl_certificate_validation)
 
                 if r.status_code == 200:
                     root = ElementTree.XML(r.text)
@@ -2235,7 +2236,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Validate the GeoServer spatial dataset engine. Will throw and error if not valid.
         """
         try:
-            r = requests.get(self.endpoint, auth=(self.username, self.password))
+            r = requests.get(self.endpoint, auth=(self.username, self.password),
+                             verify=not self.disable_ssl_certificate_validation)
 
         except requests.exceptions.MissingSchema:
             raise AssertionError('The URL "{0}" provided for the GeoServer spatial dataset service endpoint is invalid.'.format(self.endpoint))
