@@ -624,7 +624,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
     @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.get')
     def test_validate_status_code(self, mock_get):
-        self.engine = CkanDatasetEngine(endpoint="http://localhost:5000/api/3/action/",
+        self.engine = CkanDatasetEngine(endpoint="http://localhost:5000/api/3/action",
                                         apikey=TEST_CKAN_DATASET_SERVICE['APIKEY'])
 
         result_data = {'resources': self.test_resource_name, 'version': '1.0'}

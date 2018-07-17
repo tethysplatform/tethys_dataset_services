@@ -111,7 +111,7 @@ def _ConvertXmlToDictRecurse(node, dictclass):
             nodedict[child.tag] = newitem
 
     if node.text is None:
-        text = '2'
+        text = ''
     else:
         text = node.text.strip()
 
