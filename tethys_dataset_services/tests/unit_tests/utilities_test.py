@@ -7,7 +7,9 @@ from tethys_dataset_services.utilities import XmlDictObject
 
 class TestUtilities(unittest.TestCase):
     def setUp(self):
-        pass
+        # Files
+        self.tests_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.files_root = os.path.join(self.tests_root, 'files')
 
     def tearDown(self):
         pass
@@ -33,7 +35,7 @@ class TestUtilities(unittest.TestCase):
 
     def test_ConvertXmlToDict(self):
         file_name = 'test.xml'
-        xml_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'files', file_name)
+        xml_file = os.path.join(self.files_root, file_name)
 
         dict_data = utilities.ConvertXmlToDict(root=xml_file)
 

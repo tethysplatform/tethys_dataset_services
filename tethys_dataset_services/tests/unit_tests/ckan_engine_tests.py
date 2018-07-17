@@ -64,6 +64,11 @@ class TestCkanDatasetEngine(unittest.TestCase):
         self.test_resource_name = random_string_generator(10)
         self.test_resource_url = 'http://home.byu.edu'
 
+        # File paths
+        self.tests_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.files_path = os.path.join(self.tests_path, 'files')
+        self.support_path = os.path.join(self.tests_path, 'support')
+
     def tearDown(self):
         pass
 
@@ -249,7 +254,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
     def test_create_resource_url_file(self):
         file_name = 'upload_test.txt'
-        file_to_upload = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'support', file_name)
+        file_to_upload = os.path.join(self.support_path, file_name)
 
         # Setup
         new_resource_url = 'http://home.byu.edu'
@@ -265,7 +270,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
     def test_create_resource_file_not_exist(self):
         file_name = 'upload_test1.txt'
-        file_to_upload = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'support', file_name)
+        file_to_upload = os.path.join(self.support_path, file_name)
 
         # Execute file=file_to_upload
         self.assertRaises(IOError, self.engine.create_resource, dataset_id=self.test_dataset_name,
@@ -275,7 +280,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
     def test_create_resource_file_upload(self, mock_post):
         # Prepare
         file_name = 'upload_test.txt'
-        file_to_upload = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'support', file_name)
+        file_to_upload = os.path.join(self.support_path, file_name)
         result_data = {'name': file_name, 'url_type': 'upload',
                        'id': self.test_dataset_name}
         mock_post.return_value = MockJsonResponse(200, result=result_data)
@@ -294,7 +299,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
         # Prepare
         file_name = 'upload_test.txt'
         upload_file_name = 'testfile'
-        file_to_upload = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'support', file_name)
+        file_to_upload = os.path.join(self.support_path, file_name)
         result_data = {'name': upload_file_name, 'url_type': 'upload', 'id': self.test_dataset_name}
         mock_post.return_value = MockJsonResponse(200, result=result_data)
         # Execute
@@ -408,7 +413,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
     def test_update_resource_file_upload(self, mock_post):
         # Setup
         file_name = 'upload_test.txt'
-        file_to_upload = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'support', file_name)
+        file_to_upload = os.path.join(self.support_path, file_name)
 
         result_data = {'name': file_name, 'id': self.test_dataset_name,
                        'url': self.test_resource_url}
@@ -430,7 +435,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
     def test_update_resource_url_file(self):
         file_name = 'upload_test.txt'
-        file_to_upload = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'support', file_name)
+        file_to_upload = os.path.join(self.support_path, file_name)
 
         # Setup
         new_resource_url = 'http://home.byu.edu'
@@ -442,7 +447,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
     def test_update_resource_file_not_exist(self):
         file_name = 'upload_test1.txt'
-        file_to_upload = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'support', file_name)
+        file_to_upload = os.path.join(self.support_path, file_name)
 
         # Execute file=file_to_upload
         self.assertRaises(IOError, self.engine.update_resource, resource_id=self.test_resource_name,
@@ -476,10 +481,9 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
     @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
     def test_download_resource(self, mock_post):
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        location = os.path.join(dir_path, 'files/')
+        location = self.files_path
         local_file_name = 'test_resource.test'
-        location_final = os.path.join(dir_path, 'files', local_file_name)
+        location_final = os.path.join(self.files_path, local_file_name)
 
         result_data = {'url': self.test_resource_url}
         mock_post.return_value = MockJsonResponse(200, result=result_data)
@@ -523,8 +527,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
     @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
     def test_download_resource_request_get_exception(self, mock_post, mock_get):
         mock_get.side_effect = Exception('Requests.get Exception')
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        location = os.path.join(dir_path, 'files/')
+        location = self.files_path
         local_file_name = 'test_resource.test'
 
         result_data = {'url': self.test_resource_url}
@@ -550,10 +553,9 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
     @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
     def test_download_resouce(self, mock_post):
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        location = os.path.join(dir_path, 'files/')
+        location = self.files_path
         local_file_name = 'test_resource.test'
-        location_final = os.path.join(dir_path, 'files', local_file_name)
+        location_final = os.path.join(self.files_path, local_file_name)
 
         result_data = {'url': self.test_resource_url}
         mock_post.return_value = MockJsonResponse(200, result=result_data)
@@ -576,9 +578,8 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
     @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
     def test_download_dataset(self, mock_post):
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        location = os.path.join(dir_path, 'files/')
-        location_final = os.path.join(dir_path, 'files', 'resource1.txt')
+        location = self.files_path
+        location_final = os.path.join(self.files_path, 'resource1.txt')
         result_check = [location_final]
 
         result_data = {'resources': [{'name': 'resource1', 'id': 'resource2',

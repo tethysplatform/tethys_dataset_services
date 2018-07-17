@@ -79,8 +79,9 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.counter = 0
 
         # Files
-        self.tests_root = os.path.abspath(os.path.dirname(__file__))
+        self.tests_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.files_root = os.path.join(self.tests_root, 'files')
+
         self.shapefile_name = 'test'
         self.shapefile_base = os.path.join(self.files_root, 'shapefile', self.shapefile_name)
 
@@ -1728,8 +1729,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         mc.get_resource.return_value = self.mock_resources[0]
 
         # Setup
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        shapefile_name = os.path.join(dir_path, 'files', 'shapefile', 'test')
+        shapefile_name = os.path.join(self.files_root, 'shapefile', 'test')
         store_id = self.store_names[0]
 
         # Execute
@@ -1760,8 +1760,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         mc.get_resource.return_value = self.mock_resources[0]
 
         # Setup
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        shapefile_name = os.path.join(dir_path, 'files', 'shapefile', 'test1.zip')
+        shapefile_name = os.path.join(self.files_root, 'shapefile', 'test1.zip')
         # Workspace is given
         store_id = '{}:{}'.format(self.workspace_name, self.store_names[0])
 
@@ -1792,12 +1791,11 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         mc.get_resource.return_value = self.mock_resources[0]
 
         # Setup
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        shapefile_cst = os.path.join(dir_path, 'files', 'shapefile', 'test.cst')
-        shapefile_dbf = os.path.join(dir_path, 'files', 'shapefile', 'test.dbf')
-        shapefile_prj = os.path.join(dir_path, 'files', 'shapefile', 'test.prj')
-        shapefile_shp = os.path.join(dir_path, 'files', 'shapefile', 'test.shp')
-        shapefile_shx = os.path.join(dir_path, 'files', 'shapefile', 'test.shx')
+        shapefile_cst = os.path.join(self.files_root, 'shapefile', 'test.cst')
+        shapefile_dbf = os.path.join(self.files_root, 'shapefile', 'test.dbf')
+        shapefile_prj = os.path.join(self.files_root, 'shapefile', 'test.prj')
+        shapefile_shp = os.path.join(self.files_root, 'shapefile', 'test.shp')
+        shapefile_shx = os.path.join(self.files_root, 'shapefile', 'test.shx')
 
         # Workspace is given
         store_id = '{}:{}'.format(self.workspace_name, self.store_names[0])
@@ -1828,8 +1826,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
     def test_create_shapefile_resource_zipfile_typeerror(self):
         # Setup
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        shapefile_name = os.path.join(dir_path, 'files', 'shapefile', 'test.shp')
+        shapefile_name = os.path.join(self.files_root, 'shapefile', 'test.shp')
         # Workspace is given
         store_id = '{}:{}'.format(self.workspace_name, self.store_name[0])
 
@@ -1843,8 +1840,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_create_shapefile_resource_overwrite_store_exists(self, mock_catalog):
         # Setup
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        shapefile_name = os.path.join(dir_path, 'files', 'shapefile', 'test')
+        shapefile_name = os.path.join(self.files_root, 'shapefile', 'test')
         store_id = '{}:{}'.format(self.workspace_name, self.store_names[0])
 
         # Execute
@@ -1871,8 +1867,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         mc.get_resource.return_value = self.mock_resources[0]
 
         # Setup
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        shapefile_name = os.path.join(dir_path, 'files', 'shapefile', 'test')
+        shapefile_name = os.path.join(self.files_root, 'shapefile', 'test')
         # Workspace is given
         store_id = '{}:{}'.format(self.workspace_name, self.store_names[0])
 
@@ -1927,8 +1922,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         mock_put.return_value = MockResponse(404, reason='Failure')
 
         # Setup
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        shapefile_name = os.path.join(dir_path, 'files', 'shapefile', 'test')
+        shapefile_name = os.path.join(self.files_root, 'shapefile', 'test')
         store_id = '{}:{}'.format(self.workspace_name, self.store_name[0])
 
         # Execute
@@ -2012,8 +2006,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         expected_coverage_type = 'geotiff'
         coverage_file_name = 'adem.tif'
         coverage_name = coverage_file_name.split('.')[0]
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        coverage_file = os.path.join(dir_path, "files", coverage_file_name)
+        coverage_file = os.path.join(self.files_root, coverage_file_name)
 
         mc = mock_catalog()
         mock_resource = mock.NonCallableMagicMock(workspace=self.workspace_names[0])
@@ -2073,8 +2066,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         expected_coverage_type = 'arcgrid'
         coverage_file_name = 'precip30min.zip'
         coverage_name = coverage_file_name.split('.')[0]
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        coverage_file = os.path.join(dir_path, "files", "arc_sample", coverage_file_name)
+        coverage_file = os.path.join(self.files_root, "arc_sample", coverage_file_name)
 
         mc = mock_catalog()
         mock_resource = mock.NonCallableMagicMock(workspace=self.workspace_names[0])
@@ -2136,8 +2128,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         expected_coverage_type = 'geotiff'
         coverage_file_name = 'adem.tif'
         coverage_name = coverage_file_name.split('.')[0]
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        coverage_file = os.path.join(dir_path, "files", coverage_file_name)
+        coverage_file = os.path.join(self.files_root, coverage_file_name)
 
         mc = mock_catalog()
         mock_resource = mock.NonCallableMagicMock(workspace=self.workspace_names[0])
@@ -2200,8 +2191,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         coverage_file_name = 'precip30min.asc'
         prj_file_name = 'precip30min.prj'
         coverage_name = coverage_file_name.split('.')[0]
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        arc_sample = os.path.join(dir_path, "files", "arc_sample")
+        arc_sample = os.path.join(self.files_root, "arc_sample")
         coverage_file = os.path.join(arc_sample, coverage_file_name)
         prj_file = os.path.join(arc_sample, prj_file_name)
 
@@ -2266,8 +2256,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         expected_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
         expected_coverage_type = 'geotiff'
         coverage_file_name = 'adem.tif'
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        coverage_file = os.path.join(dir_path, "files", coverage_file_name)
+        coverage_file = os.path.join(self.files_root, coverage_file_name)
         # Execute
         response = self.engine.create_coverage_resource(store_id=expected_store_id,
                                                         coverage_type=expected_coverage_type,
@@ -2296,8 +2285,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         expected_coverage_type = 'geotiff'
         coverage_file_name = 'adem.tif'
         coverage_name = coverage_file_name.split('.')[0]
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        coverage_file = os.path.join(dir_path, "files", coverage_file_name)
+        coverage_file = os.path.join(self.files_root, coverage_file_name)
 
         mock_resource = mock.NonCallableMagicMock(workspace=self.workspace_names[0])
         mock_resource.name = coverage_name
@@ -2346,8 +2334,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         expected_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
         expected_coverage_type = 'test1'
         coverage_file_name = 'adem.tif'
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        coverage_file = os.path.join(dir_path, "files", coverage_file_name)
+        coverage_file = os.path.join(self.files_root, coverage_file_name)
 
         # Raise ValueError
         self.assertRaises(ValueError, self.engine.create_coverage_resource, store_id=expected_store_id,
@@ -2369,8 +2356,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         expected_coverage_type = 'geotiff'
         coverage_file_name = 'adem.tif'
         coverage_name = coverage_file_name.split('.')[0]
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        coverage_file = os.path.join(dir_path, "files", coverage_file_name)
+        coverage_file = os.path.join(self.files_root, coverage_file_name)
 
         mock_resource = mock.NonCallableMagicMock(workspace=self.workspace_name)
         mock_resource.name = coverage_name
@@ -2429,8 +2415,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         expected_coverage_type = 'arcgrid'
         coverage_file_name = 'precip30min.zip'
         coverage_name = coverage_file_name.split('.')[0]
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        coverage_file = os.path.join(dir_path, "files", "arc_sample", coverage_file_name)
+        coverage_file = os.path.join(self.files_root, "arc_sample", coverage_file_name)
 
         mc = mock_catalog()
         mock_resource = mock.NonCallableMagicMock(workspace=self.workspace_names[0])
@@ -2490,8 +2475,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         expected_coverage_type = 'geotiff'
         coverage_file_name = 'adem.tif'
         coverage_name = coverage_file_name.split('.')[0]
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        coverage_file = os.path.join(dir_path, "files", coverage_file_name)
+        coverage_file = os.path.join(self.files_root, coverage_file_name)
         mock_put.return_value = MockResponse(201)
 
         # Execute
@@ -2540,8 +2524,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         expected_coverage_type = 'geotiff'
         coverage_file_name = 'adem.tif'
         coverage_name = coverage_file_name.split('.')[0]
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        coverage_file = os.path.join(dir_path, "files", coverage_file_name)
+        coverage_file = os.path.join(self.files_root, coverage_file_name)
 
         mock_put.return_value = MockResponse(401)
 
@@ -2584,8 +2567,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         expected_coverage_type = 'grassgrid'
         coverage_file_name = 'my_grass.zip'
         coverage_name = coverage_file_name.split('.')[0]
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        coverage_file = os.path.join(dir_path, "files", "grass_ascii", coverage_file_name)
+        coverage_file = os.path.join(self.files_root, "grass_ascii", coverage_file_name)
 
         mc = mock_catalog()
         mock_resource = mock.NonCallableMagicMock(workspace=self.workspace_names[0])
@@ -2645,8 +2627,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         expected_coverage_type = 'grassgrid'
         coverage_file_name = 'my_grass.zip'
         coverage_name = coverage_file_name.split('.')[0]
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        coverage_file = os.path.join(dir_path, "files", "grass_ascii", coverage_file_name)
+        coverage_file = os.path.join(self.files_root, "grass_ascii", coverage_file_name)
 
         mc = mock_catalog()
         mock_resource = mock.NonCallableMagicMock(workspace=self.workspace_names[0])
@@ -2709,8 +2690,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         expected_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
         expected_coverage_type = 'grassgrid'
         coverage_file_name = 'my_grass_invalid.zip'
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        coverage_file = os.path.join(dir_path, "files", "grass_ascii", coverage_file_name)
+        coverage_file = os.path.join(self.files_root, "grass_ascii", coverage_file_name)
 
         # Execute
         self.assertRaises(IOError, self.engine.create_coverage_resource,
@@ -2738,8 +2718,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         expected_store_id = '{}:{}'.format(self.workspace_names[0], self.store_names[0])
         expected_coverage_type = 'grassgrid'
         coverage_file_name = 'my_grass.asc'
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        coverage_file = os.path.join(dir_path, "files", "grass_ascii", coverage_file_name)
+        coverage_file = os.path.join(self.files_root, "grass_ascii", coverage_file_name)
 
         # Execute
         self.assertRaises(ValueError, self.engine.create_coverage_resource,
