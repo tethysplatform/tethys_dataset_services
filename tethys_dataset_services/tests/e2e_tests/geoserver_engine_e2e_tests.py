@@ -31,6 +31,10 @@ def random_string_generator(size):
 class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
     def setUp(self):
+        # Files
+        self.tests_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.files_root = os.path.join(self.tests_root, 'files')
+
         # GeoServer
         self.gs_endpoint = TEST_GEOSERVER_DATASET_SERVICE['ENDPOINT']
         self.gs_username = TEST_GEOSERVER_DATASET_SERVICE['USERNAME']
@@ -124,9 +128,8 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # TEST create shapefile
 
         # Setup
-        dir_path = os.path.dirname(os.path.realpath(__file__))
         filename = 'test'
-        shapefile_name = os.path.join(dir_path, 'files', 'shapefile', filename)
+        shapefile_name = os.path.join(self.files_root, 'shapefile', filename)
         workspace = self.workspace_name
         store_id = random_string_generator(10)
         store_id_name = '{}:{}'.format(workspace, store_id)
@@ -218,8 +221,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Test1.zip
 
         # Setup
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        shapefile_zip = os.path.join(dir_path, 'files', 'shapefile', "test1.zip")
+        shapefile_zip = os.path.join(self.files_root, 'shapefile', "test1.zip")
         shapefile = "test1"
         workspace = self.workspace_name
         store_id = random_string_generator(10)
@@ -301,12 +303,11 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # Use in memory file list: test.shp and friends
         # Setup
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        shapefile_cst = os.path.join(dir_path, 'files', 'shapefile', 'test.cst')
-        shapefile_dbf = os.path.join(dir_path, 'files', 'shapefile', 'test.dbf')
-        shapefile_prj = os.path.join(dir_path, 'files', 'shapefile', 'test.prj')
-        shapefile_shp = os.path.join(dir_path, 'files', 'shapefile', 'test.shp')
-        shapefile_shx = os.path.join(dir_path, 'files', 'shapefile', 'test.shx')
+        shapefile_cst = os.path.join(self.files_root, 'shapefile', 'test.cst')
+        shapefile_dbf = os.path.join(self.files_root, 'shapefile', 'test.dbf')
+        shapefile_prj = os.path.join(self.files_root, 'shapefile', 'test.prj')
+        shapefile_shp = os.path.join(self.files_root, 'shapefile', 'test.shp')
+        shapefile_shx = os.path.join(self.files_root, 'shapefile', 'test.shx')
 
         # Workspace is given
         store_rand = random_string_generator(10)
@@ -394,8 +395,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         expected_coverage_type = 'arcgrid'
         coverage_file_name = 'precip30min.zip'
         coverage_name = coverage_file_name.split('.')[0]
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        coverage_file = os.path.join(dir_path, "files", "arc_sample", coverage_file_name)
+        coverage_file = os.path.join(self.files_root, "arc_sample", coverage_file_name)
 
         with open(coverage_file, 'rb') as coverage_upload:
             # Execute
@@ -487,8 +487,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         expected_coverage_type = 'grassgrid'
         coverage_file_name = 'my_grass.zip'
         coverage_name = coverage_file_name.split('.')[0]
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        coverage_file = os.path.join(dir_path, "files", "grass_ascii", coverage_file_name)
+        coverage_file = os.path.join(self.files_root, "grass_ascii", coverage_file_name)
 
         # Execute
         response = self.geoserver_engine.create_coverage_resource(store_id=expected_store_id,
@@ -573,8 +572,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         expected_coverage_type = 'geotiff'
         coverage_file_name = 'adem.tif'
         coverage_name = coverage_file_name.split('.')[0]
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        coverage_file = os.path.join(dir_path, "files", coverage_file_name)
+        coverage_file = os.path.join(self.files_root, coverage_file_name)
 
         with open(coverage_file, 'rb') as coverage_upload:
             # Execute
@@ -659,8 +657,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         expected_coverage_type = 'worldimage'
         coverage_file_name = 'Pk50095.zip'
         coverage_name = coverage_file_name.split('.')[0]
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        coverage_file = os.path.join(dir_path, "files", "img_sample", coverage_file_name)
+        coverage_file = os.path.join(self.files_root, "img_sample", coverage_file_name)
 
         # Execute
         response = self.geoserver_engine.create_coverage_resource(store_id=expected_store_id,
@@ -744,8 +741,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         coverage_file_name = 'precip30min.asc'
         prj_file_name = 'precip30min.prj'
         coverage_name = coverage_file_name.split('.')[0]
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        arc_sample = os.path.join(dir_path, "files", "arc_sample")
+        arc_sample = os.path.join(self.files_root, "arc_sample")
         coverage_file = os.path.join(arc_sample, coverage_file_name)
         prj_file = os.path.join(arc_sample, prj_file_name)
 
@@ -1002,8 +998,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         expected_style_id_name = random_string_generator(10)
         expected_style_id = '{}:{}'.format(self.workspace_name, expected_style_id_name)
         style_file_name = 'point.sld'
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        expected_sld = os.path.join(dir_path, "files", style_file_name)
+        expected_sld = os.path.join(self.files_root, style_file_name)
 
         # Execute
         with open(expected_sld, 'r') as sld_file:

@@ -21,6 +21,11 @@ def random_string_generator(size):
 class TestCkanDatasetEngine(unittest.TestCase):
 
     def setUp(self):
+        # Files
+        self.tests_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.files_root = os.path.join(self.tests_root, 'files')
+        self.support_root = os.path.join(self.tests_root, 'support')
+
         # Create Test Engine
         self.engine = CkanDatasetEngine(endpoint=TEST_CKAN_DATASET_SERVICE['ENDPOINT'],
                                         apikey=TEST_CKAN_DATASET_SERVICE['APIKEY'])
@@ -85,7 +90,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
         # Prepare
         file_name = 'upload_test.txt'
         save_name = random_string_generator(10)
-        file_to_upload = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'support', file_name)
+        file_to_upload = os.path.join(self.support_root, file_name)
 
         # Execute
 
@@ -172,8 +177,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
         self.assertEqual(result['result']['notes'], notes)
 
         # TEST download_dataset
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        location = os.path.join(dir_path, 'files/')
+        location = self.files_root
 
         result = self.engine.download_dataset(self.test_dataset_name,
                                               location=location)
@@ -183,7 +187,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
         download_file = os.path.basename(result[0])
 
-        location_final = os.path.join(dir_path, 'files', download_file)
+        location_final = os.path.join(self.files_root, download_file)
 
         # Delete the file
         if os.path.isfile(location_final):
@@ -209,7 +213,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
         # Setup
         file_name = 'upload_test.txt'
-        file_to_upload = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'support', file_name)
+        file_to_upload = os.path.join(self.support_root, file_name)
         description_new = random_string_generator(10)
         # Execute
         result = self.engine.update_resource(resource_id=resource_id,
@@ -235,8 +239,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
         self.assertEqual(result['result']['description'], description_new)
 
         # TEST download_resource
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        location = os.path.join(dir_path, 'files/')
+        location = self.files_root
 
         result = self.engine.download_resource(resource_id=resource_id, location=location)
 
@@ -244,7 +247,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
         self.assertIn('.zip', result[-4:].lower())
         download_file = os.path.basename(result)
 
-        location_final = os.path.join(dir_path, 'files', download_file)
+        location_final = os.path.join(self.files_root, download_file)
 
         # Delete the file
         if os.path.isfile(location_final):
