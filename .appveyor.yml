@@ -80,7 +80,7 @@ test_script:
 #  - conda create -n blarg -yq --download-only python=3.5 libpng=1.6.17
   # no libpng here because we already have the right version from the 3.5 install
 #  - conda create -n blarg -yq --download-only python=3.6
-  - coverage run --rcfile=coverage.ini setup.py test -s tethys_dataset_services.tests.geoserver_engine_tests.TestGeoServerDatasetEngine
+  - coverage run --rcfile=coverage.ini setup.py test -s tethys_dataset_services.tests.unit_tests
   - coverage report -m
 
 #  - py.test --color=yes -v --cov conda_build --cov-report xml tests --basetemp C:\cbtmp -n 0 -m "serial"
