@@ -1949,10 +1949,9 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
     def test_gwc_endpoint_property(self):
         response = self.engine.gwc_endpoint
-        expected_endpoint = 'http://localhost:8181/geoserver/gwc/rest/'
 
         # Check Response
-        self.assertEqual(expected_endpoint, response)
+        self.assertIn('/gwc/rest/', response)
 
     def test_ini_no_slash_endpoint(self):
         self.engine = GeoServerSpatialDatasetEngine(
