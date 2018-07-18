@@ -7,13 +7,12 @@ services:
 
 env:
   - POSTGIS_USER="postgres"
-  - POSTGIS_PASS="mysecretpassword"
-  - POSTGIS_PORT=5435
-  - POSTGIS_DB="tds_tests"
-  - POSTGIS_URL="postgresql://$POSTGIS_USER:$POSTGIS_PASS@127.0.0.1:$POSTGIS_PORT/$POSTGIS_DB"
-  - GEOSERVER_ENDPOINT="http://127.0.0.1:8181/geoserver/rest/"
-  - GEOSERVER_USERNAME="admin"
-  - GEOSERVER_PASSWORD="geoserver"
+    POSTGIS_PASS="mysecretpassword"
+    POSTGIS_PORT=5435 POSTGIS_DB="tds_tests"
+    POSTGIS_URL="postgresql://$POSTGIS_USER:$POSTGIS_PASS@127.0.0.1:$POSTGIS_PORT/$POSTGIS_DB"
+    GEOSERVER_ENDPOINT="http://127.0.0.1:8181/geoserver/rest/"
+    GEOSERVER_USERNAME="admin"
+    GEOSERVER_PASSWORD="geoserver"
 
 python:
   # We don't actually use the Travis Python, but this keeps it organized.
