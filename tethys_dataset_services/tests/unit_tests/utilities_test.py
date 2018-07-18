@@ -15,23 +15,37 @@ class TestUtilities(unittest.TestCase):
         pass
 
     def test_ConvertDictToXml(self):
-        dict_data = {'note': {'importance': 'high', 'todo':
-                              [{'type': 'active', '_text': 'Work'},
-                               {'type': 'active', '_text': 'Play'},
-                               {'type': 'active', '_text': 'Eat'},
-                               {'type': 'passive', '_text': 'Sleep'}],
-                              'logged': 'true', 'title': ['Happy', 'Happy']}}
+        dict_data = {
+            'note': {
+                'importance': 'high',
+                'todo': [
+                    {'type': 'active', '_text': 'Work'},
+                    {'type': 'active', '_text': 'Play'},
+                    {'type': 'active', '_text': 'Eat'},
+                    {'type': 'passive', '_text': 'Sleep'}
+                ],
+                'logged': 'true',
+                'title': ['Happy', 'Sad']
+            }
+        }
 
         result = utilities.ConvertDictToXml(dict_data)
-        xmlstr = ET.tostring(result)
-        solution = '<note><importance>high</importance><logged>true</logged>' \
-                   '<todo>Work<type>active</type></todo><todo>Play<type>active</type>' \
-                   '</todo><todo>Eat<type>active</type></todo><todo>Sleep' \
-                   '<type>passive</type></todo>' \
-                   '<title>Happy</title><title>Happy</title></note>'
+        try:
+            xmlstr = ET.tostring(result, encoding='unicode')
+        except LookupError:
+            xmlstr = ET.tostring(result)
 
-        # Check Result
-        self.assertEqual(xmlstr, solution)
+        # Check Result)
+        self.assertEqual('<note>', xmlstr[:6])
+        self.assertEqual('</note>', xmlstr[-7:])
+        self.assertIn('<importance>high</importance>', xmlstr)
+        self.assertIn('<logged>true</logged>', xmlstr)
+        self.assertIn('<title>Happy</title>', xmlstr)
+        self.assertIn('<title>Sad</title>', xmlstr)
+        self.assertIn('<todo>Work<type>active</type>', xmlstr)
+        self.assertIn('<todo>Play<type>active</type>', xmlstr)
+        self.assertIn('<todo>Eat<type>active</type>', xmlstr)
+        self.assertIn('<todo>Sleep<type>passive</type></todo>', xmlstr)
 
     def test_ConvertXmlToDict(self):
         file_name = 'test.xml'

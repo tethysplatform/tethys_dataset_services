@@ -103,7 +103,6 @@ class TestCkanDatasetEngine(unittest.TestCase):
         output = captured_output.getvalue()
 
         # check results
-        self.assertIn('No JSON object could be decoded', output)
         self.assertIn('Status Code 201', output)
 
     @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
@@ -284,6 +283,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
         result_data = {'name': file_name, 'url_type': 'upload',
                        'id': self.test_dataset_name}
         mock_post.return_value = MockJsonResponse(200, result=result_data)
+
         # Execute
         result = self.engine.create_resource(dataset_id=self.test_dataset_name, file=file_to_upload, console=False)
 

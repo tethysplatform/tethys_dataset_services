@@ -44,9 +44,7 @@ class CkanDatasetEngine(DatasetEngine):
 
         headers = {}
 
-        if file:
-            data_dict = dict((k.encode('utf-8'), v.encode('utf-8')) for (k, v) in data_dict.items())
-        else:
+        if not file:
             data_dict = json.dumps(data_dict).encode('ascii')
             headers['Content-Type'] = 'application/json'
 

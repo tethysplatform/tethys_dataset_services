@@ -1,6 +1,7 @@
 # Credits: http://code.activestate.com/recipes/573463-converting-xml-to-dictionary-and-back/
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
+from past.builtins import basestring
 from builtins import *  # noqa: F403, F401
 
 from xml.etree import ElementTree
@@ -131,7 +132,7 @@ def ConvertXmlToDict(root, dictclass=XmlDictObject):
     Converts an XML file or ElementTree Element to a dictionary
     """
     # If a string is passed in, try to open it as a file
-    if isinstance(root, str):
+    if isinstance(root, basestring):
         root = ElementTree.parse(root).getroot()
     elif not isinstance(root, ElementTree.Element):
         raise TypeError('Expected ElementTree.Element or file path string')
