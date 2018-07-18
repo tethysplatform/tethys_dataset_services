@@ -1,3 +1,7 @@
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from builtins import *  # noqa: F403, F401
+
 import os
 import json
 import pprint
@@ -121,10 +125,10 @@ class CkanDatasetEngine(DatasetEngine):
         """
         query_terms = []
         if len(query_dict.keys()) > 1:
-            for key, value in query_dict.iteritems():
+            for key, value in query_dict.items():
                 query_terms.append('{0}:{1}'.format(key, value))
         else:
-            for key, value in query_dict.iteritems():
+            for key, value in query_dict.items():
                 query_terms = '{0}:{1}'.format(key, value)
         return query_terms
 
