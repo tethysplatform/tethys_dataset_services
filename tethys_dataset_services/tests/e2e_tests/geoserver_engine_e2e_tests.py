@@ -172,7 +172,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # List of strings
         if len(result) > 0:
-            self.assertIsInstance(result[0], basestring)
+            self.assertIsInstance(result[0], str)
 
         # layer listed
         self.assertIn(store_id, result)
@@ -264,7 +264,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # List of strings
         if len(result) > 0:
-            self.assertIsInstance(result[0], basestring)
+            self.assertIsInstance(result[0], str)
 
         # Get the last item from result
         layer_id = '{}:{}'.format(workspace, shapefile)
@@ -350,7 +350,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # list of strings
         if len(result) > 0:
-            self.assertIsInstance(result[0], basestring)
+            self.assertIsInstance(result[0], str)
 
         # layer group listed
         self.assertIn(store_rand, result)
@@ -438,7 +438,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # List of strings
         if len(result) > 0:
-            self.assertIsInstance(result[0], basestring)
+            self.assertIsInstance(result[0], str)
 
         # layer listed
         self.assertIn(coverage_name, result)
@@ -529,7 +529,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # List of strings
         if len(result) > 0:
-            self.assertIsInstance(result[0], basestring)
+            self.assertIsInstance(result[0], str)
 
         # Check if layer is in list
         self.assertIn(coverage_name, result)
@@ -613,7 +613,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # List of strings
         if len(result) > 0:
-            self.assertIsInstance(result[0], basestring)
+            self.assertIsInstance(result[0], str)
 
         # TEST layer group listed
         self.assertIn(store_name, result)
@@ -699,7 +699,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # List of strings
         if len(result) > 0:
-            self.assertIsInstance(result[0], basestring)
+            self.assertIsInstance(result[0], str)
 
         # Check if layer is in list
         self.assertIn(coverage_name, result)
@@ -790,7 +790,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # List of strings
         if len(result) > 0:
-            self.assertIsInstance(result[0], basestring)
+            self.assertIsInstance(result[0], str)
 
         # layer listed
         self.assertIn(coverage_name, result)
@@ -1037,7 +1037,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # List of strings
         if len(result) > 0:
-            self.assertIsInstance(result[0], basestring)
+            self.assertIsInstance(result[0], str)
 
         # TEST layer listed
         self.assertIn(expected_style_id_name, result)
@@ -1121,7 +1121,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # list of strings
         if len(result) > 0:
-            self.assertIsInstance(result[0], basestring)
+            self.assertIsInstance(result[0], str)
 
         # layer group listed
         self.assertIn(store_id_name, result)
@@ -1197,7 +1197,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # list of strings
         if len(result) > 0:
-            self.assertIsInstance(result[0], basestring)
+            self.assertIsInstance(result[0], str)
 
         # layer group listed
         self.assertIn(store_id_name, result)
@@ -1299,7 +1299,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # List of strings
         if len(result) > 0:
-            self.assertIsInstance(result[0], basestring)
+            self.assertIsInstance(result[0], str)
 
         # layer listed
         self.assertIn(feature_type_name, result)

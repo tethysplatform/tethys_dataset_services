@@ -11,7 +11,6 @@ from io import BytesIO
 from xml.etree import ElementTree
 from zipfile import ZipFile, is_zipfile
 
-from past.builtins import basestring
 from requests.auth import HTTPBasicAuth
 import geoserver
 from geoserver.catalog import Catalog as GeoServerCatalog
@@ -171,7 +170,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                   'width={5}&height={6}&' \
                   'format={4}'.format(endpoint, resource_id, srs, bbox, output_format, width, height)
 
-        if namespace and isinstance(namespace, basestring):
+        if namespace and isinstance(namespace, str):
             wcs_url = '{0}&namespace={1}'.format(wcs_url, namespace)
 
         return wcs_url
@@ -305,7 +304,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                 # Handle special cases upfront
                 if attribute in NAMED_OBJECTS:
                     sub_object = getattr(gs_object, attribute)
-                    if not sub_object or isinstance(sub_object, basestring):
+                    if not sub_object or isinstance(sub_object, str):
                         object_dictionary[attribute] = sub_object
                     else:
                         object_dictionary[attribute] = sub_object.name
@@ -345,7 +344,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
                     for style in styles:
                         if style is not None:
-                            if not isinstance(style, basestring):
+                            if not isinstance(style, str):
                                 if style.workspace:
                                     styles_names.append('{0}:{1}'.format(style.workspace, style.name))
                                 else:

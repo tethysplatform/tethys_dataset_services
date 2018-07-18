@@ -131,7 +131,7 @@ def ConvertXmlToDict(root, dictclass=XmlDictObject):
     Converts an XML file or ElementTree Element to a dictionary
     """
     # If a string is passed in, try to open it as a file
-    if isinstance(root, basestring):
+    if isinstance(root, str):
         root = ElementTree.parse(root).getroot()
     elif not isinstance(root, ElementTree.Element):
         raise TypeError('Expected ElementTree.Element or file path string')
