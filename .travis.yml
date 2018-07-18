@@ -1,4 +1,10 @@
+sudo: required
+
 language: python
+
+services:
+  - docker
+
 python:
   # We don't actually use the Travis Python, but this keeps it organized.
   - "2.7"
@@ -7,6 +13,7 @@ python:
 stages:
   - lint
   - test
+  - geoserver_e2e_tests
   - name: deploy-pip
     if: tag =~ ^\d+\.\d+\.\d+$
   - name: deploy-conda
@@ -50,6 +57,16 @@ jobs:
         - pip install flake8
       script:
         - flake8
+    - stage: geoserver_e2e_tests
+      before_install:
+        - docker pull ciwater/geoserver:2.8.2-clustered
+        - docker pull mdillon/postgis:9.6
+        - docker run -d -p --name=test_postgis localhost:5432:5432 -e POSTGRES_PASSWORD=mysecretpassword -e POSTGRES_USER=postgres mdillon/postgis:9.6
+        - docker run -d -p localhost:8181:8181 -p localhost:8081:8081 -p localhost:8082:8082 -p localhost:8083:8083 -p localhost:8084:8084 -e ENABLED_NODES=1 -e REST_NODES=1 -e MAX_MEMORY=512 -e MIN_MEMORY=512 -e NUM_CORES=2 -e MAX_TIMEOUT=60 ciwater/geoserver:2.8.2-clustered
+        - docker exec test_postgis /bin/bash -c "psql -U postgres -c \"CREATE DATABASE tds_tests WITH OWNER postgres;\""
+        - docker exec test_postgis /bin/bash -c "psql -U postgres -d tds_tests -c  \"CREATE EXTENSION postgis;\""
+      script:
+        - echo "GeoServer End to end tests"
     - stage: deploy-pip
       script:
         - echo "deploying to pip..."
