@@ -1,5 +1,6 @@
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
+from past.types import basestring
 from builtins import *  # noqa: F403, F401
 
 import os
@@ -344,7 +345,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
                     for style in styles:
                         if style is not None:
-                            if not isinstance(style, str):
+                            if not isinstance(style, basestring):
                                 if style.workspace:
                                     styles_names.append('{0}:{1}'.format(style.workspace, style.name))
                                 else:

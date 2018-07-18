@@ -67,6 +67,7 @@ jobs:
       script:
         - flake8
     - stage: geoserver_e2e_tests
+      python: "2.7"
       before_install:
         - docker pull ciwater/geoserver:2.8.2-clustered
         - docker pull mdillon/postgis:9.6
@@ -78,6 +79,8 @@ jobs:
         - "curl -u $GEOSERVER_USERNAME:$GEOSERVER_PASSWORD -H 'Accept: application/xml' -H 'Content-Type: application/xml' -X PUT -d '<global><proxyBaseUrl>http://127.0.0.1:8181/geoserver</proxyBaseUrl></global>' http://127.0.0.1:8181/geoserver/rest/settings.xml"
       script:
         - python setup.py test -s tethys_dataset_services.tests.e2e_tests.geoserver_engine_e2e_tests.GeoServerDatasetEngineEnd2EndTests
+    - # Does not need a name, will use name of previous stage... apparently... https://docs.travis-ci.com/user/build-stages/#How-to-define-Build-Stages%3F
+      python: "3.6"
     - stage: deploy-pip
       script:
         - echo "deploying to pip..."

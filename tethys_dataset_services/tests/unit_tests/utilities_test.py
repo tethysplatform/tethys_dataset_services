@@ -1,3 +1,7 @@
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from builtins import *  # noqa: F403, F401
+
 import os
 import unittest
 import xml.etree.ElementTree as ET

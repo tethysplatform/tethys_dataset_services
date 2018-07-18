@@ -44,7 +44,18 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Setup a testing workspace
         self.workspace_name = random_string_generator(10)
         self.workspace_uri = 'http://www.tethysplatform.org/{}'.format(self.workspace_name)
-        self.catalog.create_workspace(self.workspace_name, self.workspace_uri)
+
+        retries = 5
+        while retries > 0:
+            try:
+                self.catalog.create_workspace(self.workspace_name, self.workspace_uri)
+                break
+            except AssertionError as e:
+                if 'Error persisting' in str(e) and retries > 0:
+                    print("WARNING: FAILED TO PERSIST WORKSPACE.")
+                    retries -= 1
+                else:
+                    raise
 
         # Setup Postgis database connection
         self.engine = create_engine(TEST_POSTGIS_SERVICE['URL'])
@@ -170,10 +181,6 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Returns list
         self.assertIsInstance(result, list)
 
-        # List of strings
-        if len(result) > 0:
-            self.assertIsInstance(result[0], str)
-
         # layer listed
         self.assertIn(store_id, result)
 
@@ -262,10 +269,6 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Returns list
         self.assertIsInstance(result, list)
 
-        # List of strings
-        if len(result) > 0:
-            self.assertIsInstance(result[0], str)
-
         # Get the last item from result
         layer_id = '{}:{}'.format(workspace, shapefile)
 
@@ -347,10 +350,6 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # Extract Result
         result = response['result']
-
-        # list of strings
-        if len(result) > 0:
-            self.assertIsInstance(result[0], str)
 
         # layer group listed
         self.assertIn(store_rand, result)
@@ -435,10 +434,6 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # Returns list
         self.assertIsInstance(result, list)
-
-        # List of strings
-        if len(result) > 0:
-            self.assertIsInstance(result[0], str)
 
         # layer listed
         self.assertIn(coverage_name, result)
@@ -527,10 +522,6 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Returns list
         self.assertIsInstance(result, list)
 
-        # List of strings
-        if len(result) > 0:
-            self.assertIsInstance(result[0], str)
-
         # Check if layer is in list
         self.assertIn(coverage_name, result)
 
@@ -610,10 +601,6 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # Extract Result
         result = response['result']
-
-        # List of strings
-        if len(result) > 0:
-            self.assertIsInstance(result[0], str)
 
         # TEST layer group listed
         self.assertIn(store_name, result)
@@ -696,10 +683,6 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # Returns list
         self.assertIsInstance(result, list)
-
-        # List of strings
-        if len(result) > 0:
-            self.assertIsInstance(result[0], str)
 
         # Check if layer is in list
         self.assertIn(coverage_name, result)
@@ -787,10 +770,6 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # Returns list
         self.assertIsInstance(result, list)
-
-        # List of strings
-        if len(result) > 0:
-            self.assertIsInstance(result[0], str)
 
         # layer listed
         self.assertIn(coverage_name, result)
@@ -1035,10 +1014,6 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Returns list
         self.assertIsInstance(result, list)
 
-        # List of strings
-        if len(result) > 0:
-            self.assertIsInstance(result[0], str)
-
         # TEST layer listed
         self.assertIn(expected_style_id_name, result)
 
@@ -1119,10 +1094,6 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Extract Result
         result = response['result']
 
-        # list of strings
-        if len(result) > 0:
-            self.assertIsInstance(result[0], str)
-
         # layer group listed
         self.assertIn(store_id_name, result)
 
@@ -1194,10 +1165,6 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # Extract Result
         result = response['result']
-
-        # list of strings
-        if len(result) > 0:
-            self.assertIsInstance(result[0], str)
 
         # layer group listed
         self.assertIn(store_id_name, result)
@@ -1296,10 +1263,6 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # Returns list
         self.assertIsInstance(result, list)
-
-        # List of strings
-        if len(result) > 0:
-            self.assertIsInstance(result[0], str)
 
         # layer listed
         self.assertIn(feature_type_name, result)
