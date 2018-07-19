@@ -6,4 +6,4 @@ docker run -d --name=test_geoserver -p 8181:8181 -p 8081:8081 -p 8082:8082 -p 80
 sleep 30
 docker exec test_postgis /bin/bash -c "psql -U postgres -c \"CREATE DATABASE ${POSTGIS_DB} WITH OWNER ${POSTGIS_USER};\""
 docker exec test_postgis /bin/bash -c "psql -U postgres -d $POSTGIS_DB -c  \"CREATE EXTENSION postgis;\""
-"curl -u $GEOSERVER_USERNAME:$GEOSERVER_PASSWORD -H 'Accept: application/xml' -H 'Content-Type: application/xml' -X PUT -d '<global><proxyBaseUrl>http://127.0.0.1:8181/geoserver</proxyBaseUrl></global>' http://127.0.0.1:8181/geoserver/rest/settings.xml"
+curl -u $GEOSERVER_USERNAME:$GEOSERVER_PASSWORD -H 'Accept: application/xml' -H 'Content-Type: application/xml' -X PUT -d '<global><proxyBaseUrl>http://127.0.0.1:8181/geoserver</proxyBaseUrl></global>' http://127.0.0.1:8181/geoserver/rest/settings.xml
