@@ -15,6 +15,10 @@ env:
     GEOSERVER_ENDPOINT="http://127.0.0.1:8181/geoserver/rest/"
     GEOSERVER_USERNAME="admin"
     GEOSERVER_PASSWORD="geoserver"
+    CKAN_USERNAME="tethys"
+    CKAN_PASSWORD="password"
+    CKAN_APIKEY="826650aa-d551-4abc-8d06-180e17ea9e93"
+    CKAN_ENDPOINT="https://127.0.0.1:5000/api/"
 
 python:
   # We don't actually use the Travis Python, but this keeps it organized.
