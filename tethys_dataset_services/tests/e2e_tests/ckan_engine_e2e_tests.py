@@ -2,6 +2,7 @@ import os
 import random
 import string
 import unittest
+import requests
 from tethys_dataset_services.engines import CkanDatasetEngine
 
 try:
@@ -21,19 +22,38 @@ def random_string_generator(size):
 class TestCkanDatasetEngine(unittest.TestCase):
 
     def setUp(self):
+        # Auth
+        self.endpoint = TEST_CKAN_DATASET_SERVICE['ENDPOINT']
+        self.apikey = TEST_CKAN_DATASET_SERVICE['APIKEY']
+        self.username = TEST_CKAN_DATASET_SERVICE['USERNAME']
+
         # Files
         self.tests_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.files_root = os.path.join(self.tests_root, 'files')
         self.support_root = os.path.join(self.tests_root, 'support')
 
         # Create Test Engine
-        self.engine = CkanDatasetEngine(endpoint=TEST_CKAN_DATASET_SERVICE['ENDPOINT'],
-                                        apikey=TEST_CKAN_DATASET_SERVICE['APIKEY'])
+        self.engine = CkanDatasetEngine(endpoint=self.endpoint,
+                                        apikey=self.apikey)
+
+        # Create Test Organization
+        self.test_org = random_string_generator(10)
+        data_dict= {
+            'name': self.test_org,
+            'users': [{'name': self.username}]
+        }
+        url, data, headers = self.engine._prepare_request(
+            'organization_create', data_dict=data_dict, apikey=self.apikey
+        )
+        status_code, response_text = self.engine._execute_request(url, data, headers)
+        if status_code != 200:
+            raise requests.RequestException('Unable to create group: {}'.format(response_text))
 
         # Create Test Dataset
         self.test_dataset_name = random_string_generator(10)
-        self.test_org = 'aquaveo'
         dataset_result = self.engine.create_dataset(name=self.test_dataset_name, version='1.0', owner_org=self.test_org)
+        if not dataset_result['success']:
+            raise requests.RequestException('Unable to create test dataset: {}'.format(dataset_result['error']))
         self.test_dataset = dataset_result['result']
 
         # Create Test Resource
@@ -41,6 +61,8 @@ class TestCkanDatasetEngine(unittest.TestCase):
         self.test_resource_url = 'http://home.byu.edu'
         resource_result = self.engine.create_resource(self.test_dataset_name,
                                                       url=self.test_resource_url, format='zip')
+        if not resource_result['success']:
+            raise requests.RequestException('Unable to create test resource: {}'.format(resource_result['error']))
         self.test_resource = resource_result['result']
 
     def tearDown(self):

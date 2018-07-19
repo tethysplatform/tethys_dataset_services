@@ -18,7 +18,7 @@ env:
     CKAN_USERNAME="tethys"
     CKAN_PASSWORD="password"
     CKAN_APIKEY="826650aa-d551-4abc-8d06-180e17ea9e93"
-    CKAN_ENDPOINT="https://127.0.0.1:5000/api/"
+    CKAN_ENDPOINT="https://127.0.0.1:5000/api/3/action/"
 
 python:
   # We don't actually use the Travis Python, but this keeps it organized.
