@@ -1064,7 +1064,8 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         response = self.geoserver_engine.link_sqlalchemy_db_to_geoserver(store_id=store_id,
                                                                          sqlalchemy_engine=sqlalchemy_engine,
-                                                                         docker=True)
+                                                                         docker=True,
+                                                                         debug=True)
 
         # Check for success response
         self.assertTrue(response['success'])
@@ -1074,7 +1075,8 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # Execute
         response = self.geoserver_engine.add_table_to_postgis_store(store_id=store_id,
-                                                                    table=table_name)
+                                                                    table=table_name,
+                                                                    debug=True)
 
         # Check for success response
         self.assertTrue(response['success'])
@@ -1147,7 +1149,8 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
                                                                          database=database,
                                                                          user=user,
                                                                          table=table_name,
-                                                                         password=password)
+                                                                         password=password,
+                                                                         debug=True)
 
         self.assertTrue(response['success'])
 
