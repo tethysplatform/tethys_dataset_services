@@ -1058,9 +1058,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # TEST link_sqlalchemy_db_to_geoserver
         store_id_name = random_string_generator(10)
         store_id = '{}:{}'.format(self.workspace_name, store_id_name)
-        sqlalchemy_engine = self.engine
-
-        # sqlalchemy_engine = create_engine()
+        sqlalchemy_engine = create_engine(TEST_POSTGIS_SERVICE['URL'])
 
         response = self.geoserver_engine.link_sqlalchemy_db_to_geoserver(store_id=store_id,
                                                                          sqlalchemy_engine=sqlalchemy_engine,
@@ -1069,6 +1067,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # Check for success response
         self.assertTrue(response['success'])
+        sqlalchemy_engine.dispose()
 
         # TEST add_table_to_postgis_store
         table_name = self.postgis_table_name
@@ -1137,10 +1136,10 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         store_id_name = random_string_generator(10)
         store_id = '{}:{}'.format(self.workspace_name, store_id_name)
         host = '172.17.0.1'
-        port = 5435
-        database = 'tds_tests'
-        user = 'tethys_super'
-        password = 'pass'
+        port = TEST_POSTGIS_SERVICE['PORT']
+        database = TEST_POSTGIS_SERVICE['DATABASE']
+        user = TEST_POSTGIS_SERVICE['USERNAME']
+        password = TEST_POSTGIS_SERVICE['PASSWORD']
         table_name = 'points'
 
         response = self.geoserver_engine.create_postgis_feature_resource(store_id=store_id,
@@ -1213,10 +1212,10 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         store_id_name = random_string_generator(10)
         store_id = '{}:{}'.format(self.workspace_name, store_id_name)
         host = '172.17.0.1'
-        port = 5435
-        database = 'tds_tests'
-        user = 'tethys_super'
-        password = 'pass'
+        port = TEST_POSTGIS_SERVICE['PORT']
+        database = TEST_POSTGIS_SERVICE['DATABASE']
+        user = TEST_POSTGIS_SERVICE['USERNAME']
+        password = TEST_POSTGIS_SERVICE['PASSWORD']
 
         response = self.geoserver_engine.create_postgis_feature_resource(store_id=store_id,
                                                                          host=host,
