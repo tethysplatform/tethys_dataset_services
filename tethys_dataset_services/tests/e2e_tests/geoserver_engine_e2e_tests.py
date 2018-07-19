@@ -49,6 +49,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         self.pg_host = TEST_POSTGIS_SERVICE['HOST']
         self.pg_port = TEST_POSTGIS_SERVICE['PORT']
         self.pg_url = TEST_POSTGIS_SERVICE['URL']
+        self.pg_public_url = TEST_POSTGIS_SERVICE['PUBLIC_URL']
 
         # Setup a testing workspace
         self.workspace_name = random_string_generator(10)
@@ -67,8 +68,8 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
                     raise
 
         # Setup Postgis database connection
-        self.engine = create_engine(self.pg_url)
-        self.connection = self.engine.connect()
+        self.public_engine = create_engine(self.pg_public_url)
+        self.connection = self.public_engine.connect()
         self.transaction = self.connection.begin()
 
         # Create GeoServer Engine
@@ -101,15 +102,13 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Clean up Postgis database
         self.transaction.rollback()
         self.connection.close()
-        self.engine.dispose()
+        self.public_engine.dispose()
 
     def setup_postgis_table(self):
         """
         Creates table in the database named "points" with two entries. The table has three columns:
         "id", "name", and "geometry." Use this table for the tests that require a database.
         """
-        import pprint
-        pprint.pprint(TEST_POSTGIS_SERVICE)
         # Clean up
         delete_sql = "DROP TABLE IF EXISTS {table}".\
             format(table=self.pg_table_name)
@@ -1071,8 +1070,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         response = self.geoserver_engine.link_sqlalchemy_db_to_geoserver(store_id=store_id,
                                                                          sqlalchemy_engine=sqlalchemy_engine,
-                                                                         docker=True,
-                                                                         debug=True)
+                                                                         docker=True)
 
         # Check for success response
         self.assertTrue(response['success'])
@@ -1082,8 +1080,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # Execute
         response = self.geoserver_engine.add_table_to_postgis_store(store_id=store_id,
-                                                                    table=self.pg_table_name,
-                                                                    debug=True)
+                                                                    table=self.pg_table_name)
 
         # Check for success response
         self.assertTrue(response['success'])
@@ -1150,8 +1147,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
                                                                          database=self.pg_database,
                                                                          user=self.pg_username,
                                                                          password=self.pg_password,
-                                                                         table=self.pg_table_name,
-                                                                         debug=True)
+                                                                         table=self.pg_table_name)
 
         self.assertTrue(response['success'])
 

@@ -1,0 +1,25 @@
+version: '3'
+services:
+  test_postgis:
+    image: "mdillon/postgis:9.6"
+    ports:
+      - "$POSTGIS_PORT:5432"
+    environment:
+      - POSTGRES_PASSWORD=$POSTGIS_PASS
+      - POSTGRES_USER=$POSTGIS_USER
+
+  test_geoserver:
+    image: "ciwater/geoserver:2.8.2-clustered"
+    ports:
+      - "8181:8181"
+      - "8081:8081"
+      - "8082:8082"
+      - "8083:8083"
+      - "8084:8084"
+    environment:
+      - ENABLED_NODES=1
+      - REST_NODES=1
+      - MAX_MEMORY=512
+      - MIN_MEMORY=512
+      - NUM_CORES=2
+      - MAX_TIMEOUT=60
