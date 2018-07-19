@@ -25,6 +25,7 @@ stages:
   - lint
   - test
   - geoserver_e2e_tests
+  - ckan_e2e_tests
   - name: deploy-pip
     if: tag =~ ^\d+\.\d+\.\d+$
   - name: deploy-conda
@@ -68,25 +69,39 @@ jobs:
         - pip install flake8
       script:
         - flake8
-    - stage: geoserver_e2e_tests; ckan_engine_e2e_tests
+
+    - stage: geoserver_e2e_tests
       python: "2.7"
       before_install:
-        - . travis/setup_e2e_tests.sh
-        - . travis/setup_ckan_tests.sh
+        - . travis/setup_geoserver_e2e_tests.sh
       script:
-        - . travis/run_e2e_tests.sh
-        - . travis/run_ckan_tests.sh
+        - . travis/run_geoserver_e2e_tests.sh
+
     - # Does not need a name, will use name of previous stage... apparently... https://docs.travis-ci.com/user/build-stages/#How-to-define-Build-Stages%3F
       python: "3.6"
       before_install:
-        - . travis/setup_e2e_tests.sh
-        - . travis/setup_ckan_tests.sh
+        - . travis/setup_geoserver_e2e_tests.sh
       script:
-        - . travis/run_e2e_tests.sh
-        - . travis/run_ckan_tests.sh
+        - . travis/run_geoserver_e2e_tests.sh
+
+    - stage: ckan_e2e_tests
+      python: "2.7"
+      before_install:
+        - . travis/setup_ckan_e2e_tests.sh
+      script:
+        - . travis/run_ckan_e2e_tests.sh
+
+    - # Does not need a name, will use name of previous stage... apparently... https://docs.travis-ci.com/user/build-stages/#How-to-define-Build-Stages%3F
+      python: "3.6"
+      before_install:
+        - . travis/setup_ckan_e2e_tests.sh
+      script:
+        - . travis/run_ckan_e2e_tests.sh
+
     - stage: deploy-pip
       script:
         - echo "deploying to pip..."
+
     - stage: deploy-conda
       script:
         - echo "deploying to conda..."
