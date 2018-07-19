@@ -7,6 +7,6 @@ cp .env.template .env
 docker-compose up -d --build
 sleep 30
 docker ps -a
-docker exec -it ckan /bin/bash -c "echo \"y\" | "/usr/local/bin/ckan-paster --plugin=ckan sysadmin -c /etc/ckan/production.ini add $CKAN_USERNAME email=\"foo@tethysplatform.org\" password=\"$CKAN_PASSWORD\" apikey=\"$CKAN_APIKEY\""
+docker exec -it ckan /bin/bash -c "echo \"y\" | /usr/local/bin/ckan-paster --plugin=ckan sysadmin -c /etc/ckan/production.ini add $CKAN_USERNAME email=\"foo@tethysplatform.org\" password=\"$CKAN_PASSWORD\" apikey=\"$CKAN_APIKEY\""
 popd
 popd
