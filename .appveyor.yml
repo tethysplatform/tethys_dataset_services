@@ -70,7 +70,7 @@ install:
   # Start docker containers
   - pip install --no-deps .
   - if "%RUN_GEOSERVER_E2E_TESTS%" == "TRUE" (docker version)
-  - if "%RUN_GEOSERVER_E2E_TESTS%" == "TRUE" (appveyor/setup_geoserver_e2e.bat)
+  - if "%RUN_GEOSERVER_E2E_TESTS%" == "TRUE" (CALL .\appveyor\setup_geoserver_e2e.bat)
   - docker ps -a
 
 # Not a .NET project, we build package in the install step instead
