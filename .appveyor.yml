@@ -26,14 +26,9 @@ environment:
 #    - PYTHON: "C:\\Miniconda-x64"
 #      PYTHON_VERSION: "2.7"
 #      PYTHON_ARCH: "64"
-#
-#    - PYTHON: "C:\\Miniconda36-x64"
-#      PYTHON_VERSION: "3.6"
-#      PYTHON_ARCH: "64"
-#      RUN_GEOSERVER_E2E_TESTS: "TRUE"
 
-    - PYTHON: "C:\\Miniconda-x64"
-      PYTHON_VERSION: "2.7"
+    - PYTHON: "C:\\Miniconda36-x64"
+      PYTHON_VERSION: "3.6"
       PYTHON_ARCH: "64"
       RUN_GEOSERVER_E2E_TESTS: "TRUE"
 
