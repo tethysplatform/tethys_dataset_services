@@ -41,6 +41,15 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         self.gs_password = TEST_GEOSERVER_DATASET_SERVICE['PASSWORD']
         self.catalog = GeoServerCatalog(self.gs_endpoint, username=self.gs_username, password=self.gs_password)
 
+        # Postgis
+        self.pg_username = TEST_POSTGIS_SERVICE['USERNAME']
+        self.pg_password = TEST_POSTGIS_SERVICE['PASSWORD']
+        self.pg_database = TEST_POSTGIS_SERVICE['DATABASE']
+        self.pg_table_name = 'points'
+        self.pg_host = TEST_POSTGIS_SERVICE['HOST']
+        self.pg_port = TEST_POSTGIS_SERVICE['PORT']
+        self.pg_url = TEST_POSTGIS_SERVICE['URL']
+
         # Setup a testing workspace
         self.workspace_name = random_string_generator(10)
         self.workspace_uri = 'http://www.tethysplatform.org/{}'.format(self.workspace_name)
@@ -58,7 +67,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
                     raise
 
         # Setup Postgis database connection
-        self.engine = create_engine(TEST_POSTGIS_SERVICE['URL'])
+        self.engine = create_engine(self.pg_url)
         self.connection = self.engine.connect()
         self.transaction = self.connection.begin()
 
@@ -68,7 +77,6 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
                                                               username=TEST_GEOSERVER_DATASET_SERVICE['USERNAME'],
                                                               password=TEST_GEOSERVER_DATASET_SERVICE['PASSWORD'])
 
-        self.postgis_table_name = 'points'
         self.geometry_column = 'geometry'
         self.geometry_type = 'Point'
         self.srid = 4326
@@ -100,10 +108,11 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         Creates table in the database named "points" with two entries. The table has three columns:
         "id", "name", and "geometry." Use this table for the tests that require a database.
         """
-
+        import pprint
+        pprint.pprint(TEST_POSTGIS_SERVICE)
         # Clean up
         delete_sql = "DROP TABLE IF EXISTS {table}".\
-            format(table=self.postgis_table_name)
+            format(table=self.pg_table_name)
         self.connection.execute(delete_sql)
 
         # Create table
@@ -112,7 +121,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
                          "name varchar(20)" \
                          "); " \
                          "SELECT AddGeometryColumn('public', '{table}', 'geometry', 4326, 'POINT', 2);". \
-            format(table=self.postgis_table_name)
+            format(table=self.pg_table_name)
 
         self.connection.execute(geom_table_sql)
 
@@ -124,7 +133,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         for r in rows:
             sql = insert_sql.format(
-                table=self.postgis_table_name,
+                table=self.pg_table_name,
                 id=r['id'],
                 name=r['name'],
                 lat=r['lat'],
@@ -1051,14 +1060,14 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         self.assertIsNone(response['result'])
 
     def test_link_and_add_table(self):
-        # # Use testing_config.TEST_POSTGIS_SERVICE for db credentials
-        # # call methods: link_sqlalchemy_db_to_geoserver, add_table_to_postgis_store,
-        # # list_stores, get_store, delete_store
+        # call methods: link_sqlalchemy_db_to_geoserver, add_table_to_postgis_store, list_stores, get_store,
+        # delete_store
+        self.setup_postgis_table()
 
         # TEST link_sqlalchemy_db_to_geoserver
         store_id_name = random_string_generator(10)
         store_id = '{}:{}'.format(self.workspace_name, store_id_name)
-        sqlalchemy_engine = create_engine(TEST_POSTGIS_SERVICE['URL'])
+        sqlalchemy_engine = create_engine(self.pg_url)
 
         response = self.geoserver_engine.link_sqlalchemy_db_to_geoserver(store_id=store_id,
                                                                          sqlalchemy_engine=sqlalchemy_engine,
@@ -1070,11 +1079,10 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         sqlalchemy_engine.dispose()
 
         # TEST add_table_to_postgis_store
-        table_name = self.postgis_table_name
 
         # Execute
         response = self.geoserver_engine.add_table_to_postgis_store(store_id=store_id,
-                                                                    table=table_name,
+                                                                    table=self.pg_table_name,
                                                                     debug=True)
 
         # Check for success response
@@ -1129,26 +1137,20 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         self.assertTrue(response['success'])
 
     def test_create_postgis_feature_resource(self):
-        # Use testing_config.TEST_POSTGIS_SERVICE for db credentials
         # call methods: create_postgis_feature_resource (with table), list_stores, get_store, delete_store
         self.setup_postgis_table()
+
         # TEST create_postgis_feature_resource (with table)
         store_id_name = random_string_generator(10)
         store_id = '{}:{}'.format(self.workspace_name, store_id_name)
-        host = '172.17.0.1'
-        port = TEST_POSTGIS_SERVICE['PORT']
-        database = TEST_POSTGIS_SERVICE['DATABASE']
-        user = TEST_POSTGIS_SERVICE['USERNAME']
-        password = TEST_POSTGIS_SERVICE['PASSWORD']
-        table_name = 'points'
 
         response = self.geoserver_engine.create_postgis_feature_resource(store_id=store_id,
-                                                                         host=host,
-                                                                         port=port,
-                                                                         database=database,
-                                                                         user=user,
-                                                                         table=table_name,
-                                                                         password=password,
+                                                                         host=self.pg_host,
+                                                                         port=self.pg_port,
+                                                                         database=self.pg_database,
+                                                                         user=self.pg_username,
+                                                                         password=self.pg_password,
+                                                                         table=self.pg_table_name,
                                                                          debug=True)
 
         self.assertTrue(response['success'])
@@ -1202,33 +1204,25 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         self.assertTrue(response['success'])
 
     def test_create_sql_view(self):
-        # Use testing_config.TEST_POSTGIS_SERVICE for db credentials
-
         # call methods: create_sql_view, list_resources, list_stores, list_layers
-
         self.setup_postgis_table()
 
         # TEST create_postgis_feature_resource (with table)
         store_id_name = random_string_generator(10)
         store_id = '{}:{}'.format(self.workspace_name, store_id_name)
-        host = '172.17.0.1'
-        port = TEST_POSTGIS_SERVICE['PORT']
-        database = TEST_POSTGIS_SERVICE['DATABASE']
-        user = TEST_POSTGIS_SERVICE['USERNAME']
-        password = TEST_POSTGIS_SERVICE['PASSWORD']
 
         response = self.geoserver_engine.create_postgis_feature_resource(store_id=store_id,
-                                                                         host=host,
-                                                                         port=port,
-                                                                         database=database,
-                                                                         user=user,
-                                                                         password=password)
+                                                                         host=self.pg_host,
+                                                                         port=self.pg_port,
+                                                                         database=self.pg_database,
+                                                                         user=self.pg_username,
+                                                                         password=self.pg_password,
+                                                                         table=self.pg_table_name)
         self.assertTrue(response['success'])
 
-        # self.setup_postgis_table()
         feature_type_name = random_string_generator(10)
         postgis_store_id = '{}:{}'.format(self.workspace_name, store_id_name)
-        sql = "SELECT * FROM {}".format(self.postgis_table_name)
+        sql = "SELECT * FROM {}".format(self.pg_table_name)
         geometry_column = self.geometry_column
         geometry_type = self.geometry_type
 
