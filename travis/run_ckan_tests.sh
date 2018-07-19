@@ -1,0 +1,1 @@
+python setup.py test -s tethys_dataset_services.tests.e2e_tests.ckan_engine_e2e_tests.TestCkanDatasetEngine
