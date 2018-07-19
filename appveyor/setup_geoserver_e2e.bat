@@ -1,4 +1,4 @@
-choco install curl
+@echo on
 docker version
 docker pull ciwater/geoserver:2.8.2-clustered
 docker pull mdillon/postgis:9.6
@@ -7,4 +7,5 @@ docker run -d -p 8181:8181 -p 8081:8081 -p 8082:8082 -p 8083:8083 -p 8084:8084 -
 timeout 10
 docker exec test_postgis /bin/bash -c "psql -U postgres -c \"CREATE DATABASE %POSTGIS_DB% WITH OWNER %POSTGIS_USER%;\""
 docker exec test_postgis /bin/bash -c "psql -U postgres -d %POSTGIS_DB -c  \"CREATE EXTENSION postgis;\""
+choco install curl
 curl -u %GEOSERVER_USERNAME%:%GEOSERVER_PASSWORD% -H 'Accept: application/xml' -H 'Content-Type: application/xml' -X PUT -d '<global><proxyBaseUrl>http://127.0.0.1:8181/geoserver</proxyBaseUrl></global>' http://127.0.0.1:8181/geoserver/rest/settings.xml

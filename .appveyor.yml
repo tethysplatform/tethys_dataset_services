@@ -66,9 +66,12 @@ install:
   - python -c "import struct; print(struct.calcsize('P') * 8)"
   - if "%PYTHON_VERSION%" == "3.6" pip install -r requirements-py3.txt
   - if "%PYTHON_VERSION%" == "2.7" pip install -r requirements-py2.txt
-  - pip install --no-deps .
   - set PATH
-  - if "%RUN_GEOSERVER_E2E_TESTS%" == "TRUE" appveyor/setup_geoserver_e2e.bat
+  # Start docker containers
+  - pip install --no-deps .
+  - if "%RUN_GEOSERVER_E2E_TESTS%" == "TRUE" (docker version)
+  - if "%RUN_GEOSERVER_E2E_TESTS%" == "TRUE" (appveyor/setup_geoserver_e2e.bat)
+  - docker ps -a
 
 # Not a .NET project, we build package in the install step instead
 build: false
