@@ -3286,7 +3286,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
     def test_link_sqlalchemy_db_to_geoserver(self):
         self.engine.create_postgis_feature_resource = mock.MagicMock()
-        url = 'postgres://user:pass@localhost:5432/foo'
+        url = 'postgresql://user:pass@localhost:5432/foo'
         engine = create_engine(url)
         self.engine.link_sqlalchemy_db_to_geoserver(store_id=self.store_names[0], sqlalchemy_engine=engine)
         self.engine.create_postgis_feature_resource.assert_called_with(store_id=self.store_names[0],

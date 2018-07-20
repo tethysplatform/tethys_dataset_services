@@ -314,6 +314,7 @@ class CkanDatasetEngine(DatasetEngine):
             raise IOError('The url or file parameter is required, but do not use both.')
 
         # Assemble the data dictionary
+        method = 'resource_create'
         data = kwargs
         data['package_id'] = dataset_id
 
@@ -335,11 +336,13 @@ class CkanDatasetEngine(DatasetEngine):
                 upload_file_name = data['name']
                 if not upload_file_name.endswith(extension):
                     upload_file_name += extension
-                file = {'upload': (upload_file_name, open(file, 'r'))}
+                with open(file, 'r') as upload_file:
+                    file = {'upload': (upload_file_name, upload_file)}
+                    response = self.execute_api_method(method=method, console=console, file=file, **data)
+        else:
+            response = self.execute_api_method(method=method, console=console, file=file, **data)
 
-        # Execute
-        method = 'resource_create'
-        return self.execute_api_method(method=method, console=console, file=file, **data)
+        return response
 
     def update_dataset(self, dataset_id, console=False, **kwargs):
         """
@@ -418,11 +421,13 @@ class CkanDatasetEngine(DatasetEngine):
             data['name'] = os.path.basename(file)
 
         # Prepare file
+        update_file = None
         if file:
             if not os.path.isfile(file):
                 raise IOError('The file "{0}" does not exist.'.format(file))
             else:
-                file = {'upload': open(file)}
+                update_file = open(file)
+                file = {'upload': update_file}
 
         # if not url and not file:
         if 'url' not in data:
@@ -433,7 +438,13 @@ class CkanDatasetEngine(DatasetEngine):
 
         # Execute
         method = 'resource_update'
-        return self.execute_api_method(method=method, console=console, file=file, **data)
+        response = self.execute_api_method(method=method, console=console, file=file, **data)
+
+        # Clean up
+        if update_file and not update_file.closed:
+            update_file.close()
+
+        return response
 
     def delete_dataset(self, dataset_id, console=False, file=None, **kwargs):
         """

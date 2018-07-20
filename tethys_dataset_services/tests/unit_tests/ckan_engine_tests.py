@@ -307,8 +307,9 @@ class TestCkanDatasetEngine(unittest.TestCase):
         self.assertEqual(upload_file_name, result['result']['name'])
         self.assertEqual(result['result']['url_type'], 'upload')
 
+    @mock.patch('tethys_dataset_services.engines.ckan_engine.pprint')
     @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
-    def test_get_dataset(self, mock_post):
+    def test_get_dataset(self, mock_post, _):
         result_data = {'name': self.test_dataset_name, 'id': self.test_dataset_name}
         mock_post.return_value = MockJsonResponse(200, result=result_data)
         # Execute
@@ -358,8 +359,9 @@ class TestCkanDatasetEngine(unittest.TestCase):
         mock_pprint.pprint.assert_called()
         mock_log.exception.assert_called()
 
+    @mock.patch('tethys_dataset_services.engines.ckan_engine.log')
     @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
-    def test_get_resource_get_error(self, mock_post):
+    def test_get_resource_get_error(self, mock_post, mock_log):
         result_data = {'name': self.test_dataset_name, 'url': self.test_resource_url}
         mock_post.return_value = MockJsonResponse(200, result=result_data, success=False)
 
@@ -372,6 +374,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
         # Verify Properties
         self.assertIn('failed message', result['error']['message'])
         self.assertEqual(result['result']['url'], self.test_resource_url)
+        mock_log.error.assert_called()
 
     @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
     def test_update_dataset(self, mock_post):
@@ -567,8 +570,9 @@ class TestCkanDatasetEngine(unittest.TestCase):
         # check results
         self.assertIn('Requests.get Exception', output)
 
+    @mock.patch('tethys_dataset_services.engines.ckan_engine.warnings')
     @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
-    def test_download_resouce(self, mock_post):
+    def test_download_resouce(self, mock_post, mock_warnings):
         location = self.files_path
         local_file_name = 'test_resource.test'
         location_final = os.path.join(self.files_path, local_file_name)
@@ -592,8 +596,11 @@ class TestCkanDatasetEngine(unittest.TestCase):
         if os.path.isfile(location_final):
             os.remove(location_final)
 
+        mock_warnings.warn.assert_called()
+
+    @mock.patch('tethys_dataset_services.engines.ckan_engine.pprint')
     @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
-    def test_download_dataset(self, mock_post):
+    def test_download_dataset(self, mock_post, _):
         location = self.files_path
         location_final = os.path.join(self.files_path, 'resource1.txt')
         result_check = [location_final]
