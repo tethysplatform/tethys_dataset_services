@@ -5,11 +5,15 @@ import os
 import json
 import pprint
 import warnings
+import logging
 
 import requests
 from requests_toolbelt import MultipartEncoder
 
 from ..base import DatasetEngine
+
+
+log = logging.getLogger('tethys_dataset_services.ckan_engine')
 
 
 class CkanDatasetEngine(DatasetEngine):
@@ -101,14 +105,16 @@ class CkanDatasetEngine(DatasetEngine):
             if console:
                 if hasattr(parsed, 'get'):
                     if parsed.get('success'):
-                        pprint.pprint(parsed)
+                        try:
+                            pprint.pprint(parsed)
+                        except Exception:
+                            log.exception('Exception encountered while trying to print debug info to the console.')
                     else:
-                        print('ERROR: {0}'.format(parsed['error']['message']))
+                        log.error('ERROR: {0}'.format(parsed['error']['message']))
             return parsed
 
-        except Exception as e:
-            print(e)
-            print('Status Code {0}: {1}'.format(status, response.encode('utf-8')))
+        except Exception:
+            log.exception('Status Code {0}: {1}'.format(status, response.encode('utf-8')))
             return None
 
     def execute_api_method(self, method, console=False, file=None, apikey=None, **kwargs):

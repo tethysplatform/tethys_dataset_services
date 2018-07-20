@@ -84,26 +84,18 @@ class TestCkanDatasetEngine(unittest.TestCase):
         self.assertTrue(result['success'])
         self.assertIn('Datasetname', result['result'])
 
+    @mock.patch('tethys_dataset_services.engines.ckan_engine.log')
     @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
-    def test_list_datasets_defaults_no_json(self, mock_post):
+    def test_list_datasets_defaults_no_json(self, mock_post, mock_log):
         mock_post.return_value = MockJsonResponse(201, result='Datasetname', json_format=False)
 
-        if sys.version_info > (3, 0):
-            from io import StringIO
-        else:
-            from StringIO import StringIO
-
-        captured_output = StringIO()
-        sys.stdout = captured_output
         # Execute
-
         self.engine.list_datasets()
         sys.stdout = sys.__stdout__
 
-        output = captured_output.getvalue()
-
-        # check results
-        self.assertIn('Status Code 201', output)
+        mock_log.exception.assert_called()
+        call_args = mock_log.exception.call_args_list
+        self.assertIn('Status Code 201', call_args[0][0][0])
 
     @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
     def test_list_datasets_with_resources(self, mock_post):
@@ -328,8 +320,9 @@ class TestCkanDatasetEngine(unittest.TestCase):
         # Verify Name
         self.assertEqual(result['result']['name'], self.test_dataset_name)
 
+    @mock.patch('tethys_dataset_services.engines.ckan_engine.pprint')
     @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
-    def test_get_resource(self, mock_post):
+    def test_get_resource(self, mock_post, mock_pprint):
         result_data = {'name': self.test_dataset_name, 'url': self.test_resource_url}
         mock_post.return_value = MockJsonResponse(200, result=result_data)
 
@@ -341,6 +334,29 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
         # Verify Properties
         self.assertEqual(result['result']['url'], self.test_resource_url)
+
+        mock_pprint.pprint.assert_called()
+
+    @mock.patch('tethys_dataset_services.engines.ckan_engine.log')
+    @mock.patch('tethys_dataset_services.engines.ckan_engine.pprint')
+    @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
+    def test_get_resource_console_error(self, mock_post, mock_pprint, mock_log):
+        mock_pprint.pprint.side_effect = Exception('Fake Exception')
+
+        result_data = {'name': self.test_dataset_name, 'url': self.test_resource_url}
+        mock_post.return_value = MockJsonResponse(200, result=result_data)
+
+        # Execute
+        result = self.engine.get_resource(resource_id=self.test_resource_name, console=True)
+
+        # Verify Success
+        self.assertTrue(result['success'])
+
+        # Verify Properties
+        self.assertEqual(result['result']['url'], self.test_resource_url)
+
+        mock_pprint.pprint.assert_called()
+        mock_log.exception.assert_called()
 
     @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
     def test_get_resource_get_error(self, mock_post):
