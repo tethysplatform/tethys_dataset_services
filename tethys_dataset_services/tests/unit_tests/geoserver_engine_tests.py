@@ -2636,8 +2636,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         # Creating temp folder
         working_dir = os.path.join(os.path.dirname(coverage_file), '.gstmp')
-        import distutils.dir_util
-        distutils.dir_util.mkpath(working_dir)
+        os.makedirs(working_dir)
 
         # Execute
         response = self.engine.create_coverage_resource(store_id=expected_store_id,
