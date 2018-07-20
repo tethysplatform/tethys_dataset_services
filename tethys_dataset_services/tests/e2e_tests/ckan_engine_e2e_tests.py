@@ -237,8 +237,6 @@ class TestCkanDatasetEngine(unittest.TestCase):
         file_name = 'upload_test.txt'
         file_to_upload = os.path.join(self.support_root, file_name)
         description_new = random_string_generator(10)
-        import pdb
-        pdb.set_trace()
 
         # Execute
         result = self.engine.update_resource(resource_id=resource_id,
