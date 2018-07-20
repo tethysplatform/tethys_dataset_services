@@ -28,8 +28,10 @@ python:
 stages:
   - lint
   - test
-  - geoserver_e2e_tests
-  - ckan_e2e_tests
+  - geoserver_e2e_tests_py2
+  - ckan_e2e_tests_py2
+  - geoserver_e2e_tests_py3
+  - ckan_e2e_tests_py3
   - name: deploy-pip
     if: tag =~ ^\d+\.\d+\.\d+$
   - name: deploy-conda
@@ -74,28 +76,28 @@ jobs:
       script:
         - flake8
 
-    - stage: geoserver_e2e_tests
+    - stage: geoserver_e2e_tests_py2
       python: "2.7"
       before_install:
         - . travis/setup_geoserver_e2e_tests.sh
       script:
         - . travis/run_geoserver_e2e_tests.sh
 
-    - # Does not need a name, will use name of previous stage... apparently... https://docs.travis-ci.com/user/build-stages/#How-to-define-Build-Stages%3F
+    - stage: geoserver_e2e_tests_py3
       python: "3.6"
       before_install:
         - . travis/setup_geoserver_e2e_tests.sh
       script:
         - . travis/run_geoserver_e2e_tests.sh
 
-    - stage: ckan_e2e_tests
+    - stage: ckan_e2e_tests_py2
       python: "2.7"
       before_install:
         - . travis/setup_ckan_e2e_tests.sh
       script:
         - . travis/run_ckan_e2e_tests.sh
 
-    - # Does not need a name, will use name of previous stage... apparently... https://docs.travis-ci.com/user/build-stages/#How-to-define-Build-Stages%3F
+    - stage: ckan_e2e_tests_py3
       python: "3.6"
       before_install:
         - . travis/setup_ckan_e2e_tests.sh
