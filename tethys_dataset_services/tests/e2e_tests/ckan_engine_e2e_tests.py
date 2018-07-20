@@ -38,7 +38,7 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
         # Create Test Organization
         self.test_org = random_string_generator(10)
-        data_dict= {
+        data_dict = {
             'name': self.test_org,
             'users': [{'name': self.username}]
         }
