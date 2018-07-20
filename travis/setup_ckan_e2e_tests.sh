@@ -19,7 +19,7 @@ docker logs ckan
 echo "CREATING ADMIN USER..."
 docker exec -it ckan /bin/bash -c "echo \"y\" | /usr/local/bin/ckan-paster --plugin=ckan sysadmin -c /etc/ckan/production.ini add ${CKAN_USERNAME} email=\"foo@tethysplatform.org\" password=\"${CKAN_PASSWORD}\" apikey=\"11111111-1111-1111-1111-111111111111\""
 echo "GETTING API KEY..."
-export CKAN_APIKEY=$(sudo docker exec -it db /bin/bash -c "psql -U postgres -c \"SELECT apikey FROM ckan.public.user WHERE name = '${CKAN_USERNAME}'\" ckan" | sed -n 3p | awk '{$1=$1;print}')
+export CKAN_APIKEY=$(sudo docker exec -it db /bin/bash -c "psql -U postgres -c \"SELECT apikey FROM ckan.public.user WHERE name = '${CKAN_USERNAME}'\" ckan" | sed -n 3p | tr -d '[:space:]')
 echo "$CKAN_APIKEY"
 popd
 popd
