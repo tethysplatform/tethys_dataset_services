@@ -11,7 +11,7 @@ sleep 10
 docker ps -a
 docker logs ckan
 docker exec -it ckan /bin/bash -c "echo \"y\" | /usr/local/bin/ckan-paster --plugin=ckan sysadmin -c /etc/ckan/production.ini add ${CKAN_USERNAME} email=\"foo@tethysplatform.org\" password=\"${CKAN_PASSWORD}\"\"" &> /tmp/sysadmin.json
-export CKAN_APIKEY=$(sudo docker exec -it db /bin/bash -c "psql -U postgres -c \"SELECT apikey FROM ckan.public.user WHERE name = '${CKAN_USERNAME}'\" ckan" | sed -n 3p)
+export CKAN_APIKEY=$(sudo docker exec -it db /bin/bash -c "psql -U postgres -c \"SELECT apikey FROM ckan.public.user WHERE name = '${CKAN_USERNAME}'\" ckan" | sed -n 3p | awk '{$1=$1;print}')
 echo $CKAN_APIKEY
 popd
 popd
