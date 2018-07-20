@@ -74,13 +74,13 @@ class CkanDatasetEngine(DatasetEngine):
           tuple: status_code, response
         """
         if file:
-            import pdb
-            pdb.set_trace()
             data = dict((k.encode('utf-8'), v.encode('utf-8')) for (k, v) in data.items())
             data.update(file)
             # data = {str(k): v for k, v in data.items()}
             m = MultipartEncoder(fields=data)
             headers['Content-Type'] = m.content_type
+            import pdb
+            pdb.set_trace()
             r = requests.post(url, data=m, headers=headers)
         else:
             r = requests.post(url, data=data, headers=headers, files=file)
