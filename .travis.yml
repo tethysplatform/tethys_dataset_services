@@ -63,6 +63,12 @@ install:
       pip install -r requirements-py3.txt;
     fi
   - python setup.py develop
+  # Install Python 2 and 3 compatible version of gsconfig
+  - git clone https://github.com/tethysplatform/gsconfig.git gsconfig
+  - cd gsconfig
+  - git checkout python3
+  - python setup.py develop
+  - cd ../
 
 script:
   - . travis/run_unit_tests.sh
