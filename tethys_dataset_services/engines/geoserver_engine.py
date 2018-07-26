@@ -1167,7 +1167,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         self._handle_debug(response_dict, debug)
         return response_dict
 
-    def add_table_to_postgis_store(self, store_id, table, debug=True):
+    def add_table_to_postgis_store(self, store_id, table, debug=False):
         """
         Add an existing postgis table as a feature resource to a postgis store that already exists.
 
