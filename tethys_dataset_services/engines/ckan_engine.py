@@ -336,7 +336,7 @@ class CkanDatasetEngine(DatasetEngine):
                 upload_file_name = data['name']
                 if not upload_file_name.endswith(extension):
                     upload_file_name += extension
-                with open(file, 'r') as upload_file:
+                with open(file, 'rb') as upload_file:
                     file = {'upload': (upload_file_name, upload_file)}
                     response = self.execute_api_method(method=method, console=console, file=file, **data)
         else:
@@ -426,7 +426,7 @@ class CkanDatasetEngine(DatasetEngine):
             if not os.path.isfile(file):
                 raise IOError('The file "{0}" does not exist.'.format(file))
             else:
-                update_file = open(file)
+                update_file = open(file, 'rb')
                 file = {'upload': update_file}
 
         # if not url and not file:
