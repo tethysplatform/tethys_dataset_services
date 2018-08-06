@@ -53,7 +53,6 @@ install:
   # Install Python 2 and 3 compatible version of gsconfig
   - git clone https://github.com/tethysplatform/gsconfig.git gsconfig
   - cd gsconfig
-  - git checkout python3
   - python setup.py install
   - cd ../
   # Install Tethys Dataset Services
