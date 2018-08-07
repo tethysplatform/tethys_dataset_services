@@ -1,13 +1,19 @@
 import os
+import sys
 import random
 import string
 import unittest
 import json
 import mock
-import sys
 import requests
-
 from tethys_dataset_services.engines import CkanDatasetEngine
+
+
+if sys.version_info[0] == 3:
+    from io import StringIO
+else:
+    from StringIO import StringIO
+
 
 try:
     from tethys_dataset_services.tests.test_config import TEST_CKAN_DATASET_SERVICE
@@ -90,7 +96,6 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
         # Execute
         self.engine.list_datasets()
-        # sys.stdout = sys.__stdout__
 
         mock_log.exception.assert_called()
         call_args = mock_log.exception.call_args_list
@@ -541,9 +546,10 @@ class TestCkanDatasetEngine(unittest.TestCase):
 
         mock_ckan.assert_called_with(self.test_dataset_name, console=False)
 
+    @mock.patch('sys.stdout', new_callable=StringIO)
     @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.get')
     @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')
-    def test_download_resource_request_get_exception(self, mock_post, mock_get):
+    def test_download_resource_request_get_exception(self, mock_post, mock_get, mock_print):
         mock_get.side_effect = Exception('Requests.get Exception')
         location = self.files_path
         local_file_name = 'test_resource.test'
@@ -551,23 +557,13 @@ class TestCkanDatasetEngine(unittest.TestCase):
         result_data = {'url': self.test_resource_url}
         mock_post.return_value = MockJsonResponse(200, result=result_data)
 
-        # if sys.version_info > (3, 0):
-        #     from io import StringIO
-        # else:
-        #     from StringIO import StringIO
-
-        # captured_output = StringIO()
-        # sys.stdout = captured_output
-
         self.engine.download_resource(self.test_resource_name, location=location,
                                       local_file_name=local_file_name)
 
-        # sys.stdout = sys.__stdout__
-        #
-        # output = captured_output.getvalue()
+        output = mock_print.getvalue()
 
         # check results
-        # self.assertIn('Requests.get Exception', output)
+        self.assertIn('Requests.get Exception', output)
 
     @mock.patch('tethys_dataset_services.engines.ckan_engine.warnings')
     @mock.patch('tethys_dataset_services.engines.ckan_engine.requests.post')

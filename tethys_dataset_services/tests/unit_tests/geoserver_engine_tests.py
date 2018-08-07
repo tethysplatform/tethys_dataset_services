@@ -11,8 +11,12 @@ import mock
 import geoserver
 import requests
 from sqlalchemy import create_engine
-
 from tethys_dataset_services.engines import GeoServerSpatialDatasetEngine
+
+if sys.version_info[0] == 3:
+    from io import StringIO
+else:
+    from StringIO import StringIO
 
 try:
     from tethys_dataset_services.tests.test_config import TEST_GEOSERVER_DATASET_SERVICE
@@ -3144,23 +3148,16 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         # check wcs_url
         self.assertEqual(expected_wfs_url, wfs_url)
 
-    def test_handle_debug(self):
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    def test_handle_debug(self, mock_print):
         test_object = self.style_names
 
-        # if sys.version_info > (3, 0):
-        #     from io import StringIO
-        # else:
-        #     from StringIO import StringIO
-
-        # captured_output = StringIO()
-        # sys.stdout = captured_output
         self.engine._handle_debug(test_object, debug=True)
-        # sys.stdout = sys.__stdout__
-        #
-        # output = captured_output.getvalue()
+
+        output = mock_print.getvalue()
 
         # check results
-        # self.assertIn(self.style_names[0], output)
+        self.assertIn(self.style_names[0], output)
 
     def test_transcribe_geoserver_object(self):
 
