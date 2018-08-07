@@ -56,21 +56,25 @@ install:
   # Create environment
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION
   - source activate test-environment
+  # Install Python 2 and 3 compatible version of gsconfig
+  - git clone https://github.com/tethysplatform/gsconfig.git gsconfig
+  - cd gsconfig
+  - python setup.py develop
+  - cd ../
   # Install dependencies
   - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
       pip install -r requirements-py2.txt;
     else
       pip install -r requirements-py3.txt;
     fi
+  - pip install python-coveralls
   - python setup.py develop
-  # Install Python 2 and 3 compatible version of gsconfig
-  - git clone https://github.com/tethysplatform/gsconfig.git gsconfig
-  - cd gsconfig
-  - python setup.py develop
-  - cd ../
 
 script:
   - . travis/run_unit_tests.sh
+
+after_success:
+    - coveralls
 
 jobs:
   include:
