@@ -57,11 +57,7 @@ install:
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION
   - source activate test-environment
   # Install Python 2 and 3 compatible version of gsconfig
-  - git clone https://github.com/boundlessgeo/gsconfig.git gsconfig
-  - cd gsconfig
-  - git checkout noaa
-  - python setup.py develop
-  - cd ../
+  - conda install -c tethysplatform gsconfig
   # Install dependencies
   - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
       pip install -r requirements-py2.txt;
