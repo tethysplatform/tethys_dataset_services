@@ -13,7 +13,7 @@ requirements_file = 'requirements-py2.txt' if sys.version_info.major == 2 else '
 with open(requirements_file, 'r') as r:
     requires = r.read()
 
-version = '1.6.4'
+version = '1.7.0'
 setup(
     name='tethys_dataset_services',
     version=version,
