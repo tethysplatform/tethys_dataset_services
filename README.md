@@ -8,10 +8,10 @@ Tethys datasets provides Python programming interface for dataset services such 
 
 ## Installation
 
-Tethys Datasets Services can be installed via pip or downloading the source. To install via pip::
+Tethys Datasets Services can be installed via conda or downloading the source. To install via pip::
 
 ```
-pip install tethys_dataset_services
+conda install tethys_dataset_services
 ```
 
 To install via download::
@@ -20,6 +20,7 @@ To install via download::
 git clone https://github.com/CI-WATER/django-tethys_dataset_services.git
 cd tethys_dataset_services
 pip install -r requirements-py<version>.txt
+conda install -c tethysplatform gsconfig
 python setup.py install
 ```
 
