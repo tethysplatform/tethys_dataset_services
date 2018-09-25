@@ -45,16 +45,12 @@ install:
   - python -c "import sys; print(sys.prefix)"
   - conda update -q --all
   - conda install -q pip flake8 mock requests pyproj
+  - conda install -c tethysplatform gsconfig
   # this is to ensure dependencies
   - python --version
   - python -c "import struct; print(struct.calcsize('P') * 8)"
   - if "%PYTHON_VERSION%" == "3.6" pip install -r requirements-py3.txt
   - if "%PYTHON_VERSION%" == "2.7" pip install -r requirements-py2.txt
-  # Install Python 2 and 3 compatible version of gsconfig
-  - git clone https://github.com/tethysplatform/gsconfig.git gsconfig
-  - cd gsconfig
-  - python setup.py install
-  - cd ../
   # Install Tethys Dataset Services
   - pip install --no-deps .
   - set PATH
