@@ -1,4 +1,4 @@
-version: 1.6.4-{build}
+version: 1.7.0-{build}
 
 environment:
   global:
@@ -44,7 +44,7 @@ install:
   - python -c "import sys; print(sys.executable)"
   - python -c "import sys; print(sys.prefix)"
   - conda update -q --all
-  - conda install -q pip flake8 mock requests
+  - conda install -q pip flake8 mock requests pyproj
   # this is to ensure dependencies
   - python --version
   - python -c "import struct; print(struct.calcsize('P') * 8)"
