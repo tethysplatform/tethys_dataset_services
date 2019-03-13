@@ -8,12 +8,12 @@ with open(os.path.join(os.path.dirname(__file__), 'README.md')) as readme:
 # allow setup.py to be run from any path
 os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
-requirements_file = 'requirements-py2.txt' if sys.version_info.major == 2 else 'requirements-py3.txt'
+requirements_file = 'requirements-py3.txt'
 
 with open(requirements_file, 'r') as r:
     requires = r.read()
 
-version = '1.7.0'
+version = '2.0.0'
 setup(
     name='tethys_dataset_services',
     version=version,
@@ -31,8 +31,8 @@ setup(
         'License :: OSI Approved :: BSD License',  # example license
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.6',
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
     ],
