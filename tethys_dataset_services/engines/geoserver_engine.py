@@ -1257,7 +1257,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
           geometry_srid (string, optional): EPSG spatial reference id of the geometry column. Defaults to 4326.
           default_style (string, optional): Identifier of a style to assign as the default style. Can be a style name or a workspace-name combination (e.g.: "name" or "workspace:name").  # noqa: E501
           key_column (string, optional): The name of the key column.
-          parameters (iterable, optional): A list/tuple of tuple-triplets representing parameters in the form (name, default, regex_validation), (e.g.: (('variable', 'pressure', '^[\w]+$'), ('simtime', '0:00:00', '^[\w\:]+$'))  # noqa: E501
+          parameters (iterable, optional): A list/tuple of tuple-triplets representing parameters in the form (name, default, regex_validation), (e.g.: (('variable', 'pressure', '^[\w]+$'), ('simtime', '0:00:00', '^[\w\:]+$'))  # noqa: E501,W605
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:

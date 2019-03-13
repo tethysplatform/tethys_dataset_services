@@ -585,7 +585,7 @@ class CkanDatasetEngine(DatasetEngine):
         if location:
             try:
                 os.makedirs(location)
-            except OSError as e:
+            except OSError:
                 pass
         else:
             location = './'
