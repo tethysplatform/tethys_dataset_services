@@ -7,7 +7,7 @@ with open(os.path.join(os.path.dirname(__file__), 'README.md')) as readme:
 # allow setup.py to be run from any path
 os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
-requirements_file = 'requirements-py3.txt'
+requirements_file = 'requirements.txt'
 
 with open(requirements_file, 'r') as r:
     requires = r.read()

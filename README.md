@@ -26,7 +26,7 @@ To install via download::
 ```
 git clone https://github.com/CI-WATER/django-tethys_dataset_services.git
 cd tethys_dataset_services
-pip install -r requirements-py<version>.txt
+pip install -r requirements.txt
 conda install -c tethysplatform gsconfig
 python setup.py install
 ```
