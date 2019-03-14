@@ -6,6 +6,13 @@
 
 Tethys datasets provides Python programming interface for dataset services such as CKAN and HydroShare.
 
+---
+**NOTE**
+
+Tethys Dataset Services versions 2.0.0 and up will only support Python 3. For Python 2 support see version 1.7.0.
+
+---
+
 ## Installation
 
 Tethys Datasets Services can be installed via conda or downloading the source. To install via pip::
@@ -19,7 +26,7 @@ To install via download::
 ```
 git clone https://github.com/CI-WATER/django-tethys_dataset_services.git
 cd tethys_dataset_services
-pip install -r requirements-py<version>.txt
+pip install -r requirements.txt
 conda install -c tethysplatform gsconfig
 python setup.py install
 ```

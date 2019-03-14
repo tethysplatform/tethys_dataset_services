@@ -1,6 +1,3 @@
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
-
 import os
 import json
 import pprint
@@ -588,7 +585,7 @@ class CkanDatasetEngine(DatasetEngine):
         if location:
             try:
                 os.makedirs(location)
-            except OSError as e:
+            except OSError:
                 pass
         else:
             location = './'
