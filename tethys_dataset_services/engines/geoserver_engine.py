@@ -1169,7 +1169,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         """
         Add an existing postgis table as a feature resource to a postgis store that already exists.
 
-        Args
+        Args:
           store_id (string): Identifier for the store to add the resource to. Can be a store name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.  # noqa: E501
           table (string): Name of existing table to add as a feature resource. A layer will automatically be created for this resource. Both the resource and the layer will share the same name as the table.  # noqa: E501
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
@@ -1248,14 +1248,14 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         """
         Create a new feature type configured as an SQL view.
 
-        Args
+        Args:
           feature_type_name (string): Name of the feature type and layer to be created.
           postgis_store_id (string): Identifier of existing postgis store with tables that will be queried by the sql view. Can be a store name or a workspace-name combination (e.g.: "name" or "workspace:name").  # noqa: E501
           sql (string): SQL that will be used to construct the sql view / virtual table.
           geometry_column (string): Name of the geometry column.
           geometry_type (string): Type of the geometry column (e.g. "Point", "LineString", "Polygon").
           geometry_srid (string, optional): EPSG spatial reference id of the geometry column. Defaults to 4326.
-          default_style (string, optional): Identifier of a style to assign as the default style. Can be a style name or a workspace-name combination (e.g.: "name" or "workspace:name").  # noqa: E501
+          default_style_id (string, optional): Identifier of a style to assign as the default style. Can be a style name or a workspace-name combination (e.g.: "name" or "workspace:name").  # noqa: E501
           key_column (string, optional): The name of the key column.
           parameters (iterable, optional): A list/tuple of tuple-triplets representing parameters in the form (name, default, regex_validation), (e.g.: (('variable', 'pressure', '^[\w]+$'), ('simtime', '0:00:00', '^[\w\:]+$'))  # noqa: E501,W605
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
@@ -1263,7 +1263,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Returns:
           (dict): Response dictionary
 
-        Examples:
+        Example:
+
+        ::
 
             sql = "SELECT name, value, geometry FROM pipes"
 
@@ -1331,7 +1333,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
          This method will result in the creation of three items: a feature type store, a feature type resource, and a layer. If store_id references a store that does not exist, it will be created. The feature type resource and the subsequent layer will be created with the same name as the feature type store. Provide shapefile with either shapefile_base, shapefile_zip, or shapefile_upload arguments.  # noqa: E501
 
-        Args
+        Args:
           store_id (string): Identifier for the store to add the resource to. Can be a store name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.  # noqa: E501
           shapefile_base (string, optional): Path to shapefile base name (e.g.: "/path/base" for shapefile at "/path/base.shp")
           shapefile_zip (string, optional): Path to a zip file containing the shapefile and side cars.
@@ -1517,7 +1519,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         This method will result in the creation of three items: a coverage store, a coverage resource, and a layer. If store_id references a store that does not exist, it will be created. Unless coverage_name is specified, the coverage resource and the subsequent layer will be created with the same name as the image file that is uploaded.  # noqa: E501
 
-        Args
+        Args:
           store_id (string): Identifier for the store to add the image to or to be created. Can be a name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.  # noqa: E501
           coverage_type (string): Type of coverage that is being created. Valid values include: 'geotiff', 'worldimage', 'imagemosaic', 'imagepyramid', 'gtopo30', 'arcgrid', 'grassgrid', 'erdasimg', 'aig', 'gif', 'png', 'jpeg', 'tiff', 'dted', 'rpftoc', 'rst', 'nitf', 'envihdr', 'mrsid', 'ehdr', 'ecw', 'netcdf', 'erdasimg', 'jp2mrsid'.  # noqa: E501
           coverage_file (string, optional): Path to the coverage image or zip archive. Most files will require a .prj file with the Well Known Text definition of the projection. Zip this file up with the image and send the archive.  # noqa: E501
