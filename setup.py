@@ -12,7 +12,7 @@ requirements_file = 'requirements.txt'
 with open(requirements_file, 'r') as r:
     requires = r.read()
 
-version = '2.0.0'
+version = '2.0.1'
 setup(
     name='tethys_dataset_services',
     version=version,
