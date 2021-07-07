@@ -1250,14 +1250,14 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         Args:
           feature_type_name (string): Name of the feature type and layer to be created.
-          postgis_store_id (string): Identifier of existing postgis store with tables that will be queried by the sql view. Can be a store name or a workspace-name combination (e.g.: "name" or "workspace:name").  # noqa: E501
+          postgis_store_id (string): Identifier of existing postgis store with tables that will be queried by the sql view. Can be a store name or a workspace-name combination (e.g.: "name" or "workspace:name").
           sql (string): SQL that will be used to construct the sql view / virtual table.
           geometry_column (string): Name of the geometry column.
           geometry_type (string): Type of the geometry column (e.g. "Point", "LineString", "Polygon").
           geometry_srid (string, optional): EPSG spatial reference id of the geometry column. Defaults to 4326.
-          default_style_id (string, optional): Identifier of a style to assign as the default style. Can be a style name or a workspace-name combination (e.g.: "name" or "workspace:name").  # noqa: E501
+          default_style_id (string, optional): Identifier of a style to assign as the default style. Can be a style name or a workspace-name combination (e.g.: "name" or "workspace:name").
           key_column (string, optional): The name of the key column.
-          parameters (iterable, optional): A list/tuple of tuple-triplets representing parameters in the form (name, default, regex_validation), (e.g.: (('variable', 'pressure', '^[\w]+$'), ('simtime', '0:00:00', '^[\w\:]+$'))  # noqa: E501,W605
+          parameters (iterable, optional): A list/tuple of tuple-triplets representing parameters in the form (name, default, regex_validation), (e.g.: (('variable', 'pressure', '^[\w]+$'), ('simtime', '0:00:00', '^[\w\:]+$'))
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
@@ -1280,7 +1280,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                 debug=True
             )
 
-        """
+        """  # noqa: E501, W605
         # Get a catalog object
         catalog = self._get_geoserver_catalog_object()
 
