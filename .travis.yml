@@ -27,8 +27,6 @@ python:
 stages:
   - lint
   - test
-  - ckan_e2e_tests_py3
-  - geoserver_e2e_tests_py3
   - name: deploy-pip
     if: tag =~ ^\d+\.\d+\.\d+$
   - name: deploy-conda
@@ -64,21 +62,24 @@ after_success:
 
 jobs:
   include:
-    - stage: lint
+    - name: Lint
+      stage: lint
       python: "3.6"
       install:
         - pip install flake8
       script:
         - flake8
 
-    - stage: geoserver_e2e_tests_py3
+    - name: GeoServer Tests
+      stage: test
       python: "3.6"
       before_install:
         - . travis/setup_geoserver_e2e_tests.sh
       script:
         - . travis/run_geoserver_e2e_tests.sh
 
-    - stage: ckan_e2e_tests_py3
+    - name: CKAN Tests
+      stage: test
       python: "3.6"
       before_install:
         - . travis/setup_ckan_e2e_tests.sh
