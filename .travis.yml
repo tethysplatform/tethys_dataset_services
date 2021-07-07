@@ -78,13 +78,13 @@ jobs:
       script:
         - . travis/run_geoserver_e2e_tests.sh
 
-    - name: CKAN Tests
-      stage: test
-      python: "3.6"
-      before_install:
-        - . travis/setup_ckan_e2e_tests.sh
-      script:
-        - . travis/run_ckan_e2e_tests.sh
+#     - name: CKAN Tests
+#       stage: test
+#       python: "3.6"
+#       before_install:
+#         - . travis/setup_ckan_e2e_tests.sh
+#       script:
+#         - . travis/run_ckan_e2e_tests.sh
 
     - stage: deploy-pip
       script:
