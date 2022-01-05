@@ -1,9 +1,10 @@
 django
 future
 owslib
+coverage
+geoserver-restconfig
 requests
 requests_toolbelt
-coverage
 sqlalchemy
 psycopg2-binary
 mock
