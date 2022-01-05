@@ -97,6 +97,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Clean up GeoServer
         workspace = self.catalog.get_workspace(self.workspace_name)
         self.catalog.delete(workspace, recurse=True, purge=True)
+        self.catalog.client.close()
 
         # Clean up Postgis database
         self.transaction.rollback()
@@ -151,7 +152,6 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         workspace = self.workspace_name
         store_id = random_string_generator(10)
         store_id_name = '{}:{}'.format(workspace, store_id)
-        # store_id_name = store_id
 
         # Execute
         response = self.geoserver_engine.create_shapefile_resource(store_id=store_id_name,
@@ -212,7 +212,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # Properties
         self.assertIn('name', r)
-        self.assertEquals(store_id, r['name'])
+        self.assertEqual(store_id, r['name'])
         self.assertIn(store_id, r['wfs']['shapefile'])
 
         # TEST delete_resource
@@ -802,7 +802,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # Properties
         self.assertIn('name', r)
-        self.assertEquals(coverage_name, r['name'])
+        self.assertEqual(coverage_name, r['name'])
         self.assertIn(coverage_name, r['wcs']['arcgrid'])
 
         # TEST delete_resource
@@ -848,9 +848,9 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Validate
         result = response['result']
 
-        self.assertEquals(result['name'], expected_layer_group_id)
-        self.assertEquals(result['layers'], expected_layers)
-        self.assertEquals(result['styles'], expected_styles)
+        self.assertEqual(result['name'], expected_layer_group_id)
+        self.assertEqual(result['layers'], expected_layers)
+        self.assertEqual(result['styles'], expected_styles)
 
         # TEST list_layer_groups
 
@@ -1140,20 +1140,21 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         store_id_name = random_string_generator(10)
         store_id = '{}:{}'.format(self.workspace_name, store_id_name)
 
-        response = self.geoserver_engine.create_postgis_feature_resource(store_id=store_id,
-                                                                         host=self.pg_host,
-                                                                         port=self.pg_port,
-                                                                         database=self.pg_database,
-                                                                         user=self.pg_username,
-                                                                         password=self.pg_password,
-                                                                         table=self.pg_table_name)
+        response = self.geoserver_engine.create_postgis_feature_resource(
+            store_id=store_id,
+            host=self.pg_host,
+            port=self.pg_port,
+            database=self.pg_database,
+            user=self.pg_username,
+            password=self.pg_password,
+            table=self.pg_table_name
+        )
 
         self.assertTrue(response['success'])
 
         # TEST list_stores
 
         # Execute
-
         response = self.geoserver_engine.list_stores()
 
         # Validate response object
@@ -1279,7 +1280,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # Properties
         self.assertIn('name', r)
-        self.assertEquals(feature_type_name, r['name'])
+        self.assertEqual(feature_type_name, r['name'])
         self.assertIn(feature_type_name, r['wfs']['shapefile'])
 
         # TEST delete_resource
