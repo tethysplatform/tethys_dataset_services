@@ -16,7 +16,7 @@ else:
 
 
 try:
-    from tethys_dataset_services.tests.test_config import TEST_CKAN_DATASET_SERVICE
+    from ..test_config import TEST_CKAN_DATASET_SERVICE
 
 except ImportError:
     print('ERROR: To perform tests, you must create a file in the "tests" package called "test_config.py". In this file'

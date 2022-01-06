@@ -11,4 +11,3 @@
 .tox
 dist
 tethys_datasets/temp/*
-tests/test_config.py

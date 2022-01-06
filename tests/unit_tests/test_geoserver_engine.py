@@ -17,14 +17,13 @@ else:
     from StringIO import StringIO
 
 try:
-    from tethys_dataset_services.tests.test_config import TEST_GEOSERVER_DATASET_SERVICE
+    from ..test_config import TEST_GEOSERVER_DATASET_SERVICE
 
 except ImportError:
-    TEST_GEOSERVER_DATASET_SERVICE = {
-        'ENDPOINT': 'localhost',
-        'USERNAME': 'postgres',
-        'PASSWORD': 'mysecretpassword'
-    }
+    print('ERROR: To perform tests, you must create a file in the "tests" package called "test_config.py". In this file'
+          'provide a dictionary called "TEST_GEOSERVER_DATASET_SERVICE" with keys "ENDPOINT", "USERNAME", and '
+          '"PASSWORD".')
+    exit(1)
 
 
 def random_string_generator(size):

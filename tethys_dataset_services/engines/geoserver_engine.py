@@ -34,13 +34,13 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
     @property
     def gwc_endpoint(self):
         return self._gwc_endpoint
-    
+
     @property
     def catalog(self):
         if not getattr(self, '_catalog', None):
             self._catalog = GeoServerCatalog(
-                self.endpoint, 
-                username=self.username, 
+                self.endpoint,
+                username=self.username,
                 password=self.password
             )
         return self._catalog
@@ -67,7 +67,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             username=username,
             password=password
         )
-    
+
     def __del__(self):
         self.close()
 
@@ -537,7 +537,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                 }
 
         return object_dictionary
-    
+
     def close(self):
         self.catalog.client.close()
 
@@ -654,7 +654,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
           response = engine.list_stores(workspace='example_workspace", with_properties=True)
         """
         try:
-            stores = self.catalog.get_stores(workspaces=[workspace,])
+            stores = self.catalog.get_stores(workspaces=[workspace, ])
             return self._handle_list(stores, with_properties, debug)
 
         except AttributeError:
