@@ -18,8 +18,7 @@ from geoserver.catalog import Catalog as GeoServerCatalog
 
 
 from tethys_dataset_services.engines import GeoServerSpatialDatasetEngine
-from tethys_dataset_services.tests.test_config import TEST_GEOSERVER_DATASET_SERVICE
-from tethys_dataset_services.tests.test_config import TEST_POSTGIS_SERVICE
+from ..test_config import TEST_GEOSERVER_DATASET_SERVICE, TEST_POSTGIS_SERVICE
 
 
 def random_string_generator(size):

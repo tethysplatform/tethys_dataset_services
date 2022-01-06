@@ -46,6 +46,44 @@ pip install -e .[tests]
 tox
 ```
 
+## End-to-End Tests
+
+End-to-end tests are not run automatically, b/c they require some additional set up. They can be run as follows.
+
+1. Install Docker: https://docs.docker.com/get-docker/
+
+2. Install Docker Compose: https://docs.docker.com/compose/install/
+
+
+3. Run Docker Compose to create test containers:
+
+```
+cd tests
+docker-compose up -d
+```
+
+4. Wait at least 30 seconds for the docker containers to settle down, then run the setup script to create the database tables:
+
+```
+. setup_e2e_tests.sh
+```
+
+5. From the directory with the tox.ini, run the tests using tox:
+
+```
+cd ..
+tox -e e2e_geoserver_tests
+```
+
+6. It is recommended that after each run, you refresh the Docker containers. Run the following command to remove them:
+
+```
+cd tests
+docker-compose down
+```
+
+Then repeat steps 3-5.
+
 ## Usage
 
 ```
