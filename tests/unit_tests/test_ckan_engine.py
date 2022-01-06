@@ -1,18 +1,14 @@
+from io import StringIO
+import json
 import os
-import sys
 import random
 import string
 import unittest
-import json
 from unittest import mock
+
 import requests
+
 from tethys_dataset_services.engines import CkanDatasetEngine
-
-
-if sys.version_info[0] == 3:
-    from io import StringIO
-else:
-    from StringIO import StringIO
 
 
 try:

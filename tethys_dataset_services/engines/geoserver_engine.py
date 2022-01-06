@@ -654,7 +654,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
           response = engine.list_stores(workspace='example_workspace", with_properties=True)
         """
         try:
-            stores = self.catalog.get_stores(workspaces=[workspace, ])
+            stores = self.catalog.get_stores(workspaces=[workspace])
             return self._handle_list(stores, with_properties, debug)
 
         except AttributeError:
