@@ -8,5 +8,7 @@
 *.db
 *.egg-info
 *.coverage
+.tox
+dist
 tethys_datasets/temp/*
-tethys_datasets/tests/test_config.py
+tests/test_config.py

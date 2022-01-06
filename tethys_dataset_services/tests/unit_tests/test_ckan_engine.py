@@ -4,7 +4,7 @@ import random
 import string
 import unittest
 import json
-import mock
+from unittest import mock
 import requests
 from tethys_dataset_services.engines import CkanDatasetEngine
 

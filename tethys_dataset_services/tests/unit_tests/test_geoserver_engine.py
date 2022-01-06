@@ -5,7 +5,7 @@ import sys
 import random
 import string
 import unittest
-import mock
+from unittest import mock
 import geoserver
 import requests
 from sqlalchemy import create_engine
@@ -20,10 +20,11 @@ try:
     from tethys_dataset_services.tests.test_config import TEST_GEOSERVER_DATASET_SERVICE
 
 except ImportError:
-    print('ERROR: To perform tests, you must create a file in the "tests" package called "test_config.py". In this file'
-          'provide a dictionary called "TEST_GEOSERVER_DATASET_SERVICE" with keys "ENDPOINT", "USERNAME", and '
-          '"PASSWORD".')
-    exit(1)
+    TEST_GEOSERVER_DATASET_SERVICE = {
+        'ENDPOINT': 'localhost',
+        'USERNAME': 'postgres',
+        'PASSWORD': 'mysecretpassword'
+    }
 
 
 def random_string_generator(size):
