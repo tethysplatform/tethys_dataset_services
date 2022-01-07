@@ -42,7 +42,7 @@ pip install --editable .
 Tests are executed using tox:
 
 ```
-pip install -e .[tests]
+pip install .[tests]
 tox
 ```
 
