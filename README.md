@@ -1,4 +1,4 @@
-[![Unit Tests](https://github.com/tethysplatform/tethys_dataset_services/actions/workflows/unit_tests.yml/badge.svg?branch=tethys4_update)]()
+[![Unit Tests](https://github.com/tethysplatform/tethys_dataset_services/actions/workflows/unit_tests.yml/badge.svg?branch=tethys4_update)](https://github.com/tethysplatform/tethys_dataset_services/actions/workflows/unit_tests.yml)
 [![Coverage](https://coveralls.io/repos/github/tethysplatform/tethys_dataset_services/badge.svg)](https://coveralls.io/github/tethysplatform/tethys_dataset_services)
 
 # Tethys Dataset Services
