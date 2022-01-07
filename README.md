@@ -1,6 +1,5 @@
-[![Build Status](https://travis-ci.org/tethysplatform/tethys_dataset_services.svg)](https://travis-ci.org/tethysplatform/tethys_dataset_services)
-[![Build status](https://ci.appveyor.com/api/projects/status/ehh3lx289lfj4ue5?svg=true)](https://ci.appveyor.com/project/TethysPlatform/tethys-dataset-services)
-[![Coverage Status](https://coveralls.io/repos/github/tethysplatform/tethys_dataset_services/badge.svg)](https://coveralls.io/github/tethysplatform/tethys_dataset_services)
+[![Unit Tests](https://github.com/tethysplatform/tethys_dataset_services/actions/workflows/unit_tests.yml/badge.svg?branch=tethys4_update)]()
+[![Coverage](https://coveralls.io/repos/github/tethysplatform/tethys_dataset_services/badge.svg)](https://coveralls.io/github/tethysplatform/tethys_dataset_services)
 
 # Tethys Dataset Services
 

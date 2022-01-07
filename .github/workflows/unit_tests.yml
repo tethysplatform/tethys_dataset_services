@@ -37,3 +37,5 @@ jobs:
       - name: Coveralls
         if: matrix.os == 'ubuntu' && matrix.py == 3.9
         run: coveralls --service=github
+        env: 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
