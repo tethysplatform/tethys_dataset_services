@@ -18,7 +18,7 @@ from geoserver.catalog import Catalog as GeoServerCatalog
 
 
 from tethys_dataset_services.engines import GeoServerSpatialDatasetEngine
-from ..test_config import TEST_GEOSERVER_DATASET_SERVICE, TEST_POSTGIS_SERVICE
+from tests.test_config import TEST_GEOSERVER_DATASET_SERVICE, TEST_POSTGIS_SERVICE
 
 
 def random_string_generator(size):
@@ -72,9 +72,11 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # Create GeoServer Engine
         self.endpoint = TEST_GEOSERVER_DATASET_SERVICE['ENDPOINT']
-        self.geoserver_engine = GeoServerSpatialDatasetEngine(endpoint=self.endpoint,
-                                                              username=TEST_GEOSERVER_DATASET_SERVICE['USERNAME'],
-                                                              password=TEST_GEOSERVER_DATASET_SERVICE['PASSWORD'])
+        self.geoserver_engine = GeoServerSpatialDatasetEngine(
+            endpoint=self.endpoint,
+            username=TEST_GEOSERVER_DATASET_SERVICE['USERNAME'],
+            password=TEST_GEOSERVER_DATASET_SERVICE['PASSWORD']
+        )
 
         self.geometry_column = 'geometry'
         self.geometry_type = 'Point'
@@ -153,9 +155,11 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         store_id_name = '{}:{}'.format(workspace, store_id)
 
         # Execute
-        response = self.geoserver_engine.create_shapefile_resource(store_id=store_id_name,
-                                                                   shapefile_base=shapefile_name,
-                                                                   overwrite=True)
+        response = self.geoserver_engine.create_shapefile_resource(
+            store_id=store_id_name,
+            shapefile_base=shapefile_name,
+            overwrite=True
+        )
         # Validate response object
         self.assert_valid_response_object(response)
 
@@ -241,9 +245,11 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         store_id_name = '{}:{}'.format(workspace, store_id)
 
         # Execute
-        response = self.geoserver_engine.create_shapefile_resource(store_id=store_id_name,
-                                                                   shapefile_zip=shapefile_zip,
-                                                                   overwrite=True)
+        response = self.geoserver_engine.create_shapefile_resource(
+            store_id=store_id_name,
+            shapefile_zip=shapefile_zip,
+            overwrite=True
+        )
         # Validate response object
         self.assert_valid_response_object(response)
 
@@ -328,9 +334,11 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
                 open(shapefile_shp, 'rb') as shp_upload,\
                 open(shapefile_shx, 'rb') as shx_upload:
             upload_list = [cst_upload, dbf_upload, prj_upload, shp_upload, shx_upload]
-            response = self.geoserver_engine.create_shapefile_resource(store_id=store_id,
-                                                                       shapefile_upload=upload_list,
-                                                                       overwrite=True)
+            response = self.geoserver_engine.create_shapefile_resource(
+                store_id=store_id,
+                shapefile_upload=upload_list,
+                overwrite=True
+            )
         # Should succeed
         self.assertTrue(response['success'])
 
@@ -404,10 +412,12 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         with open(coverage_file, 'rb') as coverage_upload:
             # Execute
-            response = self.geoserver_engine.create_coverage_resource(store_id=expected_store_id,
-                                                                      coverage_type=expected_coverage_type,
-                                                                      coverage_upload=coverage_upload,
-                                                                      overwrite=True)
+            response = self.geoserver_engine.create_coverage_resource(
+                store_id=expected_store_id,
+                coverage_type=expected_coverage_type,
+                coverage_upload=coverage_upload,
+                overwrite=True
+            )
         # Validate response object
         self.assert_valid_response_object(response)
 
@@ -491,10 +501,12 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         coverage_file = os.path.join(self.files_root, "grass_ascii", coverage_file_name)
 
         # Execute
-        response = self.geoserver_engine.create_coverage_resource(store_id=expected_store_id,
-                                                                  coverage_type=expected_coverage_type,
-                                                                  coverage_file=coverage_file,
-                                                                  overwrite=True)
+        response = self.geoserver_engine.create_coverage_resource(
+            store_id=expected_store_id,
+            coverage_type=expected_coverage_type,
+            coverage_file=coverage_file,
+            overwrite=True
+        )
         # Validate response object
         self.assert_valid_response_object(response)
 
@@ -573,10 +585,12 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         with open(coverage_file, 'rb') as coverage_upload:
             # Execute
-            response = self.geoserver_engine.create_coverage_resource(store_id=expected_store_id,
-                                                                      coverage_type=expected_coverage_type,
-                                                                      coverage_upload=coverage_upload,
-                                                                      overwrite=True)
+            response = self.geoserver_engine.create_coverage_resource(
+                store_id=expected_store_id,
+                coverage_type=expected_coverage_type,
+                coverage_upload=coverage_upload,
+                overwrite=True
+            )
         # Validate response object
         self.assert_valid_response_object(response)
 
@@ -653,10 +667,12 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         coverage_file = os.path.join(self.files_root, "img_sample", coverage_file_name)
 
         # Execute
-        response = self.geoserver_engine.create_coverage_resource(store_id=expected_store_id,
-                                                                  coverage_type=expected_coverage_type,
-                                                                  coverage_file=coverage_file,
-                                                                  overwrite=True)
+        response = self.geoserver_engine.create_coverage_resource(
+            store_id=expected_store_id,
+            coverage_type=expected_coverage_type,
+            coverage_file=coverage_file,
+            overwrite=True
+        )
         # Validate response object
         self.assert_valid_response_object(response)
 
@@ -739,10 +755,12 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
                 upload_list = [coverage_upload, prj_upload]
 
                 # Execute
-                response = self.geoserver_engine.create_coverage_resource(store_id=expected_store_id,
-                                                                          coverage_type=expected_coverage_type,
-                                                                          coverage_upload=upload_list,
-                                                                          overwrite=True)
+                response = self.geoserver_engine.create_coverage_resource(
+                    store_id=expected_store_id,
+                    coverage_type=expected_coverage_type,
+                    coverage_upload=upload_list,
+                    overwrite=True
+                )
 
         # Validate response object
         self.assert_valid_response_object(response)
@@ -784,8 +802,10 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # Execute
         resource_id = "{}:{}".format(self.workspace_name, coverage_name)
-        response = self.geoserver_engine.get_resource(resource_id=resource_id,
-                                                      store_id=store_id_name)
+        response = self.geoserver_engine.get_resource(
+            resource_id=resource_id,
+            store_id=store_id_name
+        )
 
         # Validate response object
         self.assert_valid_response_object(response)
@@ -809,8 +829,10 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Execute
         # This case the resource id is the same as the filename.
         resource_id = '{}:{}'.format(self.workspace_name, coverage_name)
-        response = self.geoserver_engine.delete_resource(resource_id=resource_id,
-                                                         store_id=store_id_name)
+        response = self.geoserver_engine.delete_resource(
+            resource_id=resource_id,
+            store_id=store_id_name
+        )
 
         # Validate response object
         self.assert_valid_response_object(response)
@@ -837,9 +859,11 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         expected_styles = ['simple_roads', 'capitals', 'simple_streams']
 
         # TODO: create_layer_group: fails on catalog.save() when workspace is given.
-        response = self.geoserver_engine.create_layer_group(layer_group_id=expected_layer_group_id,
-                                                            layers=expected_layers,
-                                                            styles=expected_styles)
+        response = self.geoserver_engine.create_layer_group(
+            layer_group_id=expected_layer_group_id,
+            layers=expected_layers,
+            styles=expected_styles
+        )
         # Should succeed
         self.assert_valid_response_object(response)
         self.assertTrue(response['success'])
@@ -1066,9 +1090,11 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         store_id = '{}:{}'.format(self.workspace_name, store_id_name)
         sqlalchemy_engine = create_engine(self.pg_url)
 
-        response = self.geoserver_engine.link_sqlalchemy_db_to_geoserver(store_id=store_id,
-                                                                         sqlalchemy_engine=sqlalchemy_engine,
-                                                                         docker=True)
+        response = self.geoserver_engine.link_sqlalchemy_db_to_geoserver(
+            store_id=store_id,
+            sqlalchemy_engine=sqlalchemy_engine,
+            docker=True
+        )
 
         # Check for success response
         self.assertTrue(response['success'])
@@ -1077,8 +1103,10 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # TEST add_table_to_postgis_store
 
         # Execute
-        response = self.geoserver_engine.add_table_to_postgis_store(store_id=store_id,
-                                                                    table=self.pg_table_name)
+        response = self.geoserver_engine.add_table_to_postgis_store(
+            store_id=store_id,
+            table=self.pg_table_name
+        )
 
         # Check for success response
         self.assertTrue(response['success'])
@@ -1206,13 +1234,15 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         store_id_name = random_string_generator(10)
         store_id = '{}:{}'.format(self.workspace_name, store_id_name)
 
-        response = self.geoserver_engine.create_postgis_feature_resource(store_id=store_id,
-                                                                         host=self.pg_host,
-                                                                         port=self.pg_port,
-                                                                         database=self.pg_database,
-                                                                         user=self.pg_username,
-                                                                         password=self.pg_password,
-                                                                         table=self.pg_table_name)
+        response = self.geoserver_engine.create_postgis_feature_resource(
+            store_id=store_id,
+            host=self.pg_host,
+            port=self.pg_port,
+            database=self.pg_database,
+            user=self.pg_username,
+            password=self.pg_password,
+            table=self.pg_table_name
+        )
         self.assertTrue(response['success'])
 
         feature_type_name = random_string_generator(10)
@@ -1221,11 +1251,13 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         geometry_column = self.geometry_column
         geometry_type = self.geometry_type
 
-        response = self.geoserver_engine.create_sql_view(feature_type_name=feature_type_name,
-                                                         postgis_store_id=postgis_store_id,
-                                                         sql=sql,
-                                                         geometry_column=geometry_column,
-                                                         geometry_type=geometry_type)
+        response = self.geoserver_engine.create_sql_view(
+            feature_type_name=feature_type_name,
+            postgis_store_id=postgis_store_id,
+            sql=sql,
+            geometry_column=geometry_column,
+            geometry_type=geometry_type
+        )
 
         self.assertTrue(response['success'])
 
@@ -1294,3 +1326,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Success
         # TODO: delete_resource is returning a 403 error: not authorized.
         # self.assertTrue(response['success'])
+
+
+if __name__ == '__main__':
+    unittest.main()
