@@ -14,5 +14,4 @@ dist
 build
 tethys_datasets/temp/*
 tests/test_config.py
-./test.sh
 test.sh
