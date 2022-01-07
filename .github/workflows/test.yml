@@ -28,15 +28,11 @@ jobs:
         with:
           python-version: ${{ matrix.py }}
       - uses: actions/checkout@v2
-      - name: Install TDS
-        run: python -m pip install .
-      - name: Install Test Dependencies
-        run: python -m pip install .[tests]
       - name: Install tox-gh
         run: python -m pip install tox-gh
       - name: Setup test suite
         run: tox4 r -vv --notest
       - name: Run unit tests
         run: tox4 r --skip-pkg-install
-        # env:
-        #   PYTEST_ADDOPTS: "-vv --durations=10"
+        env:
+          PYTEST_ADDOPTS: "-vv --durations=10"
