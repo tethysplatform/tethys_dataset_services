@@ -1,10 +1,12 @@
 name: Unit Tests
 on:
   push:
+    branches:
+      - main
+      - master
   pull_request:
   # schedule:
   #   - cron: "0 8 * * *"
-
 jobs:
   test:
     name: Test Python ${{ matrix.py }} - ${{ matrix.os }}
