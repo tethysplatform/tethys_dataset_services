@@ -35,5 +35,5 @@ jobs:
       - name: Run tests
         run: tox
       - name: Coveralls
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu' $$ matrix.py == 3.9
         run: coveralls --service=github
