@@ -11,6 +11,7 @@ from builtins import *  # noqa: F403, F401
 
 import random
 import string
+from time import sleep
 import unittest
 import os
 from sqlalchemy.engine import create_engine
@@ -1007,13 +1008,10 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         expected_style_id_name = random_string_generator(10)
         expected_style_id = '{}:{}'.format(self.workspace_name, expected_style_id_name)
         style_file_name = 'point.sld'
-        expected_sld = os.path.join(self.files_root, style_file_name)
+        sld_file_path = os.path.join(self.files_root, style_file_name)
 
         # Execute
-        with open(expected_sld, 'r') as sld_file:
-            sld_string = sld_file.read()
-            # TODO: create_style: Fails on when overwrite is False.
-            response = self.geoserver_engine.create_style(style_id=expected_style_id, sld=sld_string, overwrite=True)
+        response = self.geoserver_engine.create_style(style_id=expected_style_id, sld_template=sld_file_path)
 
         # Validate response object
         self.assert_valid_response_object(response)
@@ -1178,6 +1176,9 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         )
 
         self.assertTrue(response['success'])
+        
+         # Pause to let GeoServer catch up
+        sleep(5)
 
         # TEST list_stores
 
@@ -1244,6 +1245,9 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
             table=self.pg_table_name
         )
         self.assertTrue(response['success'])
+        
+        # Pause to let GeoServer catch up before continuing
+        sleep(5)
 
         feature_type_name = random_string_generator(10)
         postgis_store_id = '{}:{}'.format(self.workspace_name, store_id_name)
@@ -1329,4 +1333,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    suite = unittest.TestSuite()
+    suite.addTest(GeoServerDatasetEngineEnd2EndTests('test_create_style'))
+    runner = unittest.TextTestRunner()
+    runner.run(suite)

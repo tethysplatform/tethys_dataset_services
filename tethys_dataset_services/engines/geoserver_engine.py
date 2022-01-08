@@ -1,6 +1,6 @@
-from past.types import basestring
 from builtins import *  # noqa: F403, F401
-
+from jinja2 import Template
+import logging
 import os
 import shutil
 import pprint
@@ -18,6 +18,8 @@ from geoserver.util import shapefile_and_friends
 
 from ..utilities import ConvertDictToXml, ConvertXmlToDict
 from ..base import SpatialDatasetEngine
+
+log = logging.getLogger('tds.engines.geoserver')
 
 
 class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
@@ -344,7 +346,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
                     for style in styles:
                         if style is not None:
-                            if not isinstance(style, basestring):
+                            if not isinstance(style, str):
                                 if style.workspace:
                                     styles_names.append('{0}:{1}'.format(style.workspace, style.name))
                                 else:
@@ -564,7 +566,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         """
         try:
-            resource_objects = self.catalog.get_resources(store=store, workspace=workspace)
+            resource_objects = self.catalog.get_resources(stores=store, workspaces=workspace)
             return self._handle_list(resource_objects, with_properties, debug)
         except geoserver.catalog.AmbiguousRequestError as e:
             response_object = {'success': False,
@@ -653,8 +655,13 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           response = engine.list_stores(workspace='example_workspace", with_properties=True)
         """
+        if workspace is None:
+            workspace = []
+        elif isinstance(workspace, str):
+            workspace = [workspace]
+
         try:
-            stores = self.catalog.get_stores(workspaces=[workspace])
+            stores = self.catalog.get_stores(workspaces=workspace)
             return self._handle_list(stores, with_properties, debug)
 
         except AttributeError:
@@ -681,7 +688,12 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           response = engine.list_styles(with_properties=True)
         """
-        styles = self.catalog.get_styles(workspace=workspace)
+        if workspace is None:
+            workspace = []
+        elif isinstance(workspace, str):
+            workspace = [workspace]
+
+        styles = self.catalog.get_styles(workspaces=workspace)
         return self._handle_list(styles, with_properties, debug)
 
     def get_resource(self, resource_id, store_id=None, debug=False):
@@ -800,9 +812,18 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         """
         workspace, name = self._process_identifier(layer_group_id)
 
+        # If workspaces is passed as None, get_layergroups will return as None
+        if workspace is None:
+            workspaces = []
+        else:
+            workspaces = [workspace]
+
         try:
-            # Get resource
-            layer_group = self.catalog.get_layergroup(name=name, workspace=workspace)
+            # Get layer group
+            # Using get_layergroups instead of get_layergroup b/c get_layergroup
+            # cannot handle the case where workspaces is None (always returns None)
+            layer_groups = self.catalog.get_layergroups(names=name, workspaces=workspaces)
+            layer_group = self.catalog._return_first_item(layer_groups)
 
             if not layer_group:
                 response_dict = {'success': False,
@@ -1854,13 +1875,14 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         self._handle_debug(response_dict, debug)
         return response_dict
 
-    def create_style(self, style_id, sld, overwrite=False, debug=False):
+    def create_style(self, style_id, sld_template, sld_context=None, overwrite=False, debug=False):
         """
         Create a new SLD style object.
 
         Args:
-          style_id (string): Identifier of the style to create.
-          sld (string): Styled Layer Descriptor string
+          style_id (string): Identifier of the style to create ('<workspace>:<name>').
+          sld_template: path to SLD template file.
+          sld_context: a dictionary with context variables to be rendered in the template.
           overwrite (bool, optional): Overwrite if style already exists. Defaults to False.
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
@@ -1880,40 +1902,60 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Process identifier
         workspace, name = self._process_identifier(style_id)
 
-        # Create workspace
-        try:
-            # Do create
-            num_attempts = 0
+        if workspace is None:
+            url = self.endpoint + '/styles'
+        else:
+            url = self.endpoint + 'workspaces/' + workspace + '/styles'
 
-            while True:
-                try:
-                    self.catalog.create_style(
-                        name=name,
-                        data=sld,
-                        workspace=workspace,
-                        overwrite=overwrite
-                    )
-                    break
+        if overwrite:
+            try:
+                self.delete_style(style_id, purge=True)
+            except Exception as e:
+                if 'referenced by existing' in str(e):
+                    log.error(str(e))
+                    raise
 
-                except (geoserver.catalog.UploadError, geoserver.catalog.FailedRequestError) as e:
-                    num_attempts += 1
+        # Use post request to create style container first
+        headers = {'Content-type': 'application/vnd.ogc.sld+xml'}
 
-                    if num_attempts >= 5:
-                        raise e
+        # Render the SLD template
+        with open(sld_template, 'r') as sld_file:
+            text = sld_file.read()
 
+        if sld_context is not None:
+            template = Template(text)
+            text = template.render(sld_context)
+
+        response = requests.post(
+            url,
+            headers=headers,
+            auth=(self.username, self.password),
+            params={'name': name},
+            data=text
+        )
+
+        # Raise an exception if status code is not what we expect
+        if response.status_code == 201:
+            log.info('Successfully created style {}'.format(name))
             style = self.catalog.get_style(name=name, workspace=workspace)
-
             style_dict = self._transcribe_geoserver_object(style)
             response_dict = {'success': True,
                              'result': style_dict}
-
-        except AssertionError as e:
-            response_dict = {'success': False,
-                             'error': str(e)}
-
-        except geoserver.catalog.ConflictingDataError as e:
-            response_dict = {'success': False,
-                             'error': str(e)}
+        else:
+            msg = 'Create Style Status Code {0}: {1}'.format(response.status_code, response.text)
+            if response.status_code == 500:
+                if 'Unable to find style for event' in response.text or 'Error persisting' in response.text:
+                    log.warning('Created style {} with warnings: {}'.format(name, response.text))
+                else:
+                    exception = requests.RequestException(msg, response=response)
+                    log.error(msg)
+                    response_dict = {'success': False,
+                                     'error': str(exception)}
+            else:
+                exception = requests.RequestException(msg, response=response)
+                log.error(msg)
+                response_dict = {'success': False,
+                                 'error': str(exception)}
 
         self._handle_debug(response_dict, debug)
         return response_dict

@@ -466,7 +466,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         for r in result:
             self.assertIn(r, self.store_names)
 
-        mc.get_stores.assert_called_with(workspaces=[None])
+        mc.get_stores.assert_called_with(workspaces=[])
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_list_stores_invalid_workspace(self, mock_catalog):
