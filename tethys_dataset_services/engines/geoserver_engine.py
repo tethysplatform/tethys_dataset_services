@@ -5,12 +5,12 @@ import os
 import shutil
 import pprint
 import requests
+from requests.auth import HTTPBasicAuth
 import time
 from io import BytesIO
 from xml.etree import ElementTree
 from zipfile import ZipFile, is_zipfile
 
-from requests.auth import HTTPBasicAuth
 import geoserver
 from geoserver.catalog import Catalog as GeoServerCatalog
 from geoserver.support import JDBCVirtualTable, JDBCVirtualTableGeometry, JDBCVirtualTableParam
@@ -1892,18 +1892,13 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Examples:
 
           sld = '/path/to/style.sld'
-
-          sld_file = open(sld, 'r')
-
-          response = engine.create_style(style_id='fred', sld=sld_file.read(), debug=True)
-
-          sld_file.close()
+          response = engine.create_style(style_id='fred', sld_template=sld, debug=True)
         """
         # Process identifier
         workspace, name = self._process_identifier(style_id)
 
         if workspace is None:
-            url = self.endpoint + '/styles'
+            url = self.endpoint + 'styles'
         else:
             url = self.endpoint + 'workspaces/' + workspace + '/styles'
 
@@ -1913,7 +1908,15 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             except Exception as e:
                 if 'referenced by existing' in str(e):
                     log.error(str(e))
-                    raise
+                    return {
+                        'success': False,
+                        'error': f'Unable to overwrite style due to '
+                                 f'following error: {str(e)}'
+                    }
+                else:
+                    log.warning(f'An unexpected error occurred while '
+                                f'attempting to overwrite style, but '
+                                f'it has been ignored: {str(e)}')
 
         # Use post request to create style container first
         headers = {'Content-type': 'application/vnd.ogc.sld+xml'}
@@ -1945,7 +1948,10 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             msg = 'Create Style Status Code {0}: {1}'.format(response.status_code, response.text)
             if response.status_code == 500:
                 if 'Unable to find style for event' in response.text or 'Error persisting' in response.text:
-                    log.warning('Created style {} with warnings: {}'.format(name, response.text))
+                    msg = 'Created style {} with warnings: {}'.format(name, response.text)
+                    log.warning(msg)
+                    response_dict = {'success': True,
+                                     'result': {'warning': msg}}
                 else:
                     exception = requests.RequestException(msg, response=response)
                     log.error(msg)
