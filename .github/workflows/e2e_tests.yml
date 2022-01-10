@@ -63,7 +63,7 @@ jobs:
           PGPASSWORD=asupersecretpassword psql -U postgres -h localhost -d tds_tests -c  "CREATE EXTENSION postgis;"
           sleep 30
       - name: Run tests
-        run: tox -e tox -e e2e_gs_tests
+        run: tox -e e2e_gs_tests
         env:
           POSTGIS_URL: postgresql://postgres:asupersecretpassword@localhost:5432/tds_tests
           GEOSERVER_ENDPOINT: http://localhost:8181/geoserver/rest/
