@@ -15,9 +15,9 @@ jobs:
       fail-fast: false
       matrix:
         py:
-          # - "3.10"
-          # - "3.9"
-          # - "3.8"
+          - "3.10"
+          - "3.9"
+          - "3.8"
           - "3.7"
         postgis:
           - "9.6-2.5"
@@ -61,6 +61,6 @@ jobs:
         run: |
           PGPASSWORD=mysecretpassword psql -U postgres -h localhost -c "CREATE DATABASE tds_tests WITH OWNER postgres;"
           PGPASSWORD=mysecretpassword psql -U postgres -h localhost -d tds_tests -c  "CREATE EXTENSION postgis;"
-          sleep 30
+          sleep 10
       - name: Run tests
         run: tox -e e2e_gs_tests
