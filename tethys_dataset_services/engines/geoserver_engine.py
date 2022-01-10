@@ -1907,7 +1907,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                 self.delete_style(style_id, purge=True)
             except Exception as e:
                 if 'referenced by existing' in str(e):
-                    msg = f'Unable to overwrite style due to following error: {str(e)}'
+                    msg = f"Unable to overwrite style due to following error: {str(e)}"
                     log.error(msg)
                     response_dict = {
                         'success': False,
