@@ -1908,11 +1908,11 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             except Exception as e:
                 if 'referenced by existing' in str(e):
                     log.error(str(e))
-                    return {
+                    response_dict = {
                         'success': False,
-                        'error': f'Unable to overwrite style due to ' \
-                                 f'following error: {str(e)}'
+                        'error': f'Unable to overwrite style due to following error: {str(e)}'
                     }
+                    return response_dict
                 else:
                     log.warning(f'An unexpected error occurred while '
                                 f'attempting to overwrite style, but '
