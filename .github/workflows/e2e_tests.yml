@@ -9,7 +9,7 @@ on:
   #   - cron: "0 8 * * *"
 jobs:
   e2e-test:
-    name: E2E Test Python ${{ matrix.py }} - Postgis {{ matrix.postgis }}
+    name: E2E Test Python ${{ matrix.py }} - Postgis ${{ matrix.postgis }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -31,11 +31,21 @@ jobs:
           MIN_MEMORY: 128
           NUM_CORES: 2
           MAX_TIMEOUT: 60
+        ports:
+          - 8181:8181
       postgis:
         image: postgis/postgis:${{ matrix.postgis }}
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: asupersecretpassword
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.py }} for test
@@ -49,13 +59,13 @@ jobs:
           python -m pip install tox tox-gh-actions
       - name: Setup Postgis
         run: |
-          PGPASSWORD=asecretpassword psql -U postgres -h postgis -c "CREATE DATABASE tds_tests WITH OWNER postgres;"
-          PGPASSWORD=asecretpassword psql -U postgres -h postgis -d tds_tests -c  "CREATE EXTENSION postgis;"
+          PGPASSWORD=asecretpassword psql -U postgres -h localhost -c "CREATE DATABASE tds_tests WITH OWNER postgres;"
+          PGPASSWORD=asecretpassword psql -U postgres -h localhost -d tds_tests -c  "CREATE EXTENSION postgis;"
           sleep 30
       - name: Run tests
         run: tox -e tox -e e2e_gs_tests
         env:
-          POSTGIS_URL: postgresql://postgres:asecretpassword@postgis:5432/tds_tests
-          GEOSERVER_ENDPOINT: http://geoserver:8181/geoserver/rest/
+          POSTGIS_URL: postgresql://postgres:asecretpassword@localhost:5432/tds_tests
+          GEOSERVER_ENDPOINT: http://localhost:8181/geoserver/rest/
           GEOSERVER_USERNAME: admin
           GEOSERVER_PASSWORD: geoserver
