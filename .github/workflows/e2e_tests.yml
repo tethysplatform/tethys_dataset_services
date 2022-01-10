@@ -59,13 +59,13 @@ jobs:
           python -m pip install tox tox-gh-actions
       - name: Setup Postgis
         run: |
-          PGPASSWORD=asecretpassword psql -U postgres -h localhost -c "CREATE DATABASE tds_tests WITH OWNER postgres;"
-          PGPASSWORD=asecretpassword psql -U postgres -h localhost -d tds_tests -c  "CREATE EXTENSION postgis;"
+          PGPASSWORD=asupersecretpassword psql -U postgres -h localhost -c "CREATE DATABASE tds_tests WITH OWNER postgres;"
+          PGPASSWORD=asupersecretpassword psql -U postgres -h localhost -d tds_tests -c  "CREATE EXTENSION postgis;"
           sleep 30
       - name: Run tests
         run: tox -e tox -e e2e_gs_tests
         env:
-          POSTGIS_URL: postgresql://postgres:asecretpassword@localhost:5432/tds_tests
+          POSTGIS_URL: postgresql://postgres:asupersecretpassword@localhost:5432/tds_tests
           GEOSERVER_ENDPOINT: http://localhost:8181/geoserver/rest/
           GEOSERVER_USERNAME: admin
           GEOSERVER_PASSWORD: geoserver
