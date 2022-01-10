@@ -24,10 +24,11 @@ jobs:
           - "10-2.5-alpine"
           - "11-2.5-alpine"
           - "12-2.5-alpine"
-          - "9.6-3.2-alpine"
-          - "10-3.2-alpine"
-          - "11-3.2-alpine"
-          - "12-3.2-alpine"
+          # Not working on PostGIS 3.2 yet
+          # - "9.6-3.2-alpine"
+          # - "10-3.2-alpine"
+          # - "11-3.2-alpine"
+          # - "12-3.2-alpine"
     services:
       geoserver:
         image: tethysplatform/geoserver
