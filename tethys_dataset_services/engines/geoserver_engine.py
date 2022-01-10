@@ -1910,7 +1910,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                     log.error(str(e))
                     return {
                         'success': False,
-                        'error': f'Unable to overwrite style due to '
+                        'error': f'Unable to overwrite style due to ' \
                                  f'following error: {str(e)}'
                     }
                 else:
