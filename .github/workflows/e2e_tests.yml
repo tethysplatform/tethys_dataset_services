@@ -21,12 +21,6 @@ jobs:
           - "3.7"
         postgis:
           - "9.6-2.5"
-    env:
-      POSTGIS_URL: postgresql://postgres:asupersecretpassword@localhost:5432/tds_tests
-      POSTGIS_PUBLIC_URL: postgresql://postgres:asupersecretpassword@localhost:5432/tds_tests
-      GEOSERVER_ENDPOINT: http://localhost:8181/geoserver/rest/
-      GEOSERVER_USERNAME: admin
-      GEOSERVER_PASSWORD: geoserver
     services:
       geoserver:
         image: tethysplatform/geoserver
@@ -43,7 +37,7 @@ jobs:
         image: postgis/postgis:${{ matrix.postgis }}
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: asupersecretpassword
+          POSTGRES_PASSWORD: mysecretpassword
         # Set health checks to wait until postgres has started
         options: >-
           --health-cmd pg_isready
@@ -65,8 +59,8 @@ jobs:
           python -m pip install tox tox-gh-actions
       - name: Setup Postgis
         run: |
-          PGPASSWORD=asupersecretpassword psql -U postgres -h localhost -c "CREATE DATABASE tds_tests WITH OWNER postgres;"
-          PGPASSWORD=asupersecretpassword psql -U postgres -h localhost -d tds_tests -c  "CREATE EXTENSION postgis;"
+          PGPASSWORD=mysecretpassword psql -U postgres -h localhost -c "CREATE DATABASE tds_tests WITH OWNER postgres;"
+          PGPASSWORD=mysecretpassword psql -U postgres -h localhost -d tds_tests -c  "CREATE EXTENSION postgis;"
           sleep 30
       - name: Run tests
         run: tox -e e2e_gs_tests
