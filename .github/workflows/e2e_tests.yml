@@ -15,9 +15,9 @@ jobs:
       fail-fast: false
       matrix:
         py:
-          - "3.10"
-          - "3.9"
-          - "3.8"
+          # - "3.10"
+          # - "3.9"
+          # - "3.8"
           - "3.7"
         postgis:
           - "9.6-2.5"
@@ -49,7 +49,9 @@ jobs:
           python -m pip install tox tox-gh-actions
       - name: Setup Postgis
         run: |
-          psql -U postgres -c "CREATE DATABASE tds_tests WITH OWNER postgres;"
+          PGPASSWORD=asecretpassword psql -U postgres -h postgis -c "CREATE DATABASE tds_tests WITH OWNER postgres;"
+          PGPASSWORD=asecretpassword psql -U postgres -h postgis -d tds_tests -c  "CREATE EXTENSION postgis;"
+          sleep 30
       - name: Run tests
         run: tox -e tox -e e2e_gs_tests
         env:
