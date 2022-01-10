@@ -16,11 +16,18 @@ jobs:
       matrix:
         py:
           - "3.10"
-          - "3.9"
-          - "3.8"
-          - "3.7"
+          # - "3.9"
+          # - "3.8"
+          # - "3.7"
         postgis:
-          - "9.6-2.5"
+          - "9.6-2.5-alpine"
+          - "10-2.5-alpine"
+          - "11-2.5-alpine"
+          - "12-2.5-alpine"
+          - "9.6-3.2-alpine"
+          - "10-3.2-alpine"
+          - "11-3.2-alpine"
+          - "12-3.2-alpine"
     services:
       geoserver:
         image: tethysplatform/geoserver
