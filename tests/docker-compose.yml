@@ -1,7 +1,7 @@
 version: "3.3"
 services:
   postgis:
-    image: "postgis/postgis:9.6-2.5"
+    image: "postgis/postgis:12-2.5"
     ports:
       - "5432:5432"
     environment:
@@ -17,7 +17,7 @@ services:
       - "8083:8083"
       - "8084:8084"
     environment:
-      - ENABLED_NODES=1
+      - ENABLED_NODES=4
       - REST_NODES=1
       - MAX_MEMORY=512
       - MIN_MEMORY=512
