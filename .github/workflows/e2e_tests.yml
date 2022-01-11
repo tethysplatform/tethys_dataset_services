@@ -5,8 +5,8 @@ on:
       - main
       - master
   pull_request:
-  # schedule:
-  #   - cron: "0 8 * * *"
+  schedule:
+    - cron: "0 0 * * 0"
 jobs:
   e2e-test:
     name: E2E Test Python ${{ matrix.py }} - Postgis ${{ matrix.postgis }}
@@ -16,9 +16,6 @@ jobs:
       matrix:
         py:
           - "3.10"
-          # - "3.9"
-          # - "3.8"
-          # - "3.7"
         postgis:
           - "9.6-2.5-alpine"
           - "10-2.5-alpine"
