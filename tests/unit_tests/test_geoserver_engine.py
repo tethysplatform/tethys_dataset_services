@@ -1,29 +1,15 @@
-from builtins import *  # noqa: F403, F401
-
+from io import StringIO
 import os
-import sys
 import random
 import string
 import unittest
-import mock
+from unittest import mock
+
 import geoserver
 import requests
 from sqlalchemy import create_engine
+
 from tethys_dataset_services.engines import GeoServerSpatialDatasetEngine
-
-if sys.version_info[0] == 3:
-    from io import StringIO
-else:
-    from StringIO import StringIO
-
-try:
-    from tethys_dataset_services.tests.test_config import TEST_GEOSERVER_DATASET_SERVICE
-
-except ImportError:
-    print('ERROR: To perform tests, you must create a file in the "tests" package called "test_config.py". In this file'
-          'provide a dictionary called "TEST_GEOSERVER_DATASET_SERVICE" with keys "ENDPOINT", "USERNAME", and '
-          '"PASSWORD".')
-    exit(1)
 
 
 def random_string_generator(size):
@@ -88,10 +74,14 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.shapefile_base = os.path.join(self.files_root, 'shapefile', self.shapefile_name)
 
         # Create Test Engine
-        self.endpoint = TEST_GEOSERVER_DATASET_SERVICE['ENDPOINT']
-        self.engine = GeoServerSpatialDatasetEngine(endpoint=self.endpoint,
-                                                    username=TEST_GEOSERVER_DATASET_SERVICE['USERNAME'],
-                                                    password=TEST_GEOSERVER_DATASET_SERVICE['PASSWORD'])
+        self.endpoint = 'http://fake.geoserver.org:8181/geoserver/rest/'
+        self.username = 'foo'
+        self.password = 'bar'
+        self.engine = GeoServerSpatialDatasetEngine(
+            endpoint=self.endpoint,
+            username=self.username,
+            password=self.password
+        )
 
         # Catalog
         self.catalog_endpoint = 'http://localhost:8181/geoserver/'
@@ -413,7 +403,6 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
             self.assertIn('workspace', r)
             self.assertEqual(self.workspace_name, r['workspace'])
             self.assertIn('catalog', r)
-            self.assertEqual(self.catalog_endpoint, r['catalog'])
             self.assertIn('layers', r)
             self.assertEqual(self.layer_names, r['layers'])
             self.assertNotIn('dom', r)
@@ -472,7 +461,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         for r in result:
             self.assertIn(r, self.store_names)
 
-        mc.get_stores.assert_called_with(workspace=None)
+        mc.get_stores.assert_called_with(workspaces=[])
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_list_stores_invalid_workspace(self, mock_catalog):
@@ -491,7 +480,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         # False
         self.assertFalse(response['success'])
         self.assertIn('Invalid workspace', response['error'])
-        mc.get_stores.assert_called_with(workspace=workspace)
+        mc.get_stores.assert_called_with(workspaces=[workspace])
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_list_styles(self, mock_catalog):
@@ -521,7 +510,40 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         for n in self.style_names:
             self.assertIn(n, result)
 
-        mc.get_styles.assert_called()
+        mc.get_styles.assert_called_with(workspaces=[])
+    
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_list_styles_of_workspace(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_styles.return_value = self.mock_styles
+
+        # Execute
+        response = self.engine.list_styles(
+            workspace=self.workspace_name,
+            debug=self.debug
+        )
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        result = response['result']
+
+        # Returns list
+        self.assertIsInstance(result, list)
+
+        # List of strings
+        if len(result) > 0:
+            self.assertIsInstance(result[0], str)
+
+        # Test layer listed
+        for n in self.style_names:
+            self.assertIn(n, result)
+
+        mc.get_styles.assert_called_with(workspaces=[self.workspace_name])
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_list_styles_with_properties(self, mock_catalog):
@@ -792,7 +814,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_get_layer_group(self, mock_catalog):
         mc = mock_catalog()
-        mc.get_layergroup.return_value = self.mock_layer_groups[0]
+        mc.get_layergroups.return_value = self.mock_layer_groups
+        mc._return_first_item.return_value = self.mock_layer_groups[0]
 
         # Execute
         response = self.engine.get_layer_group(layer_group_id=self.layer_group_names[0], debug=self.debug)
@@ -813,17 +836,49 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertIn('workspace', r)
         self.assertEqual(self.workspace_name, r['workspace'])
         self.assertIn('catalog', r)
-        self.assertEqual(self.catalog_endpoint, r['catalog'])
         self.assertIn('layers', r)
         self.assertEqual(self.layer_names, r['layers'])
         self.assertNotIn('dom', r)
 
-        mc.get_layergroup.assert_called_with(name=self.layer_group_names[0], workspace=None)
+        mc.get_layergroups.assert_called_with(names=self.layer_group_names[0], workspaces=[])
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
+    def test_get_layer_group_with_workspace(self, mock_catalog):
+        mc = mock_catalog()
+        mc.get_layergroups.return_value = self.mock_layer_groups
+        mc._return_first_item.return_value = self.mock_layer_groups[0]
+        layer_group_id = f'{self.workspace_name}:{self.layer_group_names[0]}'
+
+        # Execute
+        response = self.engine.get_layer_group(layer_group_id=layer_group_id, debug=self.debug)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Result
+        r = response['result']
+
+        # Type
+        self.assertIsInstance(r, dict)
+
+        # List of dictionaries
+        self.assertIn('workspace', r)
+        self.assertEqual(self.workspace_name, r['workspace'])
+        self.assertIn('catalog', r)
+        self.assertIn('layers', r)
+        self.assertEqual(self.layer_names, r['layers'])
+        self.assertNotIn('dom', r)
+
+        mc.get_layergroups.assert_called_with(names=self.layer_group_names[0], workspaces=[self.workspace_name])
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_get_layer_group_none(self, mock_catalog):
         mc = mock_catalog()
-        mc.get_layergroup.return_value = None
+        mc.get_layergroups.return_value = None
+        mc._return_first_item.return_value = None
 
         # Execute
         response = self.engine.get_layer_group(layer_group_id=self.layer_group_names[0], debug=self.debug)
@@ -839,12 +894,12 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         self.assertIn('not found', r)
 
-        mc.get_layergroup.assert_called_with(name=self.layer_group_names[0], workspace=None)
+        mc.get_layergroups.assert_called_with(names=self.layer_group_names[0], workspaces=[])
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_get_layer_group_failed_request_error(self, mock_catalog):
         mc = mock_catalog()
-        mc.get_layergroup.side_effect = geoserver.catalog.FailedRequestError('Failed Request')
+        mc.get_layergroups.side_effect = geoserver.catalog.FailedRequestError('Failed Request')
 
         # Execute
         response = self.engine.get_layer_group(layer_group_id=self.layer_group_names[0], debug=self.debug)
@@ -860,7 +915,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         self.assertEqual(r, 'Failed Request')
 
-        mc.get_layergroup.assert_called_with(name=self.layer_group_names[0], workspace=None)
+        mc.get_layergroups.assert_called_with(names=self.layer_group_names[0], workspaces=[])
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_get_store(self, mock_catalog):
@@ -1874,10 +1929,11 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         store_id = '{}:{}'.format(self.workspace_name, self.store_names[0])
 
         # Execute
-        response = self.engine.create_shapefile_resource(store_id=store_id,
-                                                         shapefile_base=shapefile_name,
-                                                         overwrite=False
-                                                         )
+        response = self.engine.create_shapefile_resource(
+            store_id=store_id,
+            shapefile_base=shapefile_name,
+            overwrite=False
+        )
         # Should succeed
         self.assertTrue(response['success'])
 
@@ -1958,8 +2014,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     def test_ini_no_slash_endpoint(self):
         self.engine = GeoServerSpatialDatasetEngine(
             endpoint='http://localhost:8181/geoserver/rest',
-            username=TEST_GEOSERVER_DATASET_SERVICE['USERNAME'],
-            password=TEST_GEOSERVER_DATASET_SERVICE['PASSWORD']
+            username=self.username,
+            password=self.password
         )
 
         expected_endpoint = 'http://localhost:8181/geoserver/gwc/rest/'
@@ -2773,15 +2829,19 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertIn('AssertionError', r)
         mc.create_workspace.assert_called_with(self.workspace_names[0], expected_uri)
 
-    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
-    def test_create_style(self, mock_catalog):
-        expected_style_id = 'style1'
-        expected_sld = 'Style one test'
-
-        mc = mock_catalog()
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.log')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
+    def test_create_style(self, mock_post, mock_logger):
+        mock_post.return_value = mock.MagicMock(status_code=201)
+        style_name = 'style_name'
+        style_id = f'{self.workspace_name}:{style_name}'
+        sld_template = os.path.join(self.files_root, 'test_create_style.sld')
+        sld_context = {'foo': 'bar'}
+        self.engine.delete_style = mock.MagicMock()
+        self.engine.catalog.get_style = mock.MagicMock()
 
         # Execute
-        response = self.engine.create_style(style_id=expected_style_id, sld=expected_sld)
+        response = self.engine.create_style(style_id, sld_template, sld_context)
 
         # Validate response object
         self.assert_valid_response_object(response)
@@ -2790,71 +2850,46 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertTrue(response['success'])
 
         # Extract Result
-        r = response['result']
+        result = response['result']
 
         # Type
-        self.assertIsInstance(r, dict)
+        self.assertIsInstance(result, dict)
 
-        mc.create_style.assert_called_with(name=expected_style_id, data=expected_sld, workspace=None, overwrite=False)
+        # No Overwrite
+        self.engine.delete_style.assert_not_called()
 
-    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
-    def test_create_style_assertion_error(self, mock_catalog):
-        mc = mock_catalog()
-        expected_style_id = 'style1'
-        expected_sld = 'Style one test'
-        mc.create_style.side_effect = AssertionError('Upload error')
+        # Validate endpoint calls
+        style_url = f'{self.endpoint}workspaces/{self.workspace_name}/styles'
+        mock_post.assert_called_with(
+            style_url,
+            headers={'Content-type': 'application/vnd.ogc.sld+xml'},
+            auth=(self.username, self.password),
+            params={'name': style_name},
+            data=mock.ANY
+        )
+
+        # Validate SLD was rendered correctly
+        rendered_sld_path = os.path.join(self.files_root, 'test_create_style_rendered.sld')
+        with open(rendered_sld_path) as rendered:
+            rendered_sld = rendered.read()
+        self.assertEqual(rendered_sld, mock_post.call_args_list[0][1]['data'])
+
+        # Verify log messages
+        mock_logger.info.assert_called()
+    
+    
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.log')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
+    def test_create_style_no_workspace(self, mock_post, mock_logger):
+        mock_post.return_value = mock.MagicMock(status_code=201)
+        style_name = 'style_name'
+        sld_template = os.path.join(self.files_root, 'test_create_style.sld')
+        sld_context = {'foo': 'bar'}
+        self.engine.delete_style = mock.MagicMock()
+        self.engine.catalog.get_style = mock.MagicMock()
 
         # Execute
-        response = self.engine.create_style(style_id=expected_style_id, sld=expected_sld)
-
-        # False
-        self.assertFalse(response['success'])
-        # Expect Error
-        r = response['error']
-        # Properties
-        self.assertIn('Upload error', r)
-
-    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
-    def test_create_style_conflicting_data_error(self, mock_catalog):
-        mc = mock_catalog()
-        expected_style_id = 'style1'
-        expected_sld = 'Style one test'
-        mc.create_style.side_effect = geoserver.catalog.ConflictingDataError('Conflictingdata error')
-
-        # Execute
-        response = self.engine.create_style(style_id=expected_style_id, sld=expected_sld)
-
-        # False
-        self.assertFalse(response['success'])
-        # Expect Error
-        r = response['error']
-        # Properties
-        self.assertIn('Conflictingdata error', r)
-
-    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
-    def test_create_style_upload_error(self, mock_catalog):
-        mc = mock_catalog()
-        mc.create_style.side_effect = geoserver.catalog.UploadError()
-        expected_style_id = 'style1'
-        expected_sld = 'Style one test'
-
-        # Should Fail
-        self.assertRaises(geoserver.catalog.UploadError,
-                          self.engine.create_style,
-                          style_id=expected_style_id,
-                          sld=expected_sld)
-
-        mc.create_style.assert_called_with(name=expected_style_id, data=expected_sld, workspace=None, overwrite=False)
-
-    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
-    def test_create_style_upload_error_recover(self, mock_catalog):
-        mc = mock_catalog()
-        mc.create_style.side_effect = self.mock_upload_fail_three_times
-        expected_style_id = 'style1'
-        expected_sld = 'Style one test'
-
-        # Should Fail
-        response = self.engine.create_style(style_id=expected_style_id, sld=expected_sld)
+        response = self.engine.create_style(style_name, sld_template, sld_context)
 
         # Validate response object
         self.assert_valid_response_object(response)
@@ -2863,12 +2898,295 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertTrue(response['success'])
 
         # Extract Result
-        r = response['result']
+        result = response['result']
 
         # Type
-        self.assertIsInstance(r, dict)
+        self.assertIsInstance(result, dict)
 
-        mc.create_style.assert_called_with(name=expected_style_id, data=expected_sld, workspace=None, overwrite=False)
+        # No Overwrite
+        self.engine.delete_style.assert_not_called()
+
+        # Validate endpoint calls
+        style_url = f'{self.endpoint}styles'
+        mock_post.assert_called_with(
+            style_url,
+            headers={'Content-type': 'application/vnd.ogc.sld+xml'},
+            auth=(self.username, self.password),
+            params={'name': style_name},
+            data=mock.ANY
+        )
+
+        # Validate SLD was rendered correctly
+        rendered_sld_path = os.path.join(self.files_root, 'test_create_style_rendered.sld')
+        with open(rendered_sld_path) as rendered:
+            rendered_sld = rendered.read()
+        self.assertEqual(rendered_sld, mock_post.call_args_list[0][1]['data'])
+
+        # Verify log messages
+        mock_logger.info.assert_called()
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.log')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
+    def test_create_style_cannot_find_style(self, mock_post, mock_logger):
+        mock_post.return_value = mock.MagicMock(status_code=500, text='Unable to find style for event')
+        style_name = 'style_name'
+        style_id = f'{self.workspace_name}:{style_name}'
+        sld_template = os.path.join(self.files_root, 'test_create_style.sld')
+        sld_context = {'foo': 'bar'}
+        self.engine.delete_style = mock.MagicMock()
+
+        # Execute
+        response = self.engine.create_style(style_id, sld_template, sld_context)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Error
+        result = response['result']
+        
+        # Type
+        self.assertIsInstance(result, dict)
+        
+        # Verify warning message
+        self.assertEqual(
+            'Created style style_name with warnings: '
+            'Unable to find style for event',
+            result['warning']
+        )
+
+        # No Overwrite
+        self.engine.delete_style.assert_not_called()
+
+        # Create Post
+        mock_post.assert_called()
+
+        # Validate log messages
+        mock_logger.warning.assert_called_with(
+            'Created style style_name with warnings: Unable to find style for event'
+        )
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.log')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
+    def test_create_style_error_persisting(self, mock_post, mock_logger):
+        mock_post.return_value = mock.MagicMock(status_code=500, text='Error persisting')
+        style_name = 'style_name'
+        style_id = f'{self.workspace_name}:{style_name}'
+        sld_template = os.path.join(self.files_root, 'test_create_style.sld')
+        sld_context = {'foo': 'bar'}
+        self.engine.delete_style = mock.MagicMock()
+
+        # Execute
+        response = self.engine.create_style(style_id, sld_template, sld_context)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+
+        # Extract Error
+        result = response['result']
+    
+        # Type
+        self.assertIsInstance(result, dict)
+    
+        # Verify warning message
+        self.assertEqual(
+            'Created style style_name with warnings: '
+            'Error persisting',
+            result['warning']
+        )
+
+        # No Overwrite
+        self.engine.delete_style.assert_not_called()
+
+        # Create Post
+        mock_post.assert_called()
+
+        # Validate log messages
+        mock_logger.warning.assert_called_with('Created style style_name with warnings: Error persisting')
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.log')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
+    def test_create_style_other_500(self, mock_post, mock_logger):
+        mock_post.return_value = mock.MagicMock(status_code=500, text='foo bar')
+        style_name = 'style_name'
+        style_id = f'{self.workspace_name}:{style_name}'
+        sld_template = os.path.join(self.files_root, 'test_create_style.sld')
+        sld_context = {'foo': 'bar'}
+        self.engine.delete_style = mock.MagicMock()
+
+        # Execute
+        response = self.engine.create_style(style_id, sld_template, sld_context)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertFalse(response['success'])
+
+        # Extract Error
+        error = response['error']
+        self.assertEqual('Create Style Status Code 500: foo bar', error)
+
+        # No Overwrite
+        self.engine.delete_style.assert_not_called()
+
+        # Create Post
+        mock_post.assert_called()
+
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.log')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
+    def test_create_style_other_error(self, mock_post, mock_logger):
+        mock_post.return_value = mock.MagicMock(status_code=403)
+        style_name = 'style_name'
+        style_id = f'{self.workspace_name}:{style_name}'
+        sld_template = os.path.join(self.files_root, 'test_create_style.sld')
+        sld_context = {'foo': 'bar'}
+        self.engine.delete_style = mock.MagicMock()
+
+        # Execute
+        response = self.engine.create_style(style_id, sld_template, sld_context)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertFalse(response['success'])
+
+        # Extract Error
+        error = response['error']
+        self.assertIn('Create Style Status Code 403:', error)
+
+        # No Overwrite
+        self.engine.delete_style.assert_not_called()
+
+        # Create Post
+        mock_post.assert_called()
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.log')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
+    def test_create_style_overwrite_no_such_style(self, mock_post, mock_logger):
+        """
+        Attempt to delete resulting in no style found is OK,
+        so should proceed to create style.
+        """
+        mock_post.return_value = mock.MagicMock(status_code=201)
+        self.delete_style = mock.MagicMock(side_effect=Exception('no such style'))
+        style_name = 'style_name'
+        style_id = f'{self.workspace_name}:{style_name}'
+        sld_template = os.path.join(self.files_root, 'test_create_style.sld')
+        sld_context = {'foo': 'bar'}
+        self.engine.delete_style = mock.MagicMock()
+        self.engine.catalog.get_style = mock.MagicMock()
+
+        # Execute
+        response = self.engine.create_style(style_id, sld_template, sld_context, overwrite=True)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertTrue(response['success'])
+        
+        # Extract Result
+        result = response['result']
+
+        # Type
+        self.assertIsInstance(result, dict)
+
+        # Overwrite
+        self.engine.delete_style.assert_called_with(style_id, purge=True)
+
+        # Validate endpoint calls
+        style_url = f'{self.endpoint}workspaces/{self.workspace_name}/styles'
+        mock_post.assert_called_with(
+            style_url,
+            headers={'Content-type': 'application/vnd.ogc.sld+xml'},
+            auth=(self.username, self.password),
+            params={'name': style_name},
+            data=mock.ANY
+        )
+
+        # Validate SLD was rendered correctly
+        rendered_sld_path = os.path.join(self.files_root, 'test_create_style_rendered.sld')
+        with open(rendered_sld_path) as rendered:
+            rendered_sld = rendered.read()
+        self.assertEqual(rendered_sld, mock_post.call_args_list[0][1]['data'])
+
+        # Verify log messages
+        mock_logger.info.assert_called()
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.log')
+    def test_create_style_overwrite_referenced_by_existing(self, _):
+        style_name = 'style_name'
+        style_id = f'{self.workspace_name}:{style_name}'
+        sld_template = os.path.join(self.files_root, 'test_create_style.sld')
+        sld_context = {'foo': 'bar'}
+        self.engine.delete_style = mock.MagicMock(side_effect=ValueError('referenced by existing'))
+
+        # Execute
+        response = self.engine.create_style(style_id, sld_template, sld_context, overwrite=True)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+        # Success
+        self.assertFalse(response['success'])
+
+        # Extract Error
+        error = response['error']
+        self.assertEqual(
+            'Unable to overwrite style due to '
+            'following error: referenced by existing', 
+            error
+        )
+
+        # Overwrite
+        self.engine.delete_style.assert_called_with(style_id, purge=True)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.log')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
+    def test_create_style_overwrite_other_delete_error(self, mock_post, mock_logger):
+        mock_post.return_value = mock.MagicMock(status_code=201)
+        style_name = 'style_name'
+        style_id = f'{self.workspace_name}:{style_name}'
+        sld_template = os.path.join(self.files_root, 'test_create_style.sld')
+        sld_context = {'foo': 'bar'}
+        self.engine.delete_style = mock.MagicMock(side_effect=ValueError('some other exception'))
+        self.engine.catalog.get_style = mock.MagicMock()
+
+        # Execute
+        response = self.engine.create_style(style_id, sld_template, sld_context, overwrite=True)
+
+        # Validate response object
+        self.assert_valid_response_object(response)
+
+                # Success
+        self.assertTrue(response['success'])
+
+        # Extract Error
+        result = response['result']
+    
+        # Type
+        self.assertIsInstance(result, dict)
+
+        # Overwrite
+        self.engine.delete_style.assert_called_with(style_id, purge=True)
+
+        # Validate log messages
+        mock_logger.warning.assert_called_with(
+            'An unexpected error occurred while '
+            'attempting to overwrite style, but '
+            'it has been ignored: some other exception'
+        )
+
+        # Create Post
+        mock_post.assert_called()
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.JDBCVirtualTable')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.JDBCVirtualTableGeometry')
@@ -3062,15 +3380,17 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         )
 
         # tiled and transparent are set as default value
-        wms_url = self.engine._get_wms_url(layer_id=self.layer_names[0],
-                                           style=self.style_names[0],
-                                           srs='EPSG:4326',
-                                           bbox='-180,-90,180,90',
-                                           version='1.1.0',
-                                           width='512',
-                                           height='512',
-                                           output_format='image/png',
-                                           tiled=False, transparent=True)
+        wms_url = self.engine._get_wms_url(
+            layer_id=self.layer_names[0],
+            style=self.style_names[0],
+            srs='EPSG:4326',
+            bbox='-180,-90,180,90',
+            version='1.1.0',
+            width='512',
+            height='512',
+            output_format='image/png',
+            tiled=False, transparent=True
+        )
 
         expected_url = 'http://localhost:8181/geoserver/wms?service=WMS&version=1.1.0&' \
                        'request=GetMap&layers={0}&styles={1}&transparent=true&' \
@@ -3284,13 +3604,15 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         url = 'postgresql://user:pass@localhost:5432/foo'
         engine = create_engine(url)
         self.engine.link_sqlalchemy_db_to_geoserver(store_id=self.store_names[0], sqlalchemy_engine=engine)
-        self.engine.create_postgis_feature_resource.assert_called_with(store_id=self.store_names[0],
-                                                                       host='localhost',
-                                                                       port=5432,
-                                                                       database='foo',
-                                                                       user='user',
-                                                                       password='pass',
-                                                                       debug=False)
+        self.engine.create_postgis_feature_resource.assert_called_with(
+            store_id=self.store_names[0],
+            host='localhost',
+            port=5432,
+            database='foo',
+            user='user',
+            password='pass',
+            debug=False
+        )
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
@@ -3369,14 +3691,16 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
                                                          workspace=self.mock_workspaces[0]))
         mock_post.return_value = MockResponse(201)
 
-        response = self.engine.create_postgis_feature_resource(store_id=store_id,
-                                                               host=host,
-                                                               port=port,
-                                                               database=database,
-                                                               user=user,
-                                                               password=password,
-                                                               table=table_name,
-                                                               debug=False)
+        response = self.engine.create_postgis_feature_resource(
+            store_id=store_id,
+            host=host,
+            port=port,
+            database=database,
+            user=user,
+            password=password,
+            table=table_name,
+            debug=False
+        )
 
         self.assertTrue(response['success'])
 
@@ -3725,3 +4049,10 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertEqual(expected_headers, post_call_args[0][1]['headers'])
 
         mc.get_store.assert_called_with(name=self.store_names[0], workspace=self.workspace_names[0])
+
+
+if __name__ == '__main__':
+    suite = unittest.TestSuite()
+    suite.addTest(TestGeoServerDatasetEngine('test_create_style'))
+    runner = unittest.TextTestRunner()
+    runner.run(suite)

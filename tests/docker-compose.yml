@@ -1,15 +1,15 @@
-version: '3'
+version: "3.3"
 services:
-  test_postgis:
-    image: "mdillon/postgis:9.6"
+  postgis:
+    image: "postgis/postgis:12-2.5"
     ports:
-      - "$POSTGIS_PORT:5432"
+      - "5432:5432"
     environment:
-      - POSTGRES_PASSWORD=$POSTGIS_PASS
-      - POSTGRES_USER=$POSTGIS_USER
+      - POSTGRES_PASSWORD=mysecretpassword
+      - POSTGRES_USER=postgres
 
-  test_geoserver:
-    image: "ciwater/geoserver:2.8.2-clustered"
+  geoserver:
+    image: "tethysplatform/geoserver"
     ports:
       - "8181:8181"
       - "8081:8081"
@@ -17,7 +17,7 @@ services:
       - "8083:8083"
       - "8084:8084"
     environment:
-      - ENABLED_NODES=1
+      - ENABLED_NODES=4
       - REST_NODES=1
       - MAX_MEMORY=512
       - MIN_MEMORY=512

@@ -1,22 +1,18 @@
+from io import StringIO
+import json
 import os
-import sys
 import random
 import string
 import unittest
-import json
-import mock
+from unittest import mock
+
 import requests
+
 from tethys_dataset_services.engines import CkanDatasetEngine
 
 
-if sys.version_info[0] == 3:
-    from io import StringIO
-else:
-    from StringIO import StringIO
-
-
 try:
-    from tethys_dataset_services.tests.test_config import TEST_CKAN_DATASET_SERVICE
+    from ..test_config import TEST_CKAN_DATASET_SERVICE
 
 except ImportError:
     print('ERROR: To perform tests, you must create a file in the "tests" package called "test_config.py". In this file'

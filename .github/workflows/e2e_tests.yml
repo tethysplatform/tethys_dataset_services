@@ -1,0 +1,71 @@
+name: End-to-End Tests
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  schedule:
+    - cron: "0 0 * * 0"
+jobs:
+  e2e-test:
+    name: E2E Test Python ${{ matrix.py }} - Postgis ${{ matrix.postgis }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        py:
+          - "3.10"
+        postgis:
+          - "9.6-2.5-alpine"
+          - "10-2.5-alpine"
+          - "11-2.5-alpine"
+          - "12-2.5-alpine"
+          # Not working on PostGIS 3.2 yet
+          # - "9.6-3.2-alpine"
+          # - "10-3.2-alpine"
+          # - "11-3.2-alpine"
+          # - "12-3.2-alpine"
+    services:
+      geoserver:
+        image: tethysplatform/geoserver
+        env:
+          ENABLED_NODES: 1
+          REST_NODES: 1
+          MAX_MEMORY: 512
+          MIN_MEMORY: 128
+          NUM_CORES: 2
+          MAX_TIMEOUT: 60
+        ports:
+          - 8181:8181
+      postgis:
+        image: postgis/postgis:${{ matrix.postgis }}
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: mysecretpassword
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.py }} for test
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.py }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip install tox tox-gh-actions
+      - name: Setup Postgis
+        run: |
+          PGPASSWORD=mysecretpassword psql -U postgres -h localhost -c "CREATE DATABASE tds_tests WITH OWNER postgres;"
+          PGPASSWORD=mysecretpassword psql -U postgres -h localhost -d tds_tests -c  "CREATE EXTENSION postgis;"
+          sleep 10
+      - name: Run tests
+        run: tox -e e2e_gs_tests

@@ -1,16 +1,16 @@
-from past.types import basestring
 from builtins import *  # noqa: F403, F401
-
+from jinja2 import Template
+import logging
 import os
 import shutil
 import pprint
 import requests
+from requests.auth import HTTPBasicAuth
 import time
 from io import BytesIO
 from xml.etree import ElementTree
 from zipfile import ZipFile, is_zipfile
 
-from requests.auth import HTTPBasicAuth
 import geoserver
 from geoserver.catalog import Catalog as GeoServerCatalog
 from geoserver.support import JDBCVirtualTable, JDBCVirtualTableGeometry, JDBCVirtualTableParam
@@ -18,6 +18,8 @@ from geoserver.util import shapefile_and_friends
 
 from ..utilities import ConvertDictToXml, ConvertXmlToDict
 from ..base import SpatialDatasetEngine
+
+log = logging.getLogger('tds.engines.geoserver')
 
 
 class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
@@ -34,6 +36,16 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
     @property
     def gwc_endpoint(self):
         return self._gwc_endpoint
+
+    @property
+    def catalog(self):
+        if not getattr(self, '_catalog', None):
+            self._catalog = GeoServerCatalog(
+                self.endpoint,
+                username=self.username,
+                password=self.password
+            )
+        return self._catalog
 
     def __init__(self, endpoint, apikey=None, username=None, password=None):
         """
@@ -58,10 +70,10 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             password=password
         )
 
-    def _apply_changes_to_gs_object(self, attributes_dict, gs_object):
-        # Catalog object
-        catalog = self._get_geoserver_catalog_object()
+    def __del__(self):
+        self.close()
 
+    def _apply_changes_to_gs_object(self, attributes_dict, gs_object):
         # Make the changes
         for attribute, value in attributes_dict.items():
             if hasattr(gs_object, attribute):
@@ -72,10 +84,10 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                         # Lookup by name and workspace
                         if ':' in style:
                             style_split = style.split(':')
-                            styles_objects.append(catalog.get_style(name=style_split[1], workspace=style_split[0]))
+                            styles_objects.append(self.catalog.get_style(name=style_split[1], workspace=style_split[0]))
                         # Lookup by name only
                         else:
-                            styles_objects.append(catalog.get_style(name=style))
+                            styles_objects.append(self.catalog.get_style(name=style))
 
                     setattr(gs_object, 'styles', styles_objects)
 
@@ -84,11 +96,11 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
                     if ':' in style:
                         style_split = style.split(':')
-                        style_object = catalog.get_style(name=style_split[1], workspace=style_split[0])
+                        style_object = self.catalog.get_style(name=style_split[1], workspace=style_split[0])
 
                     # Lookup by name only
                     else:
-                        style_object = catalog.get_style(name=style)
+                        style_object = self.catalog.get_style(name=style)
 
                     gs_object.default_style = style_object
 
@@ -122,12 +134,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         if endpoint[-5:] == '/rest':
             endpoint = endpoint[:-5]
         return endpoint
-
-    def _get_geoserver_catalog_object(self):
-        """
-        Internal method used to get the connection object to GeoServer.
-        """
-        return GeoServerCatalog(self.endpoint, username=self.username, password=self.password)
 
     def _get_wms_url(self, layer_id, style='', srs='EPSG:4326', bbox='-180,-90,180,90', version='1.1.0',
                      width='512', height='512', output_format='image/png', tiled=False, transparent=True):
@@ -203,15 +209,12 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         """
         Handle delete calls
         """
-        # Get a GeoServer catalog object and query for list of resources
-        catalog = self._get_geoserver_catalog_object()
-
         # Initialize response dictionary
         response_dict = {'success': False}
         if gs_object:
             try:
                 # Execute
-                catalog.delete(config_object=gs_object, purge=purge, recurse=recurse)
+                self.catalog.delete(config_object=gs_object, purge=purge, recurse=recurse)
 
                 # Update response dictionary
                 response_dict['success'] = True
@@ -335,7 +338,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                 elif attribute == 'catalog':
                     # Store URL in place of catalog
                     catalog_object = getattr(gs_object, 'catalog')
-                    object_dictionary[attribute] = catalog_object.gs_base_url
+                    object_dictionary[attribute] = catalog_object.service_url
 
                 elif attribute == 'styles':
                     styles = getattr(gs_object, attribute)
@@ -343,7 +346,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
                     for style in styles:
                         if style is not None:
-                            if not isinstance(style, basestring):
+                            if not isinstance(style, str):
                                 if style.workspace:
                                     styles_names.append('{0}:{1}'.format(style.workspace, style.name))
                                 else:
@@ -537,6 +540,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         return object_dictionary
 
+    def close(self):
+        self.catalog.client.close()
+
     def list_resources(self, with_properties=False, store=None, workspace=None, debug=False):
         """
         List the names of all resources available from the spatial dataset service.
@@ -559,10 +565,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
           response = engine.list_resource(with_properties=True, workspace="example_workspace")
 
         """
-        # Get a GeoServer catalog object and query for list of resources
-        catalog = self._get_geoserver_catalog_object()
         try:
-            resource_objects = catalog.get_resources(store=store, workspace=workspace)
+            resource_objects = self.catalog.get_resources(stores=store, workspaces=workspace)
             return self._handle_list(resource_objects, with_properties, debug)
         except geoserver.catalog.AmbiguousRequestError as e:
             response_object = {'success': False,
@@ -590,9 +594,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           response = engine.list_layers(with_properties=True)
         """
-        # Get a GeoServer catalog object and query for list of layers
-        catalog = self._get_geoserver_catalog_object()
-        layer_objects = catalog.get_layers()
+        layer_objects = self.catalog.get_layers()
         return self._handle_list(layer_objects, with_properties, debug)
 
     def list_layer_groups(self, with_properties=False, debug=False):
@@ -612,9 +614,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           response = engine.list_layer_groups(with_properties=True)
         """
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
-        layer_group_objects = catalog.get_layergroups()
+        layer_group_objects = self.catalog.get_layergroups()
         return self._handle_list(layer_group_objects, with_properties, debug)
 
     def list_workspaces(self, with_properties=False, debug=False):
@@ -634,9 +634,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           response = engine.list_workspaces(with_properties=True)
         """
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
-        workspaces = catalog.get_workspaces()
+        workspaces = self.catalog.get_workspaces()
         return self._handle_list(workspaces, with_properties, debug)
 
     def list_stores(self, workspace=None, with_properties=False, debug=False):
@@ -657,11 +655,13 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           response = engine.list_stores(workspace='example_workspace", with_properties=True)
         """
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
+        if workspace is None:
+            workspace = []
+        elif isinstance(workspace, str):
+            workspace = [workspace]
 
         try:
-            stores = catalog.get_stores(workspace=workspace)
+            stores = self.catalog.get_stores(workspaces=workspace)
             return self._handle_list(stores, with_properties, debug)
 
         except AttributeError:
@@ -688,9 +688,12 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           response = engine.list_styles(with_properties=True)
         """
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
-        styles = catalog.get_styles(workspace=workspace)
+        if workspace is None:
+            workspace = []
+        elif isinstance(workspace, str):
+            workspace = [workspace]
+
+        styles = self.catalog.get_styles(workspaces=workspace)
         return self._handle_list(styles, with_properties, debug)
 
     def get_resource(self, resource_id, store_id=None, debug=False):
@@ -712,19 +715,16 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
           response = engine.get_resource('resource_name', store='example_store')
 
         """
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
-
         # Process identifier
         workspace, name = self._process_identifier(resource_id)
 
         # Get default work space if none is given
         if not workspace:
-            workspace = catalog.get_default_workspace().name
+            workspace = self.catalog.get_default_workspace().name
 
         # Get resource
         try:
-            resource = catalog.get_resource(name=name, store=store_id, workspace=workspace)
+            resource = self.catalog.get_resource(name=name, store=store_id, workspace=workspace)
             if not resource:
                 response_dict = {'success': False,
                                  'error': 'Resource "{0}" not found.'.format(resource_id)}
@@ -760,12 +760,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           response = engine.get_layer('workspace_name:layer_name')
         """
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
-
         try:
             # Get layer
-            layer = catalog.get_layer(name=layer_id)
+            layer = self.catalog.get_layer(name=layer_id)
             if layer and store_id:
                 layer.store = store_id
             if not layer:
@@ -813,13 +810,20 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           response = engine.get_layer_group('workspace_name:layer_group_name')
         """
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
         workspace, name = self._process_identifier(layer_group_id)
 
+        # If workspaces is passed as None, get_layergroups will return as None
+        if workspace is None:
+            workspaces = []
+        else:
+            workspaces = [workspace]
+
         try:
-            # Get resource
-            layer_group = catalog.get_layergroup(name=name, workspace=workspace)
+            # Get layer group
+            # Using get_layergroups instead of get_layergroup b/c get_layergroup
+            # cannot handle the case where workspaces is None (always returns None)
+            layer_groups = self.catalog.get_layergroups(names=name, workspaces=workspaces)
+            layer_group = self.catalog._return_first_item(layer_groups)
 
             if not layer_group:
                 response_dict = {'success': False,
@@ -856,19 +860,16 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           response = engine.get_store('workspace_name:store_name')
         """
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
-
         # Process identifier
         workspace, name = self._process_identifier(store_id)
 
         # Get default work space if none is given
         if not workspace:
-            workspace = catalog.get_default_workspace().name
+            workspace = self.catalog.get_default_workspace().name
 
         try:
             # Get resource
-            store = catalog.get_store(name=name, workspace=workspace)
+            store = self.catalog.get_store(name=name, workspace=workspace)
 
             if not store:
                 response_dict = {'success': False,
@@ -903,12 +904,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           response = engine.get_workspace('workspace_name')
         """
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
-
         try:
             # Get resource
-            workspace = catalog.get_workspace(name=workspace_id)
+            workspace = self.catalog.get_workspace(name=workspace_id)
 
             if not workspace:
                 response_dict = {'success': False,
@@ -944,19 +942,16 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
           response = engine.get_style('style_name')
 
         """
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
-
         # Process identifier
         workspace, name = self._process_identifier(style_id)
 
         # Get default work space if none is given
         if not workspace:
-            workspace = catalog.get_default_workspace().name
+            workspace = self.catalog.get_default_workspace().name
 
         try:
             # Get style
-            style = catalog.get_style(name=name, workspace=workspace)
+            style = self.catalog.get_style(name=name, workspace=workspace)
 
             if not style:
                 response_dict = {'success': False,
@@ -1031,18 +1026,15 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
           response = engine.create_postgis_resource(store_id='workspace:store_name', host='localhost', port='5432', database='database_name', user='user', password='pass')  # noqa: E501
 
         """
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
-
         # Process identifier
         workspace, name = self._process_identifier(store_id)
 
         # Get default work space if none is given
         if not workspace:
-            workspace = catalog.get_default_workspace().name
+            workspace = self.catalog.get_default_workspace().name
 
         # Determine if store exists
-        store = catalog.get_store(name=name, workspace=workspace)
+        store = self.catalog.get_store(name=name, workspace=workspace)
         store_exists = store is not None
 
         # Create the store if it doesn't exist already
@@ -1071,10 +1063,12 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             url = self._assemble_url('workspaces', workspace, 'datastores')
 
             # Execute: POST /workspaces/<ws>/datastores
-            response = requests.post(url=url,
-                                     data=xml,
-                                     headers=headers,
-                                     auth=HTTPBasicAuth(username=self.username, password=self.password))
+            response = requests.post(
+                url=url,
+                data=xml,
+                headers=headers,
+                auth=HTTPBasicAuth(username=self.username, password=self.password)
+            )
 
             # Return with error if this doesn't work
             if response.status_code != 201:
@@ -1093,7 +1087,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             while attempts < MAX_ATTEMPTS:
                 attempts += 1
                 try:
-                    new_store = catalog.get_store(name=name, workspace=workspace)
+                    new_store = self.catalog.get_store(name=name, workspace=workspace)
                     if not new_store:
                         raise geoserver.catalog.FailedRequestError()
 
@@ -1110,7 +1104,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         # Throw error if resource already exists
         try:
-            resource = catalog.get_resource(name=table, store=name, workspace=workspace)
+            resource = self.catalog.get_resource(name=table, store=name, workspace=workspace)
             if resource:
                 message = "There is already a resource named " + table
 
@@ -1143,10 +1137,12 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         url = self._assemble_url('workspaces', workspace, 'datastores', name, 'featuretypes')
 
         # Execute: POST /workspaces/<ws>/datastores/<ds>/featuretypes
-        response = requests.post(url=url,
-                                 data=xml,
-                                 headers=headers,
-                                 auth=HTTPBasicAuth(username=self.username, password=self.password))
+        response = requests.post(
+            url=url,
+            data=xml,
+            headers=headers,
+            auth=HTTPBasicAuth(username=self.username, password=self.password)
+        )
 
         # Handle failure
         if response.status_code != 201:
@@ -1157,7 +1153,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             return response_dict
 
         # Wrap up successfully
-        new_resource = catalog.get_resource(name=table, store=name, workspace=workspace)
+        new_resource = self.catalog.get_resource(name=table, store=name, workspace=workspace)
         resource_dict = self._transcribe_geoserver_object(new_resource)
 
         response_dict = {'success': True,
@@ -1181,19 +1177,16 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           response = engine.add_table_to_postgis_store(store_id='workspace:store_name', table='table_name')
         """
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
-
         # Process identifier
         workspace, name = self._process_identifier(store_id)
 
         # Get default work space if none is given
         if not workspace:
-            workspace = catalog.get_default_workspace().name
+            workspace = self.catalog.get_default_workspace().name
 
         # Throw error store does not exist
         try:
-            catalog.get_store(name=name, workspace=workspace)
+            self.catalog.get_store(name=name, workspace=workspace)
         except geoserver.catalog.FailedRequestError:
             message = "There is no store named " + name
             if workspace:
@@ -1222,10 +1215,12 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         url = self._assemble_url('workspaces', workspace, 'datastores', name, 'featuretypes')
 
         # Execute: POST /workspaces/<ws>/datastores
-        response = requests.post(url=url,
-                                 data=xml,
-                                 headers=headers,
-                                 auth=HTTPBasicAuth(username=self.username, password=self.password))
+        response = requests.post(
+            url=url,
+            data=xml,
+            headers=headers,
+            auth=HTTPBasicAuth(username=self.username, password=self.password)
+        )
 
         if response.status_code != 201:
             response_dict = {'success': False,
@@ -1235,7 +1230,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             return response_dict
 
         # Wrap up successfully
-        new_store = catalog.get_store(name=name, workspace=workspace)
+        new_store = self.catalog.get_store(name=name, workspace=workspace)
         resource_dict = self._transcribe_geoserver_object(new_store)
 
         response_dict = {'success': True,
@@ -1281,14 +1276,11 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             )
 
         """  # noqa: E501, W605
-        # Get a catalog object
-        catalog = self._get_geoserver_catalog_object()
-
         # Process identifier
         store_workspace_name, store_name = self._process_identifier(postgis_store_id)
 
         # Get Existing PostGIS Store
-        store = catalog.get_store(store_name, workspace=store_workspace_name)
+        store = self.catalog.get_store(store_name, workspace=store_workspace_name)
 
         # Define virtual table / sql view
         epsg_code = 'EPSG:{0}'.format(geometry_srid)
@@ -1303,10 +1295,10 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         sql_view = JDBCVirtualTable(feature_type_name, sql, 'false', geometry, key_column, parameters)
 
         # Publish Feature Type
-        catalog.publish_featuretype(feature_type_name, store, epsg_code, jdbc_virtual_table=sql_view)
+        self.catalog.publish_featuretype(feature_type_name, store, epsg_code, jdbc_virtual_table=sql_view)
 
         # Wrap Up
-        r_feature_layer = catalog.get_layer(feature_type_name)
+        r_feature_layer = self.catalog.get_layer(feature_type_name)
 
         if default_style_id is None:
             resource_dict = self._transcribe_geoserver_object(r_feature_layer)
@@ -1317,9 +1309,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         # Associate Style
         style_workspace, style_name = self._process_identifier(default_style_id)
-        style = catalog.get_style(style_name, workspace=style_workspace)
+        style = self.catalog.get_style(style_name, workspace=style_workspace)
         r_feature_layer.default_style = style
-        catalog.save(r_feature_layer)
+        self.catalog.save(r_feature_layer)
         resource_dict = self._transcribe_geoserver_object(r_feature_layer)
         response_dict = {'success': True,
                          'result': resource_dict}
@@ -1329,9 +1321,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
     def create_shapefile_resource(self, store_id, shapefile_base=None, shapefile_zip=None, shapefile_upload=None,
                                   overwrite=False, charset=None, debug=False):
         """
-         Use this method to add shapefile resources to GeoServer.
+        Use this method to add shapefile resources to GeoServer.
 
-         This method will result in the creation of three items: a feature type store, a feature type resource, and a layer. If store_id references a store that does not exist, it will be created. The feature type resource and the subsequent layer will be created with the same name as the feature type store. Provide shapefile with either shapefile_base, shapefile_zip, or shapefile_upload arguments.  # noqa: E501
+        This method will result in the creation of three items: a feature type store, a feature type resource, and a layer. If store_id references a store that does not exist, it will be created. The feature type resource and the subsequent layer will be created with the same name as the feature type store. Provide shapefile with either shapefile_base, shapefile_zip, or shapefile_upload arguments.  # noqa: E501
 
         Args:
           store_id (string): Identifier for the store to add the resource to. Can be a store name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.  # noqa: E501
@@ -1386,20 +1378,17 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         elif shapefile_zip and shapefile_upload:
             raise ValueError(arg_value_error_msg + '"shapefile_zip" and "shapefile_upload" given.')
 
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
-
         # Process identifier
         workspace, name = self._process_identifier(store_id)
 
         # Get default work space if none is given
         if not workspace:
-            workspace = catalog.get_default_workspace().name
+            workspace = self.catalog.get_default_workspace().name
 
         # Throw error if overwrite is not true and store already exists
         if not overwrite:
             try:
-                catalog.get_store(name=name, workspace=workspace)
+                self.catalog.get_store(name=name, workspace=workspace)
                 message = "There is already a store named " + name
                 if workspace:
                     message += " in " + workspace
@@ -1468,11 +1457,13 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             params['update'] = 'overwrite'
 
         # Execute: PUT /workspaces/<ws>/datastores/<ds>/file.shp
-        response = requests.put(url=url,
-                                files=files,
-                                headers=headers,
-                                params=params,
-                                auth=HTTPBasicAuth(username=self.username, password=self.password))
+        response = requests.put(
+            url=url,
+            files=files,
+            headers=headers,
+            params=params,
+            auth=HTTPBasicAuth(username=self.username, password=self.password)
+        )
 
         # Clean up file stuff
         if shapefile_base or shapefile_zip:
@@ -1503,7 +1494,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             resource_id = name
 
         # Wrap up successfully
-        new_resource = catalog.get_resource(name=resource_id, store=name, workspace=workspace)
+        new_resource = self.catalog.get_resource(name=resource_id, store=name, workspace=workspace)
         resource_dict = self._transcribe_geoserver_object(new_resource)
 
         response_dict = {'success': True,
@@ -1568,20 +1559,17 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             raise ValueError('"{0}" is not a valid coverage_type. Use either {1}'.format(
                 coverage_type, ', '.join(VALID_COVERAGE_TYPES)))
 
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
-
         # Process identifier
         workspace, store_name = self._process_identifier(store_id)
 
         # Get default work space if none is given
         if not workspace:
-            workspace = catalog.get_default_workspace().name
+            workspace = self.catalog.get_default_workspace().name
 
         # Throw error if overwrite is not true and store already exists
         if not overwrite:
             try:
-                catalog.get_store(name=store_name, workspace=workspace)
+                self.catalog.get_store(name=store_name, workspace=workspace)
                 message = "There is already a store named " + store_name
                 if workspace:
                     message += " in " + workspace
@@ -1764,12 +1752,14 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             params['update'] = 'overwrite'
 
         # Execute: PUT /workspaces/<ws>/datastores/<ds>/file.shp
-        response = requests.put(url=url,
-                                files=files,
-                                data=data,
-                                headers=headers,
-                                params=params,
-                                auth=(self.username, self.password))
+        response = requests.put(
+            url=url,
+            files=files,
+            data=data,
+            headers=headers,
+            params=params,
+            auth=(self.username, self.password)
+        )
 
         # Clean up
         if coverage_file:
@@ -1794,7 +1784,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # NOTE: On success response returns xml representation of object, which we don't handle currently
         # So we use gsconfg to get the resource object
         if query_after_success:
-            new_resource = catalog.get_resource(name=coverage_name, store=store_name, workspace=workspace)
+            new_resource = self.catalog.get_resource(name=coverage_name, store=store_name, workspace=workspace)
             resource_dict = self._transcribe_geoserver_object(new_resource)
         else:
             resource_dict = None
@@ -1828,8 +1818,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           response = engine.create_layer_group(layer_group_id='layer_group_name', layers=layers, styles=styles, bounds=bounds)  # noqa: E501
         """
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
         workspace, name = self._process_identifier(layer_group_id)
 
         # Response dictionary
@@ -1837,8 +1825,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         # Create layer group
         try:
-            layer_group = catalog.create_layergroup(name, layers, styles, bounds, workspace=workspace)
-            catalog.save(layer_group)
+            layer_group = self.catalog.create_layergroup(name, layers, styles, bounds, workspace=workspace)
+            self.catalog.save(layer_group)
 
             layer_group_dict = self._transcribe_geoserver_object(layer_group)
 
@@ -1872,13 +1860,10 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           response = engine.create_workspace(workspace_id='workspace_name', uri='www.example.com/workspace_name')
         """
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
-
         # Create workspace
         try:
             # Do create
-            workspace = catalog.create_workspace(workspace_id, uri)
+            workspace = self.catalog.create_workspace(workspace_id, uri)
             workspace_dict = self._transcribe_geoserver_object(workspace)
             response_dict = {'success': True,
                              'result': workspace_dict}
@@ -1890,13 +1875,14 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         self._handle_debug(response_dict, debug)
         return response_dict
 
-    def create_style(self, style_id, sld, overwrite=False, debug=False):
+    def create_style(self, style_id, sld_template, sld_context=None, overwrite=False, debug=False):
         """
         Create a new SLD style object.
 
         Args:
-          style_id (string): Identifier of the style to create.
-          sld (string): Styled Layer Descriptor string
+          style_id (string): Identifier of the style to create ('<workspace>:<name>').
+          sld_template: path to SLD template file.
+          sld_context: a dictionary with context variables to be rendered in the template.
           overwrite (bool, optional): Overwrite if style already exists. Defaults to False.
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
@@ -1906,51 +1892,77 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Examples:
 
           sld = '/path/to/style.sld'
-
-          sld_file = open(sld, 'r')
-
-          response = engine.create_style(style_id='fred', sld=sld_file.read(), debug=True)
-
-          sld_file.close()
+          response = engine.create_style(style_id='fred', sld_template=sld, debug=True)
         """
-        # Get a GeoServer catalog object
-        catalog = self._get_geoserver_catalog_object()
-
         # Process identifier
         workspace, name = self._process_identifier(style_id)
 
-        # Create workspace
-        try:
-            # Do create
-            num_attempts = 0
+        if workspace is None:
+            url = self.endpoint + 'styles'
+        else:
+            url = self.endpoint + 'workspaces/' + workspace + '/styles'
 
-            while True:
-                try:
-                    catalog.create_style(name=name,
-                                         data=sld,
-                                         workspace=workspace,
-                                         overwrite=overwrite)
-                    break
+        if overwrite:
+            try:
+                self.delete_style(style_id, purge=True)
+            except Exception as e:
+                if 'referenced by existing' in str(e):
+                    msg = f"Unable to overwrite style due to following error: {str(e)}"
+                    log.error(msg)
+                    response_dict = {
+                        'success': False,
+                        'error': msg
+                    }
+                    return response_dict
+                else:
+                    log.warning(f'An unexpected error occurred while '
+                                f'attempting to overwrite style, but '
+                                f'it has been ignored: {str(e)}')
 
-                except geoserver.catalog.UploadError as e:
-                    num_attempts += 1
+        # Use post request to create style container first
+        headers = {'Content-type': 'application/vnd.ogc.sld+xml'}
 
-                    if num_attempts >= 5:
-                        raise e
+        # Render the SLD template
+        with open(sld_template, 'r') as sld_file:
+            text = sld_file.read()
 
-            style = catalog.get_style(name=name, workspace=workspace)
+        if sld_context is not None:
+            template = Template(text)
+            text = template.render(sld_context)
 
+        response = requests.post(
+            url,
+            headers=headers,
+            auth=(self.username, self.password),
+            params={'name': name},
+            data=text
+        )
+
+        # Raise an exception if status code is not what we expect
+        if response.status_code == 201:
+            log.info('Successfully created style {}'.format(name))
+            style = self.catalog.get_style(name=name, workspace=workspace)
             style_dict = self._transcribe_geoserver_object(style)
             response_dict = {'success': True,
                              'result': style_dict}
-
-        except AssertionError as e:
-            response_dict = {'success': False,
-                             'error': str(e)}
-
-        except geoserver.catalog.ConflictingDataError as e:
-            response_dict = {'success': False,
-                             'error': str(e)}
+        else:
+            msg = 'Create Style Status Code {0}: {1}'.format(response.status_code, response.text)
+            if response.status_code == 500:
+                if 'Unable to find style for event' in response.text or 'Error persisting' in response.text:
+                    msg = 'Created style {} with warnings: {}'.format(name, response.text)
+                    log.warning(msg)
+                    response_dict = {'success': True,
+                                     'result': {'warning': msg}}
+                else:
+                    exception = requests.RequestException(msg, response=response)
+                    log.error(msg)
+                    response_dict = {'success': False,
+                                     'error': str(exception)}
+            else:
+                exception = requests.RequestException(msg, response=response)
+                log.error(msg)
+                response_dict = {'success': False,
+                                 'error': str(exception)}
 
         self._handle_debug(response_dict, debug)
         return response_dict
@@ -1972,25 +1984,22 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           response = engine.update_resource(resource_id='workspace:resource_name', enabled=False, title='New Title')
         """
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
-
         # Process identifier
         workspace, name = self._process_identifier(resource_id)
 
         # Get default work space if none is given
         if not workspace:
-            workspace = catalog.get_default_workspace().name
+            workspace = self.catalog.get_default_workspace().name
 
         try:
             # Get resource
-            resource = catalog.get_resource(name=name, store=store, workspace=workspace)
+            resource = self.catalog.get_resource(name=name, store=store, workspace=workspace)
 
             # Make the changes
             updated_resource = self._apply_changes_to_gs_object(kwargs, resource)
 
             # Save the changes
-            catalog.save(updated_resource)
+            self.catalog.save(updated_resource)
 
             # Return the updated resource dictionary
             resource_dict = self._transcribe_geoserver_object(updated_resource)
@@ -2025,18 +2034,15 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Pop tile caching properties to handle separately
         tile_caching = kwargs.pop('tile_caching', None)
 
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
-
         try:
             # Get resource
-            layer = catalog.get_layer(name=layer_id)
+            layer = self.catalog.get_layer(name=layer_id)
 
             # Apply changes from kwargs
             updated_layer = self._apply_changes_to_gs_object(kwargs, layer)
 
             # Save the changes
-            catalog.save(updated_layer)
+            self.catalog.save(updated_layer)
 
             # Return the updated resource dictionary
             layer_dict = self._transcribe_geoserver_object(updated_layer)
@@ -2089,13 +2095,11 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           updated_layer_group = engine.update_layer_group(layer_group_id='layer_group_name', layers=['layer1', 'layer2'], styles=['style1', 'style2'])  # noqa: E501
         """
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
         workspace, name = self._process_identifier(layer_group_id)
 
         try:
             # Get resource
-            layer_group = catalog.get_layergroup(name=name, workspace=workspace)
+            layer_group = self.catalog.get_layergroup(name=name, workspace=workspace)
 
             # Make the changes
             for attribute, value in kwargs.items():
@@ -2103,7 +2107,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                     setattr(layer_group, attribute, value)
 
             # Save the changes
-            catalog.save(layer_group)
+            self.catalog.save(layer_group)
 
             # Return the updated resource dictionary
             layer_group_dict = self._transcribe_geoserver_object(layer_group)
@@ -2137,16 +2141,14 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           response = engine.delete_resource('workspace:resource_name')
         """
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
         workspace, name = self._process_identifier(resource_id)
 
         # Get default work space if none is given
         if not workspace:
-            workspace = catalog.get_default_workspace().name
+            workspace = self.catalog.get_default_workspace().name
 
         # Get resource
-        resource = catalog.get_resource(name=name, store=store_id, workspace=workspace)
+        resource = self.catalog.get_resource(name=name, store=store_id, workspace=workspace)
 
         # Handle delete
         return self._handle_delete(identifier=name, gs_object=resource, purge=purge,
@@ -2170,11 +2172,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           response = engine.delete_layer('workspace:layer_name')
         """
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
-
         # Get resource
-        layer = catalog.get_layer(name=layer_id)
+        layer = self.catalog.get_layer(name=layer_id)
         if layer and store_id:
             layer.store = store_id
 
@@ -2199,12 +2198,10 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           response = engine.delete_layer_group('layer_group_name')
         """
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
         workspace, name = self._process_identifier(layer_group_id)
 
         # Get layer group
-        layer_group = catalog.get_layergroup(name=name, workspace=workspace)
+        layer_group = self.catalog.get_layergroup(name=name, workspace=workspace)
 
         # Handle delete
         return self._handle_delete(identifier=layer_group_id, gs_object=layer_group, purge=purge,
@@ -2227,11 +2224,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           response = engine.delete_resource('workspace_name')
         """
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
-
         # Get layer group
-        workspace = catalog.get_workspace(workspace_id)
+        workspace = self.catalog.get_workspace(workspace_id)
 
         # Handle delete
         return self._handle_delete(identifier=workspace_id, gs_object=workspace, purge=purge,
@@ -2254,19 +2248,16 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           response = engine.delete_store('workspace:store_name')
         """
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
-
         # Process identifier
         workspace, name = self._process_identifier(store_id)
 
         # Get default work space if none is given
         if not workspace:
-            workspace = catalog.get_default_workspace().name
+            workspace = self.catalog.get_default_workspace().name
 
         # Get layer group
         try:
-            store = catalog.get_store(name=name, workspace=workspace)
+            store = self.catalog.get_store(name=name, workspace=workspace)
 
             # Handle delete
             return self._handle_delete(identifier=store_id, gs_object=store, purge=purge,
@@ -2296,15 +2287,12 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           response = engine.delete_resource('style_name')
         """
-        # Get a GeoServer catalog object and query for list of layer groups
-        catalog = self._get_geoserver_catalog_object()
-
         # Process identifier
         workspace, name = self._process_identifier(style_id)
 
         # Get layer group
         try:
-            style = catalog.get_style(name=name, workspace=workspace)
+            style = self.catalog.get_style(name=name, workspace=workspace)
 
             # Handle delete
             return self._handle_delete(identifier=style_id, gs_object=style, purge=purge,

@@ -8,5 +8,10 @@
 *.db
 *.egg-info
 *.coverage
+.pytest_cache
+.tox
+dist
+build
 tethys_datasets/temp/*
-tethys_datasets/tests/test_config.py
+tests/test_config.py
+.vscode
