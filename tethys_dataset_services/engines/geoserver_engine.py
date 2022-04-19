@@ -1,8 +1,10 @@
-from builtins import *  # noqa: F403, F401
+from builtins import *
+from re import S  # noqa: F403, F401
 from jinja2 import Template
 import logging
 import os
 import shutil
+import tempfile
 import pprint
 import requests
 from requests.auth import HTTPBasicAuth
@@ -26,6 +28,44 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
     """
     Definition for GeoServer Dataset Engine objects.
     """
+    XML_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'resources', 'geoserver', 'xml_templates')
+
+    GWC_OP_SEED = 'seed'
+    GWC_OP_RESEED = 'reseed'
+    GWC_OP_TRUNCATE = 'truncate'
+    GWC_OP_MASS_TRUNCATE = 'masstruncate'
+    GWC_OPERATIONS = (GWC_OP_SEED, GWC_OP_RESEED, GWC_OP_TRUNCATE, GWC_OP_MASS_TRUNCATE)
+
+    GWC_KILL_ALL = 'all'
+    GWC_KILL_RUNNING = 'running'
+    GWC_KILL_PENDING = 'pending'
+    GWC_KILL_OPERATIONS = (GWC_KILL_ALL, GWC_KILL_PENDING, GWC_KILL_RUNNING)
+
+    # coverage types
+    CT_AIG = 'AIG'
+    CT_ARC_GRID = 'ArcGrid'
+    CT_DTED = 'DTED'
+    CT_ECW = 'ECW'
+    CT_EHDR = 'EHdr'
+    CT_ENVIHDR = 'ENVIHdr'
+    CT_ERDASIMG = 'ERDASImg'
+    CT_GEOTIFF = 'GeoTIFF'
+    CT_GRASS_GRID = 'GrassGrid'
+    CT_GTOPO30 = 'Gtopo30'
+    CT_IMAGE_MOSAIC = 'ImageMosaic'
+    CT_IMAGE_PYRAMID = 'ImagePyramid'
+    CT_JP2MRSID = 'JP2MrSID'
+    CT_MRSID = 'MrSID'
+    CT_NETCDF = 'NetCDF'
+    CT_NITF = 'NITF'
+    CT_RPFTOC = 'RPFTOC'
+    CT_RST = 'RST'
+    CT_WORLD_IMAGE = 'WorldImage'
+
+    VALID_COVERAGE_TYPES = (CT_AIG, CT_ARC_GRID, CT_DTED, CT_ECW, CT_EHDR, CT_ENVIHDR, CT_ERDASIMG, CT_GEOTIFF,
+                            CT_GRASS_GRID, CT_GTOPO30, CT_IMAGE_MOSAIC, CT_IMAGE_PYRAMID, CT_JP2MRSID, CT_MRSID,
+                            CT_NETCDF, CT_NITF, CT_RPFTOC, CT_RST, CT_WORLD_IMAGE)
+
     @property
     def type(self):
         """
@@ -47,7 +87,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             )
         return self._catalog
 
-    def __init__(self, endpoint, apikey=None, username=None, password=None):
+    def __init__(self, endpoint, apikey=None, username=None, password=None, public_endpoint=None):
         """
         Default constructor for Dataset Engines.
 
@@ -58,6 +98,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
           password (string, optional): Password that will be used to authenticate with the dataset service.
         """
         # Set custom property /geoserver/rest/ -> /geoserver/gwc/rest/
+        if public_endpoint:
+            self.public_endpoint = public_endpoint
         if '/' == endpoint[-1]:
             self._gwc_endpoint = endpoint.replace('rest', 'gwc/rest')
         else:
@@ -540,8 +582,130 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         return object_dictionary
 
+    def get_gwc_endpoint(self, public=True):
+        """
+        Returns the GeoServer endpoint for GWC services (with trailing slash).
+
+        Args:
+            public (bool): return with the public endpoint if True.
+        """
+        if public and hasattr(self, 'public_endpoint'):
+            gs_endpoint = self.public_endpoint.replace('rest', 'gwc/rest')
+        else:
+            gs_endpoint = self._gwc_endpoint
+
+        # Add trailing slash for consistency.
+        if gs_endpoint[-1] != '/':
+            gs_endpoint += '/'
+
+        return gs_endpoint
+
+    def get_ows_endpoint(self, workspace, public=True):
+        """
+        Returns the GeoServer endpoint for OWS services (with trailing slash).
+
+        Args:
+            workspace (str): the name of the workspace
+            public (bool): return with the public endpoint if True.
+        """
+        gs_endpoint = self.public_endpoint if public and hasattr(self, 'public_endpoint') else self.endpoint
+        gs_endpoint = gs_endpoint.replace('rest', '{0}/ows'.format(workspace))
+
+        # Add trailing slash for consistency.
+        if gs_endpoint[-1] != '/':
+            gs_endpoint += '/'
+        return gs_endpoint
+
+    def get_wms_endpoint(self, public=True):
+        """
+        Returns the GeoServer endpoint for WMS services (with trailing slash).
+
+        Args:
+            public (bool): return with the public endpoint if True.
+        """
+        gs_endpoint = self.public_endpoint if public and hasattr(self, 'public_endpoint') else self.endpoint
+        gs_endpoint = gs_endpoint.replace('rest', 'wms')
+
+        # Add trailing slash for consistency.
+        if gs_endpoint[-1] != '/':
+            gs_endpoint += '/'
+        return gs_endpoint
+
     def close(self):
         self.catalog.client.close()
+
+    def reload(self, ports=None, public=True):
+        """
+        Reload the configuration from disk.
+
+        Args:
+            ports (iterable): A tuple or list of integers representing the ports on which different instances of
+                              GeoServer are running in a clustered GeoServer configuration.
+            public (bool): Use the public geoserver endpoint if True, otherwise use the internal endpoint.
+        """
+        urls = []
+        gs_endpoint = self.public_endpoint if public and hasattr(self, 'public_endpoint') else self.endpoint
+
+        if ports is not None:
+            gs_endpoint_template = gs_endpoint.replace('8181', '{0}')
+            for port in ports:
+                urls.append(gs_endpoint_template.format(port) + 'reload')
+        else:
+            urls.append(gs_endpoint + 'reload')
+
+        log.debug("Catalog Reload URLS: {0}".format(urls))
+
+        for url in urls:
+            try:
+                response = requests.post(url, auth=(self.username, self.password))
+
+                if response.status_code != 200:
+                    msg = "Catalog Reload Status Code {0}: {1}".format(response.status_code, response.text)
+                    exception = requests.RequestException(msg, response=response)
+                    log.error(exception)
+            except requests.ConnectionError:
+                log.warning('Catalog could not be reloaded on a GeoServer node.')
+
+    def gwc_reload(self, ports=None, public=True):
+        """
+                Reload the GeoWebCache configuration from disk.
+
+                Args:
+                    ports (iterable): A tuple or list of integers representing the ports on which different instances of
+                                      GeoServer are running in a clustered GeoServer configuration.
+                    public (bool): Use the public geoserver endpoint if True, otherwise use the internal
+                                            endpoint.
+                """
+        urls = []
+        gwc_endpoint = self.get_gwc_endpoint(public=public)
+
+        if ports is not None:
+            gs_endpoint_template = gwc_endpoint.replace('8181', '{0}')
+            for port in ports:
+                urls.append(gs_endpoint_template.format(port) + 'reload')
+        else:
+            urls.append(gwc_endpoint + 'reload')
+
+        log.debug("GeoWebCache Reload URLS: {0}".format(urls))
+
+        for url in urls:
+            retries_remaining = 3
+            while retries_remaining > 0:
+                try:
+                    response = requests.post(url, auth=(self.username, self.password))
+
+                    if response.status_code != 200:
+                        msg = "GeoWebCache Reload Status Code {0}: {1}".format(response.status_code, response.text)
+                        exception = requests.RequestException(msg, response=response)
+                        log.error(exception)
+                        retries_remaining -= 1
+                        continue
+
+                except requests.ConnectionError:
+                    log.warning('GeoWebCache could not be reloaded on a GeoServer node.')
+                    retries_remaining -= 1
+
+                break
 
     def list_resources(self, with_properties=False, store=None, workspace=None, debug=False):
         """
@@ -971,7 +1135,55 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         self._handle_debug(response_dict, debug)
         return response_dict
 
-    def link_sqlalchemy_db_to_geoserver(self, store_id, sqlalchemy_engine, docker=False, debug=False,
+    def get_layer_extent(self, workspace, datastore_name, feature_name, native=False, buffer_factor=1.000001):
+        """
+        Get the legend extent for the given layer.
+
+        Args:
+            workspace: Name of the workspace to which all of the styles and layers belong or will belong to.
+            datastore_name: Name of a GeoServer data store (assumption: the datastore belongs to the workspace).
+            feature_name: Name of the feature type. Will also be used to name the layer.
+            native (bool): True if the native projection extent should be used. Defaults to False.
+            buffer_factor(float): Apply a buffer around the bounding box.
+        """
+
+        url = (self.endpoint + 'workspaces/' + workspace + '/datastores/' + datastore_name
+               + '/featuretypes/' + feature_name + '.json')
+
+        response = requests.get(url, auth=(self.username, self.password))
+
+        if response.status_code != 200:
+            msg = "Get Layer Extent Status Code {0}: {1}".format(response.status_code, response.text)
+            exception = requests.RequestException(msg, response=response)
+            log.error(exception)
+            raise exception
+
+        # Get the JSON
+        json = response.json()
+
+        # Default bounding box
+        bbox = None
+        extent = [-128.583984375, 22.1874049914, -64.423828125, 52.1065051908]
+
+        # Extract bounding box
+        if 'featureType' in json:
+            if native:
+                if 'nativeBoundingBox' in json['featureType']:
+                    bbox = json['featureType']['nativeBoundingBox']
+            else:
+                if 'latLonBoundingBox' in json['featureType']:
+                    bbox = json['featureType']['latLonBoundingBox']
+
+        if bbox is not None:
+            # minx, miny, maxx, maxy
+            extent = [bbox['minx'] / buffer_factor, bbox['miny'] / buffer_factor,
+                      bbox['maxx'] * buffer_factor, bbox['maxy'] * buffer_factor]
+
+        return extent
+
+    def link_sqlalchemy_db_to_geoserver(self, store_id, sqlalchemy_engine, max_connections=5, 
+                                        max_connection_idle_time=30, evictor_run_periodicity=30, 
+                                        validate_connections=True, docker=False, debug=False,
                                         docker_ip_address='172.17.0.1'):
         """
         Helper function to simplify linking postgis databases to geoservers using the sqlalchemy engine object.
@@ -981,35 +1193,44 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
           sqlalchemy_engine (sqlalchemy_engine): An SQLAlchemy engine object.
           docker (bool, optional): Set to True if the database and geoserver are running in a Docker container. Defaults to False.  # noqa: E501
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
-          docker_ip_address (str, optional): Override the docker network ip address. Defaults to '172.17.41.1'.
+          docker_ip_address (str, optional): Override the docker network ip address. Defaults to '172.17.0.1'.
 
         Returns:
           (dict): Response dictionary
         """
-        connection_dict = sqlalchemy_engine.url.translate_connect_args()
-        response = self.create_postgis_feature_resource(
+        params = dict(
             store_id=store_id,
-            host=docker_ip_address if docker else connection_dict['host'],
-            port=connection_dict['port'],
-            database=connection_dict['database'],
-            user=connection_dict['username'],
-            password=connection_dict['password'],
-            debug=debug
+            **sqlalchemy_engine.url.translate_connect_args(), 
+            max_connections=max_connections, 
+            max_connection_idle_time=max_connection_idle_time, 
+            evictor_run_periodicity=evictor_run_periodicity,
+            validate_connections=validate_connections,
+            debug=debug,
         )
+
+        if docker:
+            params['host'] = docker_ip_address
+
+        response = self.create_postgis_store(**params)
         return response
 
-    def create_postgis_feature_resource(self, store_id, host, port, database, user, password, table=None, debug=False):
+    def create_postgis_store(self, store_id, host, port, database, username, password, max_connections=5, 
+                             max_connection_idle_time=30, evictor_run_periodicity=30, validate_connections=True, 
+                             debug=False):
         """
-        Use this method to link an existing PostGIS database to GeoServer as a feature store. Note that this method only works for data in vector formats.  # noqa: E501
+        Use this method to link an existing PostGIS database to GeoServer as a feature store. Note that this method only works for data in vector formats.
 
         Args:
-          store_id (string): Identifier for the store to add the resource to. Can be a store name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.  # noqa: E501
+          store_id (string): Identifier for the store to add the resource to. Can be a store name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.
           host (string): Host of the PostGIS database (e.g.: 'www.example.com').
           port (string): Port of the PostGIS database (e.g.: '5432')
           database (string): Name of the database.
-          user (string): Database user that has access to the database.
+          username (string): Database user that has access to the database.
           password (string): Password of database user.
-          table (string, optional): Name of existing table to add as a feature resource to the newly created feature store. A layer will automatically be created for the feature resource as well. Both the layer and the resource will share the same name as the table.  # noqa: E501
+          max_connections (int, optional): Maximum number of connections allowed in connection pool. Defaults to 5.
+          max_connection_idle_time (int, optional): Number of seconds a connections can stay idle before the evictor considers closing it. Defaults to 30 seconds.
+          evictor_run_periodicity (int, optional): Number of seconds between idle connection evictor runs. Defaults to 30 seconds.
+          validate_connections (bool, optional): Test connections before using. Defaults to True.
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
@@ -1017,15 +1238,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         Examples:
 
-          # With Table
+          engine.create_postgis_store(workspace='workspace', name='store_name', host='localhost', port='5432', database='database_name', username='user', password='pass')
 
-          response = engine.create_postgis_feature_resource(store_id='workspace:store_name', table='table_name', host='localhost', port='5432', database='database_name', user='user', password='pass')  # noqa: E501
-
-          # Without table
-
-          response = engine.create_postgis_resource(store_id='workspace:store_name', host='localhost', port='5432', database='database_name', user='user', password='pass')  # noqa: E501
-
-        """
+        """  # noqa: E501
         # Process identifier
         workspace, name = self._process_identifier(store_id)
 
@@ -1033,99 +1248,25 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         if not workspace:
             workspace = self.catalog.get_default_workspace().name
 
-        # Determine if store exists
-        store = self.catalog.get_store(name=name, workspace=workspace)
-        store_exists = store is not None
-
-        # Create the store if it doesn't exist already
-        if not store_exists:
-            xml = """
-                  <dataStore>
-                    <name>{0}</name>
-                    <connectionParameters>
-                      <host>{1}</host>
-                      <port>{2}</port>
-                      <database>{3}</database>
-                      <user>{4}</user>
-                      <passwd>{5}</passwd>
-                      <dbtype>postgis</dbtype>
-                    </connectionParameters>
-                  </dataStore>
-                  """.format(name, host, port, database, user, password)
-
-            # Prepare headers
-            headers = {
-                "Content-type": "text/xml",
-                "Accept": "application/xml"
-            }
-
-            # Prepare URL to create store
-            url = self._assemble_url('workspaces', workspace, 'datastores')
-
-            # Execute: POST /workspaces/<ws>/datastores
-            response = requests.post(
-                url=url,
-                data=xml,
-                headers=headers,
-                auth=HTTPBasicAuth(username=self.username, password=self.password)
-            )
-
-            # Return with error if this doesn't work
-            if response.status_code != 201:
-                response_dict = {'success': False,
-                                 'error': '{1}({0}): {2}'.format(response.status_code, response.reason, response.text)}
-
-                self._handle_debug(response_dict, debug)
-                return response_dict
-
-        if not table:
-            # Wrap up successfully with new store created
-            MAX_ATTEMPTS = 5
-            attempts = 0
-            resource_dict = {}
-
-            while attempts < MAX_ATTEMPTS:
-                attempts += 1
-                try:
-                    new_store = self.catalog.get_store(name=name, workspace=workspace)
-                    if not new_store:
-                        raise geoserver.catalog.FailedRequestError()
-
-                    resource_dict = self._transcribe_geoserver_object(new_store)
-                    break
-                except geoserver.catalog.FailedRequestError:
-                    time.sleep(1)
-
-            response_dict = {'success': True,
-                             'result': resource_dict}
-
-            self._handle_debug(response_dict, debug)
-            return response_dict
-
-        # Throw error if resource already exists
-        try:
-            resource = self.catalog.get_resource(name=table, store=name, workspace=workspace)
-            if resource:
-                message = "There is already a resource named " + table
-
-                if workspace:
-                    message += " in " + workspace
-
-                response_dict = {'success': False,
-                                 'error': message}
-
-                self._handle_debug(response_dict, debug)
-                return response_dict
-
-        except geoserver.catalog.FailedRequestError:
-            pass
-
-        # Prepare file for adding the table
+        # Create the store
         xml = """
-              <featureType>
+              <dataStore>
                 <name>{0}</name>
-              </featureType>
-              """.format(table)
+                <connectionParameters>
+                  <entry key="host">{1}</entry>
+                  <entry key="port">{2}</entry>
+                  <entry key="database">{3}</entry>
+                  <entry key="user">{4}</entry>
+                  <entry key="passwd">{5}</entry>
+                  <entry key="dbtype">postgis</entry>
+                  <entry key="max connections">{6}</entry>
+                  <entry key="Max connection idle time">{7}</entry>
+                  <entry key="Evictor run periodicity">{8}</entry>
+                  <entry key="validate connections">{9}</entry>
+                </connectionParameters>
+              </dataStore>
+              """.format(name, host, port, database, username, password, max_connections, max_connection_idle_time, 
+                         evictor_run_periodicity, str(validate_connections).lower())
 
         # Prepare headers
         headers = {
@@ -1133,35 +1274,30 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             "Accept": "application/xml"
         }
 
-        # Prepare URL
-        url = self._assemble_url('workspaces', workspace, 'datastores', name, 'featuretypes')
+        # Prepare URL to create store
+        url = self._assemble_url('workspaces', workspace, 'datastores')
 
-        # Execute: POST /workspaces/<ws>/datastores/<ds>/featuretypes
+        # Execute: POST /workspaces/<ws>/datastores
         response = requests.post(
             url=url,
             data=xml,
             headers=headers,
-            auth=HTTPBasicAuth(username=self.username, password=self.password)
+            auth=(self.username, self.password)
         )
 
-        # Handle failure
+        # Return with error if this doesn't work
         if response.status_code != 201:
-            response_dict = {'success': False,
-                             'error': '{1}({0}): {2}'.format(response.status_code, response.reason, response.text)}
+            msg = "Create Postgis Store Status Code {0}: {1}".format(response.status_code, response.text)
+            exception = requests.RequestException(msg, response=response)
+            log.error(exception)
+            raise exception
 
-            self._handle_debug(response_dict, debug)
-            return response_dict
+        # Wrap up successfully with new store created
+        response_dict = self.get_store(store_id, debug)
 
-        # Wrap up successfully
-        new_resource = self.catalog.get_resource(name=table, store=name, workspace=workspace)
-        resource_dict = self._transcribe_geoserver_object(new_resource)
-
-        response_dict = {'success': True,
-                         'result': resource_dict}
-        self._handle_debug(response_dict, debug)
         return response_dict
 
-    def add_table_to_postgis_store(self, store_id, table, debug=False):
+    def create_layer_from_postgis_store(self, store_id, table, debug=False):
         """
         Add an existing postgis table as a feature resource to a postgis store that already exists.
 
@@ -1238,84 +1374,117 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         self._handle_debug(response_dict, debug)
         return response_dict
 
-    def create_sql_view(self, feature_type_name, postgis_store_id, sql, geometry_column, geometry_type,
-                        geometry_srid=4326, default_style_id=None, key_column=None, parameters=None, debug=False):
+    def create_sql_view_layer(self, layer_id, postgis_store_name, geometry_type, srid, sql, default_style, 
+                              geometry_name='geometry', other_styles=None, parameters=None, debug=False):
         """
-        Create a new feature type configured as an SQL view.
+        Direct call to GeoServer REST API to create SQL View feature types and layers.
 
         Args:
-          feature_type_name (string): Name of the feature type and layer to be created.
-          postgis_store_id (string): Identifier of existing postgis store with tables that will be queried by the sql view. Can be a store name or a workspace-name combination (e.g.: "name" or "workspace:name").
-          sql (string): SQL that will be used to construct the sql view / virtual table.
-          geometry_column (string): Name of the geometry column.
-          geometry_type (string): Type of the geometry column (e.g. "Point", "LineString", "Polygon").
-          geometry_srid (string, optional): EPSG spatial reference id of the geometry column. Defaults to 4326.
-          default_style_id (string, optional): Identifier of a style to assign as the default style. Can be a style name or a workspace-name combination (e.g.: "name" or "workspace:name").
-          key_column (string, optional): The name of the key column.
-          parameters (iterable, optional): A list/tuple of tuple-triplets representing parameters in the form (name, default, regex_validation), (e.g.: (('variable', 'pressure', '^[\w]+$'), ('simtime', '0:00:00', '^[\w\:]+$'))
-          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
+            layer_id (string): Identifier of the sql view layer to create. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
+            postgis_store_name (string): Identifier of existing postgis store with tables that will be queried by the sql view. (assumption: the datastore belongs to the workspace).
+            geometry_name: Name of the PostGIS column/field of type geom.
+            geometry_type: Type of geometry in geometry field (e.g.: Point, LineString)
+            srid (int): EPSG spatial reference id. EPSG spatial reference ID.
+            sql: The SQL query that defines the feature type.
+            default_style: The name of the default style. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
+            other_styles: A list of other default style names. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
+            parameters: A list of parameter dictionaries { name, default_value, regex_validator }.
+            debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
+        """  # noqa: E501
+        # Process identifier
+        workspace, feature_name = self._process_identifier(layer_id)
 
-        Returns:
-          (dict): Response dictionary
+        # Get default work space if none is given
+        if not workspace:
+            workspace = self.catalog.get_default_workspace().name
 
-        Example:
+        # Template context
+        context = {
+            'workspace': workspace,
+            'feature_name': feature_name,
+            'datastore_name': postgis_store_name,
+            'geoserver_rest_endpoint': self.endpoint,
+            'sql': sql,
+            'geometry_name': geometry_name,
+            'geometry_type': geometry_type,
+            'srid': srid,
+            'parameters': parameters or [],
+        }
 
-        ::
+        # Open sql view template
+        sql_view_path = os.path.join(self.XML_PATH, 'sql_view_template.xml')
+        url = self._assemble_url('workspaces', workspace, 'datastores', postgis_store_name, 'featuretypes')
+        headers = {
+            "Content-type": "text/xml"
+        }
+        with open(sql_view_path, 'r') as sql_view_file:
+            text = sql_view_file.read()
+            template = Template(text)
+            xml = template.render(context)
 
-            sql = "SELECT name, value, geometry FROM pipes"
-
-            response = engine.create_sql_view(
-                feature_type_name='my_feature_type',
-                postgis_store_id='my_workspace:my_postgis_store',
-                sql=sql,
-                geometry_column='geometry',
-                geometry_type='LineString',
-                geometry_srid=32144,
-                default_style_id='my_workspace:pipes',
-                debug=True
+        retries_remaining = 3
+        while retries_remaining > 0:
+            response = requests.post(
+                url,
+                headers=headers,
+                auth=(self.username, self.password),
+                data=xml,
             )
 
-        """  # noqa: E501, W605
-        # Process identifier
-        store_workspace_name, store_name = self._process_identifier(postgis_store_id)
+            # Raise an exception if status code is not what we expect
+            if response.status_code == 201:
+                log.info('Successfully created featuretype {}'.format(feature_name))
+                break
+            if response.status_code == 500 and 'already exists' in response.text:
+                break
+            else:
+                retries_remaining -= 1
+                if retries_remaining == 0:
+                    msg = "Create Feature Type Status Code {0}: {1}".format(response.status_code, response.text)
+                    exception = requests.RequestException(msg, response=response)
+                    log.error(exception)
+                    raise exception
 
-        # Get Existing PostGIS Store
-        store = self.catalog.get_store(store_name, workspace=store_workspace_name)
+        # Add styles to new layer
+        self.update_layer_styles(
+            layer_id=layer_id,
+            default_style=default_style,
+            other_styles=other_styles
+        )
 
-        # Define virtual table / sql view
-        epsg_code = 'EPSG:{0}'.format(geometry_srid)
-        geometry = JDBCVirtualTableGeometry(geometry_column, geometry_type, str(geometry_srid))
+        # GeoWebCache Settings
+        gwc_layer_path = os.path.join(self.XML_PATH, 'gwc_layer_template.xml')
+        url = self.get_gwc_endpoint(public=False) + 'layers/' + workspace + ':' + feature_name + '.xml'
+        headers = {
+            "Content-type": "text/xml"
+        }
+        with open(gwc_layer_path, 'r') as gwc_layer_file:
+            text = gwc_layer_file.read()
+            template = Template(text)
+            xml = template.render(context)
 
-        if parameters is not None:
-            jdbc_parameters = []
-            for parameter_args in parameters:
-                jdbc_parameters.append(JDBCVirtualTableParam(*parameter_args))
-            parameters = jdbc_parameters
+        retries_remaining = 300
+        while retries_remaining > 0:
+            response = requests.post(
+                url,
+                headers=headers,
+                auth=(self.username, self.password),
+                data=xml,
+            )
 
-        sql_view = JDBCVirtualTable(feature_type_name, sql, 'false', geometry, key_column, parameters)
+            if response.status_code == 200:
+                log.info('Successfully created GeoWebCache layer {}'.format(feature_name))
+                break
+            else:
+                log.warning("GWC DID NOT RETURN 200, but instead: {}. {}\n".format(response.status_code, response.text))
+                retries_remaining -= 1
+                if retries_remaining == 0:
+                    msg = "Create GWC Layer Status Code {0}: {1}".format(response.status_code, response.text)
+                    exception = requests.RequestException(msg, response=response)
+                    log.error(exception)
+                    raise exception
 
-        # Publish Feature Type
-        self.catalog.publish_featuretype(feature_type_name, store, epsg_code, jdbc_virtual_table=sql_view)
-
-        # Wrap Up
-        r_feature_layer = self.catalog.get_layer(feature_type_name)
-
-        if default_style_id is None:
-            resource_dict = self._transcribe_geoserver_object(r_feature_layer)
-            response_dict = {'success': True,
-                             'result': resource_dict}
-            self._handle_debug(response_dict, debug)
-            return response_dict
-
-        # Associate Style
-        style_workspace, style_name = self._process_identifier(default_style_id)
-        style = self.catalog.get_style(style_name, workspace=style_workspace)
-        r_feature_layer.default_style = style
-        self.catalog.save(r_feature_layer)
-        resource_dict = self._transcribe_geoserver_object(r_feature_layer)
-        response_dict = {'success': True,
-                         'result': resource_dict}
-        self._handle_debug(response_dict, debug)
+        response_dict = self.get_layer(layer_id, postgis_store_name)
         return response_dict
 
     def create_shapefile_resource(self, store_id, shapefile_base=None, shapefile_zip=None, shapefile_upload=None,
@@ -1502,307 +1671,287 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         self._handle_debug(response_dict, debug)
         return response_dict
 
-    def create_coverage_resource(self, store_id, coverage_type, coverage_file=None,
-                                 coverage_upload=None, coverage_name=None,
-                                 overwrite=False, query_after_success=True, debug=False):
+    def create_coverage_store(self, store_id, coverage_type, debug=False):
         """
-        Use this method to add coverage resources to GeoServer.
-
-        This method will result in the creation of three items: a coverage store, a coverage resource, and a layer. If store_id references a store that does not exist, it will be created. Unless coverage_name is specified, the coverage resource and the subsequent layer will be created with the same name as the image file that is uploaded.  # noqa: E501
+        Create a new coverage store.
 
         Args:
-          store_id (string): Identifier for the store to add the image to or to be created. Can be a name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.  # noqa: E501
-          coverage_type (string): Type of coverage that is being created. Valid values include: 'geotiff', 'worldimage', 'imagemosaic', 'imagepyramid', 'gtopo30', 'arcgrid', 'grassgrid', 'erdasimg', 'aig', 'gif', 'png', 'jpeg', 'tiff', 'dted', 'rpftoc', 'rst', 'nitf', 'envihdr', 'mrsid', 'ehdr', 'ecw', 'netcdf', 'erdasimg', 'jp2mrsid'.  # noqa: E501
-          coverage_file (string, optional): Path to the coverage image or zip archive. Most files will require a .prj file with the Well Known Text definition of the projection. Zip this file up with the image and send the archive.  # noqa: E501
-          coverage_upload (FileUpload list, optional): A list of Django FileUpload objects containing a coverage file and .prj file or archive that have been uploaded via multipart/form-data form.  # noqa: E501
-          coverage_name (string): Name of the coverage resource and subsequent layer that are created. If unspecified, these will match the name of the image file that is uploaded.  # noqa: E501
-          overwrite (bool, optional): Overwrite the file if it already exists.
-          charset (string, optional): Specify the character encoding of the file being uploaded (e.g.: ISO-8559-1)
-          query_after_success(bool, optional): Query geoserver for resource objects after successful upload. Defaults to True.
-          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
-
-        Note
-          If the type coverage being uploaded includes multiple files (e.g.: image, world file, projecttion file), they must be uploaded as a zip archive. Otherwise upload the single file.  # noqa: E501
-
-        Returns:
-          (dict): Response dictionary
-
-        Examples:
-
-          coverage_file = '/path/to/geotiff/example.zip'
-
-          response = engine.create_coverage_resource(store_id='workspace:store_name', coverage_file=coverage_file, coverage_type='geotiff')  # noqa: E501
-        """
-        # Globals
-        VALID_COVERAGE_TYPES = ('jp2mrsid',
-                                'geotiff',
-                                'nitf',
-                                'netcdf',
-                                'aig',
-                                'dted',
-                                'imagepyramid',
-                                'ehdr',
-                                'mrsid',
-                                'erdasimg',
-                                'ecw',
-                                'rpftoc',
-                                'rst',
-                                'gtopo30',
-                                'arcgrid',
-                                'imagemosaic',
-                                'envihdr',
-                                'worldimage',
-                                'grassgrid')
-
-        # Validate coverage type
-        if coverage_type not in VALID_COVERAGE_TYPES:
-            raise ValueError('"{0}" is not a valid coverage_type. Use either {1}'.format(
-                coverage_type, ', '.join(VALID_COVERAGE_TYPES)))
-
+            store_id (string): Identifier for the store to be created. Can be a store name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.
+            coverage_type (str): Type of coverage store to create (e.g.: GeoServerAPI.CT_ARC_GRID, GeoServerAPI.CT_GEOTIFF, GeoServerAPI.CT_GRASS_GRID).
+            debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
+        """  # noqa: E501
         # Process identifier
-        workspace, store_name = self._process_identifier(store_id)
+        workspace, name = self._process_identifier(store_id)
 
         # Get default work space if none is given
         if not workspace:
             workspace = self.catalog.get_default_workspace().name
 
-        # Throw error if overwrite is not true and store already exists
-        if not overwrite:
-            try:
-                self.catalog.get_store(name=store_name, workspace=workspace)
-                message = "There is already a store named " + store_name
-                if workspace:
-                    message += " in " + workspace
+        # Validate coverage type
+        if coverage_type not in self.VALID_COVERAGE_TYPES:
+            raise ValueError('"{0}" is not a valid coverage_type. Use either {1}'.format(
+                coverage_type, ', '.join(self.VALID_COVERAGE_TYPES)))
 
-                response_dict = {'success': False,
-                                 'error': message}
+        # Black magic for grass grid support
+        if coverage_type == self.CT_GRASS_GRID:
+            coverage_type = self.CT_ARC_GRID
 
-                self._handle_debug(response_dict, debug)
-                return response_dict
-
-            except geoserver.catalog.FailedRequestError:
-                pass
-
-        # Prepare files
-        working_dir = None
-
-        if coverage_type == 'grassgrid':
-
-            # Validation
-            if coverage_file is None:
-                raise ValueError('The coverage_file parameter is required for coverage_type "grassgrid".')
-
-            if not is_zipfile(coverage_file):
-                raise ValueError('The coverage_file parameter must be a path to a valid zip archive for '
-                                 'coverage_type "grassgrid".')
-
-            working_dir = os.path.join(os.path.dirname(coverage_file), '.gstmp')
-            original_coverage_filename = os.path.basename(coverage_file)
-
-            # When the test stops in the middle it leaves the temp folder and next time the test fails due to the
-            # existing folder. So, we need to make sure to delete the folder before extract the contents.
-            if os.path.exists(working_dir):
-                shutil.rmtree(working_dir)
-
-            # Unzip
-            zip_file = ZipFile(coverage_file)
-            zip_file.extractall(working_dir)
-
-            # Change Header
-            valid_grass_file = False
-
-            for f in os.listdir(working_dir):
-                if 'prj' not in f:
-                    # Defaults
-                    north = 90.0
-                    south = -90.0
-                    east = -180.0
-                    rows = 360
-                    cols = 720
-                    corrupt_file = False
-                    with open(os.path.join(working_dir, f), 'r') as f:
-                        contents = f.readlines()
-
-                    for line in contents[0:6]:
-                        if 'north' in line:
-                            north = float(line.split(':')[1].strip())
-                        elif 'south' in line:
-                            south = float(line.split(':')[1].strip())
-                        elif 'east' in line:
-                            east = float(line.split(':')[1].strip())
-                        elif 'west' in line:
-                            pass
-                        elif 'rows' in line:
-                            rows = int(line.split(':')[1].strip())
-                        elif 'cols' in line:
-                            cols = int(line.split(':')[1].strip())
-                        else:
-                            corrupt_file = True
-
-                    if corrupt_file:
-                        break
-
-                    # Calcuate new header
-                    xllcorner = east
-                    yllcorner = south
-                    cellsize = (north - south) / rows
-
-                    header = ['ncols         {0}\n'.format(cols),
-                              'nrows         {0}\n'.format(rows),
-                              'xllcorner     {0}\n'.format(xllcorner),
-                              'yllcorner     {0}\n'.format(yllcorner),
-                              'cellsize      {0}\n'.format(cellsize)]
-
-                    # Strip off old header and add new one
-                    for _ in range(0, 6):
-                        contents.pop(0)
-                    contents = header + contents
-
-                    with open(os.path.join(working_dir, f.name), 'w') as o:
-                        for line in contents:
-                            o.write(line)
-                    valid_grass_file = True
-
-            if not valid_grass_file:
-                # Clean up
-                for f in os.listdir(working_dir):
-                    os.remove(os.path.join(working_dir, f))
-                os.rmdir(working_dir)
-                raise IOError('GRASS file could not be processed, check to ensure the GRASS grid is correctly '
-                              'formatted or included.')
-
-            # New coverage zip file (rezip)
-            coverage_file = os.path.join(working_dir, original_coverage_filename)
-            with ZipFile(coverage_file, 'w') as zf:
-                for f in os.listdir(working_dir):
-                    if f != original_coverage_filename:
-                        zf.write(os.path.join(working_dir, f), f)
-
-        # Prepare file(s) for upload
-        files = None
-        data = None
-
-        if coverage_file is not None:
-            if is_zipfile(coverage_file):
-                files = {'file': open(coverage_file, 'rb')}
-                content_type = 'application/zip'
-            else:
-                content_type = 'image/{0}'.format(coverage_type)
-                data = open(coverage_file, 'rb')
-
-            if not coverage_name:
-                coverage_filename = os.path.basename(coverage_file)
-                coverage_name = coverage_filename.split('.')[0]
-
-        elif coverage_upload is not None:
-            content_type = 'application/zip'
-
-            # Check if zip archive
-            try:
-                if coverage_upload.name.endswith('.zip'):
-                    files = {'file': coverage_upload}
-                else:
-                    content_type = 'image/{0}'.format(coverage_type)
-                    data = coverage_upload
-
-                if not coverage_name:
-                    coverage_filename = os.path.basename(coverage_upload.name)
-                    coverage_name = coverage_filename.split('.')[0]
-
-            except AttributeError:
-                pass
-
-            if files is None and data is None:
-                # Write files in memory to zipfile in memory
-                zip_file_in_memory = BytesIO()
-                in_memory_coverage_name = None
-
-                with ZipFile(zip_file_in_memory, 'w') as zfile:
-                    for f in coverage_upload:
-                        zfile.writestr(os.path.basename(f.name), f.read())
-                        if 'prj' not in f.name:
-                            in_memory_coverage_name = os.path.basename(f.name).split('.')[0]
-
-                files = {'file': zip_file_in_memory.getvalue()}
-
-                if not coverage_name and in_memory_coverage_name:
-                    coverage_name = in_memory_coverage_name
+        # create the store
+        xml = """
+              <coverageStore>
+                  <name>{name}</name>
+                  <type>{type}</type>
+                  <enabled>true</enabled>
+                  <workspace>
+                      <name>{workspace}</name>
+                  </workspace>
+              </coverageStore>
+              """.format(name=name, type=coverage_type, workspace=workspace)
 
         # Prepare headers
-        extension = coverage_type
+        headers = {
+            "Content-type": "text/xml",
+            "Accept": "application/xml"
+        }
 
-        if coverage_type == 'grassgrid':
-            extension = 'arcgrid'
+        # Prepare URL to create store
+        url = self._assemble_url('workspaces', workspace, 'coveragestores')
 
+        # Execute: POST /workspaces/<ws>/coveragestores
+        response = requests.post(
+            url=url,
+            data=xml,
+            headers=headers,
+            auth=(self.username, self.password)
+        )
+
+        # Return with error if this doesn't work
+        if response.status_code != 201:
+            msg = "Create Coverage Store Status Code {0}: {1}".format(response.status_code, response.text)
+            exception = requests.RequestException(msg, response=response)
+            log.error(exception)
+            raise exception
+
+        # Wrap up successfully with new store created
+        response_dict = self.get_store(store_id, debug)
+
+        return response_dict
+
+    def create_coverage_layer(self, layer_id, coverage_type, coverage_file, default_style='',
+                              other_styles=None, debug=False):
+        """
+        Create a coverage store, coverage resource, and layer in the given workspace.
+
+        Args:
+            layer_id (string): Identifier of the coverage layer to be created. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
+            coverage_type (str): Type of coverage store to create (e.g.: GeoServerAPI.CT_ARC_GRID, GeoServerAPI.CT_GEOTIFF, GeoServerAPI.CT_GRASS_GRID).
+            coverage_file (str): Path to coverage file or zip archive containing coverage file.
+            default_style (str): The name of the default style (note: it is assumed this style belongs to the workspace).
+            other_styles (list): A list of other default style names (assumption: these styles belong to the workspace).
+            debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
+        """  # noqa: E501
+        # Process identifier
+        workspace, coverage_name = self._process_identifier(layer_id)
+
+        # Get default work space if none is given
+        if not workspace:
+            workspace = self.catalog.get_default_workspace().name
+
+        # Validate coverage type
+        if coverage_type not in self.VALID_COVERAGE_TYPES:
+            exception = ValueError('"{0}" is not a valid coverage_type. Use either {1}'.format(
+                coverage_type, ', '.join(self.VALID_COVERAGE_TYPES)))
+            log.error(exception)
+            raise exception
+
+        # Only one coverage per coverage store, so we name coverage store the same as the coverage
+        coverage_store_name = coverage_name
+
+        # Prepare files
+        working_dir = tempfile.mkdtemp()
+
+        # Unzip to working directory if zip file
+        if is_zipfile(coverage_file):
+            zip_file = ZipFile(coverage_file)
+            zip_file.extractall(working_dir)
+        # Otherwise, copy to working directory
+        else:
+            shutil.copy2(coverage_file, working_dir)
+
+        # Convert GrassGrids to ArcGrids
+        if coverage_type == self.CT_GRASS_GRID:
+            working_dir_contents = os.listdir(working_dir)
+            num_working_dir_items = len(working_dir_contents)
+            if num_working_dir_items > 2:
+                exception = ValueError('Expected 1 or 2 files for coverage type "{}" but got {} instead: "{}"'.format(
+                    self.CT_GRASS_GRID,
+                    num_working_dir_items,
+                    '", "'.join(working_dir_contents)
+                ))
+                log.error(exception)
+                raise exception
+
+            for item in working_dir_contents:
+                # Skip directories
+                if os.path.isdir(os.path.join(working_dir, item)):
+                    continue
+
+                # Skip the projection file
+                if 'prj' in item:
+                    continue
+
+                # Assume other file is the raster
+                corrupt_file = False
+                tmp_coverage_path = os.path.join(working_dir, item)
+
+                with open(tmp_coverage_path, 'r') as item:
+                    contents = item.readlines()
+
+                for line in contents[0:6]:
+                    if 'north' in line:
+                        north = float(line.split(':')[1].strip())
+                    elif 'south' in line:
+                        south = float(line.split(':')[1].strip())
+                    elif 'east' in line:
+                        pass  # we don't use east in this algorithm so skip it.
+                    elif 'west' in line:
+                        west = float(line.split(':')[1].strip())
+                    elif 'rows' in line:
+                        rows = int(line.split(':')[1].strip())
+                    elif 'cols' in line:
+                        cols = int(line.split(':')[1].strip())
+                    else:
+                        corrupt_file = True
+
+                if corrupt_file:
+                    exception = IOError('GRASS file could not be processed, check to ensure the GRASS grid is '
+                                        'correctly formatted or included.')
+                    log.error(exception)
+                    raise exception
+
+                # Calculate new header
+                xllcorner = west
+                yllcorner = south
+                cellsize = (north - south) / rows
+
+                header = ['ncols         {0}\n'.format(cols),
+                          'nrows         {0}\n'.format(rows),
+                          'xllcorner     {0}\n'.format(xllcorner),
+                          'yllcorner     {0}\n'.format(yllcorner),
+                          'cellsize      {0}\n'.format(cellsize)]
+
+                # Strip off old header and add new one
+                for _ in range(0, 6):
+                    contents.pop(0)
+                contents = header + contents
+
+                # Write the coverage to file
+                with open(tmp_coverage_path, 'w') as o:
+                    for line in contents:
+                        # Make sure the file ends with a new line
+                        if line[-1] != '\n':
+                            line = line + '\n'
+
+                        o.write(line)
+
+        # Prepare Files
+        coverage_archive_name = coverage_name + '.zip'
+        coverage_archive = os.path.join(working_dir, coverage_archive_name)
+        with ZipFile(coverage_archive, 'w') as zf:
+            for item in os.listdir(working_dir):
+                if item != coverage_archive_name:
+                    zf.write(os.path.join(working_dir, item), item)
+
+        files = {'file': open(coverage_archive, 'rb')}
+        content_type = 'application/zip'
+
+        # Prepare headers
         headers = {
             "Content-type": content_type,
             "Accept": "application/xml"
         }
 
         # Prepare URL
-        url = self._assemble_url('workspaces', workspace, 'coveragestores', store_name, 'file.{0}'.format(extension))
+        extension = coverage_type.lower()
 
-        # Set params
-        params = {}
+        if coverage_type == self.CT_GRASS_GRID:
+            extension = self.CT_ARC_GRID.lower()
 
-        if coverage_name:
-            params['coverageName'] = coverage_name
-
-        if overwrite:
-            params['update'] = 'overwrite'
-
-        # Execute: PUT /workspaces/<ws>/datastores/<ds>/file.shp
-        response = requests.put(
-            url=url,
-            files=files,
-            data=data,
-            headers=headers,
-            params=params,
-            auth=(self.username, self.password)
+        url = self._assemble_url(
+            'workspaces', workspace, 'coveragestores', coverage_store_name, 'file.{0}'.format(extension)
         )
 
-        # Clean up
-        if coverage_file:
-            if is_zipfile(coverage_file):
-                files['file'].close()
+        # Set params
+        params = {'coverageName': coverage_name}
+
+        retries_remaining = 3
+        zip_error_retries = 5
+        raise_error = False
+
+        while True:
+            if coverage_type == self.CT_IMAGE_MOSAIC:
+                # Image mosaic doesn't need params argument.
+                response = requests.put(
+                    url=url,
+                    files=files,
+                    headers=headers,
+                    auth=(self.username, self.password)
+                )
             else:
-                data.close()
+                response = requests.put(
+                    url=url,
+                    files=files,
+                    headers=headers,
+                    params=params,
+                    auth=(self.username, self.password)
+                )
+
+            # Raise an exception if status code is not what we expect
+            if response.status_code == 201:
+                log.info('Successfully created coverage {}'.format(coverage_name))
+                break
+            if response.status_code == 500 and 'already exists' in response.text:
+                log.warning('Coverage already exists {}'.format(coverage_name))
+                break
+            if response.status_code == 500 and 'Error occured unzipping file' in response.text:
+                zip_error_retries -= 1
+                if zip_error_retries == 0:
+                    raise_error = True
+            else:
+                retries_remaining -= 1
+                if retries_remaining == 0:
+                    raise_error = True
+
+            if raise_error:
+                msg = "Create Coverage Status Code {0}: {1}".format(response.status_code, response.text)
+                exception = requests.RequestException(msg, response=response)
+                log.error(exception)
+                raise exception
+
+        # Clean up
+        files['file'].close()
 
         if working_dir:
-            for f in os.listdir(working_dir):
-                os.remove(os.path.join(working_dir, f))
-            os.rmdir(working_dir)
+            shutil.rmtree(working_dir)
 
-        if response.status_code != 201:
-            response_dict = {'success': False,
-                             'error': '{1}({0}): {2}'.format(response.status_code, response.reason, response.text)}
+        # Add styles to new layer
+        self.update_layer_styles(
+            layer_id=layer_id,
+            default_style=default_style,
+            other_styles=other_styles
+        )
 
-            self._handle_debug(response_dict, debug)
-            return response_dict
-
-        # Wrap up successfully
-        # NOTE: On success response returns xml representation of object, which we don't handle currently
-        # So we use gsconfg to get the resource object
-        if query_after_success:
-            new_resource = self.catalog.get_resource(name=coverage_name, store=store_name, workspace=workspace)
-            resource_dict = self._transcribe_geoserver_object(new_resource)
-        else:
-            resource_dict = None
-
-        response_dict = {'success': True,
-                         'result': resource_dict}
-        self._handle_debug(response_dict, debug)
+        response_dict = self.get_layer(layer_id, coverage_store_name)
         return response_dict
 
-    def create_layer_group(self, layer_group_id, layers, styles, bounds=None, debug=False):
+    def create_layer_group(self, layer_group_id, layers, styles, debug=False):
         """
         Create a layer group. The number of layers and the number of styles must be the same.
 
         Args:
-          layer_group_id (string): Identifier of the layer group to create.
+          layer_group_id (string): Identifier of the layer group to create. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
           layers (iterable): A list of layer names to be added to the group. Must be the same length as the styles list.
-          styles (iterable): A list of style names to  associate with each layer in the group. Must be the same length as the layers list.  # noqa: #501
-          bounds (iterable): A tuple representing the bounding box of the layer group (e.g.: ('-74.02722', '-73.907005', '40.684221', '40.878178', 'EPSG:4326') )  # noqa: #501
+          styles (iterable): A list of style names to  associate with each layer in the group. Must be the same length as the layers list.
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
@@ -1814,34 +1963,48 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
           styles = ('style1', 'style2')
 
-          bounds = ('-74.02722', '-73.907005', '40.684221', '40.878178', 'EPSG:4326')
+          response = engine.create_layer_group(layer_group_id='layer_group_name', layers=layers, styles=styles)  
+        """  # noqa: E501
+        # Process identifier
+        workspace, group_name = self._process_identifier(layer_group_id)
 
-          response = engine.create_layer_group(layer_group_id='layer_group_name', layers=layers, styles=styles, bounds=bounds)  # noqa: E501
-        """
-        workspace, name = self._process_identifier(layer_group_id)
+        # Get default work space if none is given
+        if not workspace:
+            workspace = self.catalog.get_default_workspace().name
 
-        # Response dictionary
-        response_dict = {'success': False}
+        context = {
+            'name': group_name,
+            'layers': layers,
+            'styles': styles
+        }
 
-        # Create layer group
-        try:
-            layer_group = self.catalog.create_layergroup(name, layers, styles, bounds, workspace=workspace)
-            self.catalog.save(layer_group)
+        # Open layer group template
+        template_path = os.path.join(self.XML_PATH, 'layer_group_template.xml')
+        url = self._assemble_url('workspaces', workspace, 'layergroups.json')
+        headers = {
+            "Content-type": "text/xml"
+        }
 
-            layer_group_dict = self._transcribe_geoserver_object(layer_group)
+        with open(template_path, 'r') as template_file:
+            text = template_file.read()
+            template = Template(text)
+            xml = template.render(context)
 
-            response_dict['success'] = True
-            response_dict['result'] = layer_group_dict
+        response = requests.post(
+            url,
+            headers=headers,
+            auth=(self.username, self.password),
+            data=xml,
+        )
 
-        except geoserver.catalog.ConflictingDataError as e:
-            response_dict['success'] = False
-            response_dict['error'] = str(e)
+        if response.status_code != 201:
+            msg = "Create Layer Group Status Code {}: {}".format(response.status_code, response.text)
+            exception = requests.RequestException(msg, response=response)
+            log.error(exception)
+            raise exception
 
-        except geoserver.catalog.FailedRequestError as e:
-            response_dict['success'] = False
-            response_dict['error'] = str(e)
+        response_dict = self.get_layer_group(layer_group_id, debug=debug)
 
-        self._handle_debug(response_dict, debug)
         return response_dict
 
     def create_workspace(self, workspace_id, uri, debug=False):
@@ -1877,47 +2040,29 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
     def create_style(self, style_id, sld_template, sld_context=None, overwrite=False, debug=False):
         """
-        Create a new SLD style object.
+        Create style layer from an SLD template.
 
-        Args:
+        Args
           style_id (string): Identifier of the style to create ('<workspace>:<name>').
           sld_template: path to SLD template file.
           sld_context: a dictionary with context variables to be rendered in the template.
-          overwrite (bool, optional): Overwrite if style already exists. Defaults to False.
-          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
-
-        Returns:
-          (dict): Response dictionary
-
-        Examples:
-
-          sld = '/path/to/style.sld'
-          response = engine.create_style(style_id='fred', sld_template=sld, debug=True)
+          overwrite (bool, optional): Will overwrite existing style with same name if True. Defaults to False.
         """
         # Process identifier
-        workspace, name = self._process_identifier(style_id)
+        workspace, style_name = self._process_identifier(style_id)
 
         if workspace is None:
-            url = self.endpoint + 'styles'
+            url = self._assemble_url('styles')
         else:
-            url = self.endpoint + 'workspaces/' + workspace + '/styles'
+            url = self._assemble_url('workspaces', workspace, 'styles')
 
         if overwrite:
             try:
                 self.delete_style(style_id, purge=True)
             except Exception as e:
                 if 'referenced by existing' in str(e):
-                    msg = f"Unable to overwrite style due to following error: {str(e)}"
-                    log.error(msg)
-                    response_dict = {
-                        'success': False,
-                        'error': msg
-                    }
-                    return response_dict
-                else:
-                    log.warning(f'An unexpected error occurred while '
-                                f'attempting to overwrite style, but '
-                                f'it has been ignored: {str(e)}')
+                    log.error(str(e))
+                    raise
 
         # Use post request to create style container first
         headers = {'Content-type': 'application/vnd.ogc.sld+xml'}
@@ -1934,37 +2079,28 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             url,
             headers=headers,
             auth=(self.username, self.password),
-            params={'name': name},
+            params={'name': style_name},
             data=text
         )
 
         # Raise an exception if status code is not what we expect
         if response.status_code == 201:
-            log.info('Successfully created style {}'.format(name))
-            style = self.catalog.get_style(name=name, workspace=workspace)
-            style_dict = self._transcribe_geoserver_object(style)
-            response_dict = {'success': True,
-                             'result': style_dict}
+            log.info('Successfully created style {}'.format(style_name))
         else:
             msg = 'Create Style Status Code {0}: {1}'.format(response.status_code, response.text)
             if response.status_code == 500:
                 if 'Unable to find style for event' in response.text or 'Error persisting' in response.text:
-                    msg = 'Created style {} with warnings: {}'.format(name, response.text)
-                    log.warning(msg)
-                    response_dict = {'success': True,
-                                     'result': {'warning': msg}}
+                    log.warning('Created style {} with warnings: {}'.format(style_name, response.text))
                 else:
                     exception = requests.RequestException(msg, response=response)
                     log.error(msg)
-                    response_dict = {'success': False,
-                                     'error': str(exception)}
+                    raise exception
             else:
                 exception = requests.RequestException(msg, response=response)
                 log.error(msg)
-                response_dict = {'success': False,
-                                 'error': str(exception)}
+                raise exception
 
-        self._handle_debug(response_dict, debug)
+        response_dict = self.get_style(style_id=style_id, debug=debug)
         return response_dict
 
     def update_resource(self, resource_id, store=None, debug=False, **kwargs):
@@ -2123,6 +2259,71 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         self._handle_debug(response_dict, debug)
         return response_dict
 
+    def update_layer_styles(self, layer_id, default_style, other_styles=None, debug=False):
+        """
+        Update/add styles to existing layer.
+
+        Args:
+            layer_id (string): Identifier of the layer whose style will be update or added. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
+            default_style (str): Name of default style. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name")
+            other_styles (list<str>): Additional styles to add to layer. List elements can be names or workspace-name combinations (e.g.: "name" or "workspace:name")
+            debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
+        """  # noqa: E501
+        # Process identifier
+        layer_workspace, layer_name = self._process_identifier(layer_id)
+
+        # check if layer workspace is style workspace else use styles default location
+        lyr_ws_styles = self.list_styles(workspace=layer_workspace)
+        if default_style in lyr_ws_styles:
+            default_style = '{0}:{1}'.format(layer_workspace, default_style)
+        if other_styles:
+            for i in range(len(other_styles)):
+                if other_styles[i] in lyr_ws_styles:
+                    other_styles[i] = '{0}:{1}'.format(layer_workspace, other_styles[i])
+
+        context = {
+            'default_style': default_style,
+            'other_styles': other_styles or [],
+            'geoserver_rest_endpoint': self.endpoint
+        }
+
+        # Open layer template
+        layer_path = os.path.join(self.XML_PATH, 'layer_template.xml')
+        url = self._assemble_url('layers', '{0}.xml'.format(layer_name))
+        headers = {
+            "Content-type": "text/xml"
+        }
+
+        with open(layer_path, 'r') as layer_file:
+            text = layer_file.read()
+            template = Template(text)
+            xml = template.render(context)
+
+        retries_remaining = 3
+        while retries_remaining > 0:
+            response = requests.put(
+                url,
+                headers=headers,
+                auth=(self.username, self.password),
+                data=xml,
+            )
+
+            # Raise an exception if status code is not what we expect
+            if response.status_code == 200:
+                log.info('Successfully created layer {}'.format(layer_name))
+                break
+            else:
+                retries_remaining -= 1
+                if retries_remaining == 0:
+                    msg = "Create Layer Status Code {0}: {1}".format(response.status_code, response.text)
+                    exception = requests.RequestException(msg, response=response)
+                    log.error(exception)
+                    raise exception
+
+        response_dict = self.get_layer(layer_id=layer_id, debug=debug)
+
+        return response_dict
+
     def delete_resource(self, resource_id, store_id, purge=False, recurse=False, debug=False):
         """
         Delete a resource.
@@ -2154,58 +2355,76 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         return self._handle_delete(identifier=name, gs_object=resource, purge=purge,
                                    recurse=recurse, debug=debug)
 
-    def delete_layer(self, layer_id, store_id=None, purge=False, recurse=False, debug=False):
+    def delete_layer(self, layer_id, datastore, recurse=False):
         """
-        Delete a layer.
-
         Args:
-          layer_id (string): Identifier of the layer to delete. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").  # noqa: E501
-          store_id (string, optional): Return only resources belonging to a certain store.
-          purge (bool, optional): Purge if True.
-          recurse (bool, optional): Delete recursively if True (i.e: delete layer groups it belongs to).
-          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
+            layer_id (string): Identifier of the layer to delete. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
+            datastore: Name of datastore
+            recurse (bool): recursively delete any dependent objects if True.
+        """  # noqa: E501
+        # Process identifier
+        workspace, name = self._process_identifier(layer_id)
 
-        Returns:
-          (dict): Response dictionary
+        # Get default work space if none is given
+        if not workspace:
+            workspace = self.catalog.get_default_workspace().name
 
-        Examples:
+        url = self._assemble_url('workspaces', workspace, 'datastores', datastore, 'featuretypes', name)
+        # Prepare delete request
+        headers = {
+            "Content-type": "application/json"
+        }
 
-          response = engine.delete_layer('workspace:layer_name')
+        json = {'recurse': recurse}
+
+        response = requests.delete(
+            url,
+            auth=(self.username, self.password),
+            headers=headers,
+            params=json
+        )
+
+        # Raise an exception if status code is not what we expect
+        if response.status_code != 200:
+            if response.status_code in self.WARNING_STATUS_CODES:
+                msg = "Delete Layer Status Code {0}: {1}".format(response.status_code, response.text)
+                exception = requests.RequestException(msg, response=response)
+                log.warning(exception)
+            else:
+                msg = "Delete Layer Status Code {0}: {1}".format(response.status_code, response.text)
+                exception = requests.RequestException(msg, response=response)
+                log.error(exception)
+                raise exception
+
+        response_dict = {'success': True, 'result': None}
+        return response_dict
+
+    def delete_layer_group(self, layer_group_id):
         """
-        # Get resource
-        layer = self.catalog.get_layer(name=layer_id)
-        if layer and store_id:
-            layer.store = store_id
-
-        # Handle delete
-        return self._handle_delete(identifier=layer_id, gs_object=layer, purge=purge,
-                                   recurse=recurse, debug=debug)
-
-    def delete_layer_group(self, layer_group_id, purge=False, recurse=False, debug=False):
-        """
-        Delete a layer group.
-
         Args:
-          layer_group_id (string): Identifier of the layer group to delete.
-          purge (bool, optional): Purge if True.
-          recurse (bool, optional): Delete recursively if True.
-          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
+            layer_group_id (string): Identifier of the layer group to delete. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
 
-        Returns:
-          (dict): Response dictionary
+        """ # noqa: E501
+        # Process identifier
+        workspace, group_name = self._process_identifier(layer_group_id)
 
-        Examples:
+        # Get default work space if none is given
+        if not workspace:
+            workspace = self.catalog.get_default_workspace().name
 
-          response = engine.delete_layer_group('layer_group_name')
-        """
-        workspace, name = self._process_identifier(layer_group_id)
+        url = self._assemble_url('workspaces', workspace, 'layergroups', '{0}'.format(group_name))
+        response = requests.delete(url, auth=(self.username, self.password))
+        if response.status_code != 200:
+            if response.status_code == 404 and "No such layer group" in response.text:
+                return
+            else:
+                msg = "Delete Layer Group Status Code {0}: {1}".format(response.status_code, response.text)
+                exception = requests.RequestException(msg, response=response)
+                log.error(exception)
+                raise exception
 
-        # Get layer group
-        layer_group = self.catalog.get_layergroup(name=name, workspace=workspace)
-
-        # Handle delete
-        return self._handle_delete(identifier=layer_group_id, gs_object=layer_group, purge=purge,
-                                   recurse=recurse, debug=debug)
+        response_dict = {'success': True, 'result': None}
+        return response_dict
 
     def delete_workspace(self, workspace_id, purge=False, recurse=False, debug=False):
         """
@@ -2270,40 +2489,106 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             self._handle_debug(response_dict, debug)
             return response_dict
 
-    def delete_style(self, style_id, purge=False, recurse=False, debug=False):
+    def delete_coverage_store(self, store_id, recurse=True, purge=True):
         """
-        Delete a style.
+        Delete the specified coverage store.
 
         Args:
-          style_id (string): Identifier of the style to delete.
-          purge (bool, optional): Purge if True.
-          recurse (bool, optional): Delete recursively if True.
-          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
+            store_id (string): Identifier for the store to be deleted. Can be a store name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.
+            workspace (str): the name of the workspace to add the style to
+            name(str):name of the coverage
+            recurse (bool): recursively delete any dependent objects if True.
+            purge (bool): delete configuration files from filesystem if True. remove file from disk of geoserver.
+            debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
-          (dict): Response dictionary
 
-        Examples:
-
-          response = engine.delete_resource('style_name')
-        """
+        """  # noqa: E501
         # Process identifier
-        workspace, name = self._process_identifier(style_id)
+        workspace, name = self._process_identifier(store_id)
 
-        # Get layer group
-        try:
-            style = self.catalog.get_style(name=name, workspace=workspace)
+        # Get default work space if none is given
+        if not workspace:
+            workspace = self.catalog.get_default_workspace().name
 
-            # Handle delete
-            return self._handle_delete(identifier=style_id, gs_object=style, purge=purge,
-                                       recurse=recurse, debug=debug)
-        except geoserver.catalog.FailedRequestError as e:
-            # Update response dictionary
-            response_dict = {'success': False,
-                             'error': str(e)}
+        # Prepare headers
+        headers = {
+            "Content-type": "application/json"
+        }
 
-            self._handle_debug(response_dict, debug)
-            return response_dict
+        # Prepare URL to create store
+        url = self._assemble_url('workspaces', workspace, 'coveragestores', name)
+
+        json = {'recurse': recurse,
+                'purge': purge}
+
+        # Execute: DELETE /workspaces/<ws>/coveragestores/<cs>
+        response = requests.delete(
+            url=url,
+            headers=headers,
+            params=json,
+            auth=(self.username, self.password)
+        )
+
+        if response.status_code != 200:
+            if response.status_code in self.WARNING_STATUS_CODES:
+                msg = "Delete Coverage Store Status Code {0}: {1}".format(response.status_code, response.text)
+                exception = requests.RequestException(msg, response=response)
+                log.warning(exception)
+            else:
+                msg = "Delete Coverage Store Status Code {0}: {1}".format(response.status_code, response.text)
+                exception = requests.RequestException(msg, response=response)
+                log.error(exception)
+                raise exception
+        
+        response_dict = {'success': True, 'result': None}
+        return response_dict
+
+    def delete_style(self, style_id, purge=False):
+        """
+        Delete the style with the given workspace and style name.
+
+        Args:
+            style_id (string): Identifier of the style to delete. Can be a store name or a workspace name combination (e.g.: "name" or "workspace:name").
+            purge (bool): delete configuration files from filesystem if True. remove file from disk of geoserver.
+
+        Returns:
+        """  # Process identifier
+        workspace, style_name = self._process_identifier(style_id)
+
+        if workspace is None:
+            url = self._assemble_url('styles', style_name)
+        else:
+            url = self._assemble_url('workspaces', workspace, 'styles', style_name)
+
+        # Prepare delete request
+        headers = {
+            "Content-type": "application/json"
+        }
+
+        json = {'purge': purge}
+
+        response = requests.delete(
+            url,
+            auth=(self.username, self.password),
+            headers=headers,
+            params=json
+        )
+
+        # Raise an exception if status code is not what we expect
+        if response.status_code != 200:
+            if response.status_code in self.WARNING_STATUS_CODES:
+                msg = "Delete Style Status Code {0}: {1}".format(response.status_code, response.text)
+                exception = requests.RequestException(msg, response=response)
+                log.warning(exception)
+            else:
+                msg = "Delete Style Status Code {0}: {1}".format(response.status_code, response.text)
+                exception = requests.RequestException(msg, response=response)
+                log.error(exception)
+                raise exception
+
+        response_dict = {'success': True, 'result': None}
+        return response_dict
 
     def validate(self):
         """
@@ -2327,3 +2612,214 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         if 'Geoserver Configuration API' not in r.text:
             raise AssertionError('The URL "{0}" is not a valid GeoServer spatial dataset service '
                                  'endpoint.'.format(self.endpoint))
+
+    def modify_tile_cache(self, workspace, name, operation, zoom_start=10, zoom_end=15, grid_set_id=900913,
+                          image_format='image/png', thread_count=1, bounds=None, parameters=None):
+        """
+        Modify all or a portion of the GWC tile cache for given layer. Operations include seed, reseed, and truncate.
+
+        Args:
+            workspace (str): name of the workspace the style belongs to.
+            name (str): name of the layer on which to perform tile cache operation.
+            operation (str): operation type either 'seed', 'reseed', 'truncate', or 'masstruncate'.
+            zoom_start (int, optional): beginning of zoom range on which to perform tile cache operation. Minimum is 0. Defaults to 10.
+            zoom_end (int, optional): end of zoom range on which to perform tile cache operation. It is not usually recommended to seed past zoom 20. Maximum is 30. Defaults to 15.
+            grid_set_id (int, optional): ID of the grid set on which to perform the tile cache operation. Either 4326 for Geographic or 900913 for Web Mercator. Defaults to 900913.
+            image_format (str, optional): format of tiles on which to perform tile cache operation. Defaults to 'image/png'.
+            thread_count (int, optional): number of threads to used to perform tile cache operation. Defaults to 1.
+            bounds (list, optional): list with ordinates of bounding box of area on which to perform tile cache operation (e.g.: [minx, miny, maxx, maxy]).
+            parameters (dict, optional): Key value pairs of parameters to use to filter tile cache operation.
+
+        Raises:
+            requests.RequestException: if modify tile cache operation is not submitted successfully.
+            ValueError: if invalid value is provided for an argument.
+        """  # noqa: E501
+        if operation not in self.GWC_OPERATIONS:
+            raise ValueError('Invalid value "{}" provided for argument "operation". Must be "{}".'.format(
+                operation, '" or "'.join(self.GWC_OPERATIONS))
+            )
+
+        # Use post request to create style container first
+        headers = {'Content-type': 'text/xml'}
+
+        if operation == self.GWC_OP_MASS_TRUNCATE:
+            url = self.get_gwc_endpoint() + 'masstruncate/'
+            xml_text = '<truncateLayer><layerName>{}:{}</layerName></truncateLayer>'.format(workspace, name)
+
+            response = requests.post(
+                url,
+                headers=headers,
+                auth=(self.username, self.password),
+                data=xml_text
+            )
+
+        else:
+            url = self.get_gwc_endpoint() + 'seed/' + workspace + ':' + name + '.xml'
+            xml = os.path.join(self.XML_PATH, 'gwc_tile_cache_operation_template.xml')
+
+            # Open XML file
+            with open(xml, 'r') as sld_file:
+                text = sld_file.read()
+
+            # Compose XML context
+            xml_context = {
+                'workspace': workspace,
+                'name': name,
+                'operation': operation,
+                'grid_set_id': grid_set_id,
+                'zoom_start': zoom_start,
+                'zoom_end': zoom_end,
+                'format': image_format,
+                'thread_count': thread_count,
+                'parameters': parameters,
+                'bounds': bounds
+            }
+
+            # Render the XML template
+            template = Template(text)
+            rendered = template.render(xml_context)
+
+            response = requests.post(
+                url,
+                headers=headers,
+                auth=(self.username, self.password),
+                data=rendered
+            )
+
+        # Raise an exception if status code is not what we expect
+        if response.status_code == 200:
+            log.info('Successfully submitted {} tile cache operation for layer {}:{}'.format(
+                operation, workspace, name
+            ))
+        else:
+            msg = 'Unable to submit {} tile cache operation for layer {}:{}. {}:{}'.format(
+                operation, workspace, name, response.status_code, response.text
+            )
+            exception = requests.RequestException(msg, response=response)
+            log.error(msg)
+            raise exception
+
+        response_dict = {'success': True, 'result': None}
+        return response_dict    
+
+    def terminate_tile_cache_tasks(self, workspace, name, kill='all'):
+        """
+        Terminate running tile cache processes for given layer.
+
+        Args:
+            workspace (str): name of the workspace the style belongs to.
+            name (str): name of the layer on which to terminate tile cache operations.
+            kill (str): specify which type of task to terminate. Either 'running', 'pending', or 'all'.
+
+        Raises:
+            requests.RequestException: if terminate tile cache operation cannot be submitted successfully.
+            ValueError: if invalid value is provided for an argument.
+        """
+        if kill not in self.GWC_KILL_OPERATIONS:
+            raise ValueError('Invalid value "{}" provided for argument "kill". Must be "{}".'.format(
+                kill, '" or "'.join(self.GWC_KILL_OPERATIONS))
+            )
+
+        url = self.get_gwc_endpoint() + 'seed/' + workspace + ':' + name
+
+        response = requests.post(
+            url,
+            auth=(self.username, self.password),
+            data={'kill_all': kill}
+        )
+
+        if response.status_code != 200:
+            msg = 'Unable to query tile cache status for layer {}:{}. {}:{}'.format(
+                workspace, name, response.status_code, response.text
+            )
+            exception = requests.RequestException(msg, response=response)
+            raise exception
+
+        response_dict = {'success': True, 'result': None}
+        return response_dict 
+
+    def query_tile_cache_tasks(self, workspace, name):
+        """
+        Get the status of running tile cache tasks for a layer.
+
+        Args:
+            workspace (str): name of the workspace the style belongs to.
+            name (str): name of the layer on which to get status.
+
+        Returns:
+            list: list of dictionaries with status with keys: 'tiles_processed', 'total_to_process', 'num_remaining', 'task_id', 'task_status'
+
+        Raises:
+            requests.RequestException: if query tile cache operation cannot be submitted successfully.
+        """  # noqa: E501
+        url = self.get_gwc_endpoint() + 'seed/' + workspace + ':' + name + '.json'
+        status_list = []
+
+        response = requests.get(
+            url,
+            auth=(self.username, self.password),
+        )
+
+        if response.status_code == 200:
+            status = response.json()
+
+            if 'long-array-array' in status:
+                for s in status['long-array-array']:
+                    temp_dict = {
+                        'tiles_processed': s[0],
+                        'total_to_process': s[1],
+                        'num_remaining': s[2],
+                        'task_id': s[3],
+                        'task_status': self.GWC_STATUS_MAP[s[4]] if s[4] in self.GWC_STATUS_MAP else s[4]
+                    }
+
+                    status_list.append(dict(temp_dict))
+            return status_list
+        else:
+            msg = 'Unable to terminate tile cache tasks for layer {}:{}. {}:{}'.format(
+                workspace, name, response.status_code, response.text
+            )
+            exception = requests.RequestException(msg, response=response)
+            raise exception
+
+    def enable_time_dimension(self, workspace, coverage_name):
+        """
+        Enable time dimension for a given image mosaic layer
+
+        Args:
+            workspace (str): name of the workspace the style belongs to.
+            coverage_name (str): name of the image mosaic layer.
+
+        Raises:
+            requests.RequestException: if enable time dimension operation cannot be executed successfully.
+        """
+        headers = {
+            "Content-type": "text/xml"
+        }
+        url = self._assemble_url('workspaces', workspace, 'coveragestores', coverage_name, 'coverages', coverage_name)
+        data_xml = '<coverage>\
+                    <enabled>true</enabled>\
+                    <metadata><entry key="time">\
+                    <dimensionInfo>\
+                    <enabled>true</enabled>\
+                    <presentation>LIST</presentation>\
+                    <units>ISO8601</units><defaultValue/>\
+                    </dimensionInfo>\
+                    </entry></metadata>\
+                    </coverage>'
+        response = requests.put(
+            url,
+            headers=headers,
+            auth=(self.username, self.password),
+            data=data_xml,
+        )
+
+        if response.status_code != 200:
+            msg = f"Enable Time Dimension Layer {coverage_name} with Status Code {response.status_code}:" \
+                  f" {response.text}"
+            exception = requests.RequestException(msg, response=response)
+            log.error(exception)
+            raise exception
+
+        response_dict = {'success': True, 'result': None}
+        return response_dict  
