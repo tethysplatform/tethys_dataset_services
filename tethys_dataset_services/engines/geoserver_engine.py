@@ -1265,7 +1265,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         Examples:
 
-          engine.create_postgis_store(workspace='workspace', name='store_name', host='localhost', port='5432', database='database_name', username='user', password='pass')
+          engine.create_postgis_store(store_id='workspace:name', host='localhost', port='5432', database='database_name', username='user', password='pass')
 
         """  # noqa: E501
         # Process identifier
