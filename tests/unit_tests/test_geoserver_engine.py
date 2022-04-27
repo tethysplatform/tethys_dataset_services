@@ -2440,17 +2440,19 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertRaises(AssertionError, self.engine.validate)
 
     def test_modify_tile_cache_invalid_operation(self):
-        name = 'gwc_layer_name'
+        layer_id = f'{self.workspace_name}:gwc_layer_name'
         operation = 'invalid-operation'
-        self.assertRaises(ValueError, self.engine.modify_tile_cache, self.workspace_name, name, operation)
+        self.assertRaises(ValueError, self.engine.modify_tile_cache, layer_id, operation)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.log')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
-    def test_modify_tile_cache_mass_truncate(self, mock_post, mock_logger):
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog.get_default_workspace')
+    def test_modify_tile_cache_mass_truncate(self, mock_ws, mock_post, mock_logger):
         mock_post.return_value = mock.MagicMock(status_code=200)
-        name = 'gwc_layer_name'
+        mock_ws().name = self.workspace_name
+        layer_id = 'gwc_layer_name'
         operation = self.engine.GWC_OP_MASS_TRUNCATE
-        self.engine.modify_tile_cache(self.workspace_name, name, operation)
+        self.engine.modify_tile_cache(layer_id, operation)
 
         url = 'masstruncate/'
 
@@ -2464,13 +2466,13 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
     def test_modify_tile_cache_seed(self, mock_post, mock_logger):
         mock_post.return_value = mock.MagicMock(status_code=200)
-        name = 'gwc_layer_name'
+        layer_id = f'{self.workspace_name}:gwc_layer_name'
         operation = self.engine.GWC_OP_SEED
-        self.engine.modify_tile_cache(self.workspace_name, name, operation)
+        self.engine.modify_tile_cache(layer_id, operation)
 
         url = 'seed/{workspace}:{name}.xml'.format(
             workspace=self.workspace_name,
-            name=name
+            name='gwc_layer_name'
         )
 
         # Create feature type call
@@ -2484,13 +2486,13 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
     def test_modify_tile_cache_reseed(self, mock_post, mock_logger):
         mock_post.return_value = mock.MagicMock(status_code=200)
-        name = 'gwc_layer_name'
+        layer_id = f'{self.workspace_name}:gwc_layer_name'
         operation = self.engine.GWC_OP_RESEED
-        self.engine.modify_tile_cache(self.workspace_name, name, operation)
+        self.engine.modify_tile_cache(layer_id, operation)
 
         url = 'seed/{workspace}:{name}.xml'.format(
             workspace=self.workspace_name,
-            name=name
+            name='gwc_layer_name'
         )
 
         # Create feature type call
@@ -2504,10 +2506,9 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
     def test_modify_tile_cache_exception(self, mock_post, mock_logger):
         mock_post.return_value = mock.MagicMock(status_code=500)
-        name = 'gwc_layer_name'
+        layer_id = f'{self.workspace_name}:gwc_layer_name'
         operation = self.engine.GWC_OP_MASS_TRUNCATE
-        self.assertRaises(requests.RequestException, self.engine.modify_tile_cache, self.workspace_name, name,
-                          operation)
+        self.assertRaises(requests.RequestException, self.engine.modify_tile_cache, layer_id, operation)
 
         url = 'masstruncate/'
 
@@ -3010,17 +3011,19 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.log')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.put')
-    def test_enable_time_dimension(self, mock_put, _):
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog.get_default_workspace')
+    def test_enable_time_dimension(self, mock_ws, mock_put, _):
         mock_response = mock.MagicMock(status_code=200)
+        mock_ws().name = self.workspace_name
         mock_put.return_value = mock_response
-        coverage_name = 'foo'
-        self.engine.enable_time_dimension(workspace=self.workspace_name, coverage_name=coverage_name)
+        coverage_id = 'foo'
+        self.engine.enable_time_dimension(coverage_id=coverage_id)
         mock_put.assert_called()
         put_call_args = mock_put.call_args_list
         url = '{endpoint}workspaces/{workspace}/coveragestores/{coverage_name}/coverages/{coverage_name}'.format(
             endpoint=self.endpoint,
             workspace=self.workspace_name,
-            coverage_name=coverage_name,
+            coverage_name=coverage_id,
         )
         self.assertEqual(url, put_call_args[0][0][0])
         self.assertIn('data', put_call_args[0][1])
@@ -3030,14 +3033,13 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     def test_enable_time_dimension_exception(self, mock_put, mock_log):
         mock_response = mock.MagicMock(status_code=500)
         mock_put.return_value = mock_response
-        coverage_name = 'foo'
-        self.assertRaises(requests.RequestException, self.engine.enable_time_dimension, self.workspace_name,
-                          coverage_name)
+        coverage_id = f'{self.workspace_name}:foo'
+        self.assertRaises(requests.RequestException, self.engine.enable_time_dimension, coverage_id)
 
         url = '{endpoint}workspaces/{workspace}/coveragestores/{coverage_name}/coverages/{coverage_name}'.format(
             endpoint=self.endpoint,
             workspace=self.workspace_name,
-            coverage_name=coverage_name,
+            coverage_name='foo',
         )
 
         put_call_args = mock_put.call_args_list
@@ -3256,23 +3258,23 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
     def test_create_sql_view_layer(self, mock_post, mock_logger, mock_update_layer_styles, mock_get_layer):
         mock_post.side_effect = [MockResponse(201), MockResponse(200)]
-        layer_id = f'{self.workspace_name}:{self.layer_names[0]}'
-        datastore_name = 'foo'
+        store_id = f'{self.workspace_name}:foo'
+        layer_name = self.layer_names[0]
         geometry_type = 'Point'
         srid = 4236
         sql = 'SELECT * FROM foo'
         default_style = 'points'
 
-        self.engine.create_sql_view_layer(layer_id, datastore_name, geometry_type, srid, sql, default_style)
+        self.engine.create_sql_view_layer(store_id, layer_name, geometry_type, srid, sql, default_style)
 
         # Validate endpoint calls
         sql_view_url = 'workspaces/{workspace}/datastores/{datastore}/featuretypes'.format(
             workspace=self.workspace_name,
-            datastore=datastore_name
+            datastore='foo'
         )
         gwc_layer_url = 'layers/{workspace}:{feature_name}.xml'.format(
             workspace=self.workspace_name,
-            feature_name=self.layer_names[0]
+            feature_name=layer_name
         )
 
         with open(os.path.join(self.files_root, 'test_create_layer_sql_view.xml')) as rendered:
@@ -3291,7 +3293,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         mock_logger.info.assert_called()
 
         mock_update_layer_styles.assert_called_with(
-            layer_id=layer_id,
+            layer_id=f'{self.workspace_name}:{layer_name}',
             default_style=default_style,
             other_styles=None
         )
@@ -3306,23 +3308,23 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
                                                              mock_update_layer_styles, mock_get_layer):
         mock_post.side_effect = [MockResponse(500, 'already exists'), MockResponse(200)]
         mock_workspace().name = self.workspace_name
-        layer_id = self.layer_names[0]
-        datastore_name = 'foo'
+        store_id = 'foo'
+        layer_name =  self.layer_names[0]
         geometry_type = 'Point'
         srid = 4236
         sql = 'SELECT * FROM foo'
         default_style = 'points'
 
-        self.engine.create_sql_view_layer(layer_id, datastore_name, geometry_type, srid, sql, default_style)
+        self.engine.create_sql_view_layer(store_id, layer_name, geometry_type, srid, sql, default_style)
 
         # Validate endpoint calls
         sql_view_url = 'workspaces/{workspace}/datastores/{datastore}/featuretypes'.format(
             workspace=self.workspace_name,
-            datastore=datastore_name
+            datastore='foo'
         )
         gwc_layer_url = 'layers/{workspace}:{feature_name}.xml'.format(
             workspace=self.workspace_name,
-            feature_name=self.layer_names[0]
+            feature_name=layer_name
         )
 
         with open(os.path.join(self.files_root, 'test_create_layer_sql_view.xml')) as rendered:
@@ -3341,7 +3343,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         mock_logger.info.assert_called()
 
         mock_update_layer_styles.assert_called_with(
-            layer_id=layer_id,
+            layer_id=f'{self.workspace_name}:{layer_name}',
             default_style=default_style,
             other_styles=None
         )
@@ -3351,15 +3353,15 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
     def test_create_layer_create_sql_view_exception(self, mock_post, mock_logger):
         mock_post.return_value = MockResponse(500, 'other exception')
-        layer_id = f'{self.workspace_name}:{self.layer_names[0]}'
-        datastore_name = 'foo'
+        store_id = f'{self.workspace_name}:foo'
+        layer_name = self.layer_names[0]
         geometry_type = 'Point'
         srid = 4236
         sql = 'SELECT * FROM foo'
         default_style = 'points'
 
         with self.assertRaises(requests.RequestException) as error:
-            self.engine.create_sql_view_layer(layer_id, datastore_name, geometry_type, srid, sql, default_style)
+            self.engine.create_sql_view_layer(store_id, layer_name, geometry_type, srid, sql, default_style)
 
         self.assertEqual("Create Feature Type Status Code 500: other exception", str(error.exception))
         mock_logger.error.assert_called()
@@ -3369,15 +3371,15 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
     def test_create_sql_view_layer_gwc_error(self, mock_post, mock_logger, _):
         mock_post.side_effect = [MockResponse(201)] + [MockResponse(500, 'GWC exception')] * 300
-        layer_id = f'{self.workspace_name}:{self.layer_names[0]}'
-        datastore_name = 'foo'
+        store_id = f'{self.workspace_name}:foo'
+        layer_name = self.layer_names[0]
         geometry_type = 'Point'
         srid = 4236
         sql = 'SELECT * FROM foo'
         default_style = 'points'
 
         with self.assertRaises(requests.RequestException) as error:
-            self.engine.create_sql_view_layer(layer_id, datastore_name, geometry_type, srid, sql, default_style)
+            self.engine.create_sql_view_layer(store_id, layer_name, geometry_type, srid, sql, default_style)
 
         self.assertEqual("Create GWC Layer Status Code 500: GWC exception", str(error.exception))
         mock_logger.error.assert_called()

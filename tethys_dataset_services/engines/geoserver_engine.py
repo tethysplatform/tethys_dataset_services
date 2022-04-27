@@ -1,5 +1,4 @@
 from builtins import *  # noqa: F403, F401
-from re import S  # noqa: F403, F401
 from jinja2 import Template
 import logging
 import os
@@ -1339,7 +1338,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         Examples:
 
-          response = engine.add_table_to_postgis_store(store_id='workspace:store_name', table='table_name')
+          response = engine.create_layer_from_postgis_store(store_id='workspace:store_name', table='table_name')
         """
         # Process identifier
         workspace, name = self._process_identifier(store_id)
@@ -1393,14 +1392,14 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         response_dict = self.get_store(store_id=store_id, debug=debug)
         return response_dict
 
-    def create_sql_view_layer(self, layer_id, postgis_store_name, geometry_type, srid, sql, default_style,
+    def create_sql_view_layer(self, store_id, layer_name, geometry_type, srid, sql, default_style,
                               geometry_name='geometry', other_styles=None, parameters=None, debug=False):
         """
         Direct call to GeoServer REST API to create SQL View feature types and layers.
 
         Args:
-            layer_id (string): Identifier of the sql view layer to create. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
-            postgis_store_name (string): Identifier of existing postgis store with tables that will be queried by the sql view. (assumption: the datastore belongs to the workspace).
+            store_id (string): Identifier of existing postgis store with tables that will be queried by the sql view. (e.g.: "store_name" or "workspace:store_name").
+            layer_name (string): Identifier of the sql view layer to create. (The layer will be created on the workspace of the existing store).
             geometry_name: Name of the PostGIS column/field of type geom.
             geometry_type: Type of geometry in geometry field (e.g.: Point, LineString)
             srid (int): EPSG spatial reference id. EPSG spatial reference ID.
@@ -1411,17 +1410,20 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
         """  # noqa: E501
         # Process identifier
-        workspace, feature_name = self._process_identifier(layer_id)
+        workspace, store_name = self._process_identifier(store_id)
 
         # Get default work space if none is given
         if not workspace:
             workspace = self.catalog.get_default_workspace().name
 
+        # use store's workspace as default for layer
+        layer_id = f'{workspace}:{layer_name}' if ':' not in layer_name else layer_name
+
         # Template context
         context = {
             'workspace': workspace,
-            'feature_name': feature_name,
-            'datastore_name': postgis_store_name,
+            'feature_name': layer_name,
+            'datastore_name': store_name,
             'geoserver_rest_endpoint': self.endpoint,
             'sql': sql,
             'geometry_name': geometry_name,
@@ -1434,7 +1436,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         # Open sql view template
         sql_view_path = os.path.join(self.XML_PATH, 'sql_view_template.xml')
-        url = self._assemble_url('workspaces', workspace, 'datastores', postgis_store_name, 'featuretypes')
+        url = self._assemble_url('workspaces', workspace, 'datastores', store_name, 'featuretypes')
         headers = {
             "Content-type": "text/xml"
         }
@@ -1454,7 +1456,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
             # Raise an exception if status code is not what we expect
             if response.status_code == 201:
-                log.info('Successfully created featuretype {}'.format(feature_name))
+                log.info('Successfully created featuretype {}'.format(layer_name))
                 break
             if response.status_code == 500 and 'already exists' in response.text:
                 break
@@ -1475,7 +1477,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         # GeoWebCache Settings
         gwc_layer_path = os.path.join(self.XML_PATH, 'gwc_layer_template.xml')
-        url = self.get_gwc_endpoint(public=False) + 'layers/' + workspace + ':' + feature_name + '.xml'
+        url = self.get_gwc_endpoint(public=False) + 'layers/' + workspace + ':' + layer_name + '.xml'
         headers = {
             "Content-type": "text/xml"
         }
@@ -1494,7 +1496,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             )
 
             if response.status_code == 200:
-                log.info('Successfully created GeoWebCache layer {}'.format(feature_name))
+                log.info('Successfully created GeoWebCache layer {}'.format(layer_name))
                 break
             else:
                 log.warning("GWC DID NOT RETURN 200, but instead: {}. {}\n".format(response.status_code, response.text))
@@ -1505,7 +1507,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                     log.error(exception)
                     raise exception
 
-        response_dict = self.get_layer(layer_id, postgis_store_name, debug=debug)
+        response_dict = self.get_layer(layer_id, store_name, debug=debug)
         return response_dict
 
     def create_shapefile_resource(self, store_id, shapefile_base=None, shapefile_zip=None, shapefile_upload=None,
@@ -2522,8 +2524,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         Args:
             store_id (string): Identifier for the store to be deleted. Can be a store name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.
-            workspace (str): the name of the workspace to add the style to
-            name(str):name of the coverage
             recurse (bool): recursively delete any dependent objects if True.
             purge (bool): delete configuration files from filesystem if True. remove file from disk of geoserver.
             debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
@@ -2640,14 +2640,13 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             raise AssertionError('The URL "{0}" is not a valid GeoServer spatial dataset service '
                                  'endpoint.'.format(self.endpoint))
 
-    def modify_tile_cache(self, workspace, name, operation, zoom_start=10, zoom_end=15, grid_set_id=900913,
+    def modify_tile_cache(self, layer_id, operation, zoom_start=10, zoom_end=15, grid_set_id=900913,
                           image_format='image/png', thread_count=1, bounds=None, parameters=None):
         """
         Modify all or a portion of the GWC tile cache for given layer. Operations include seed, reseed, and truncate.
 
         Args:
-            workspace (str): name of the workspace the style belongs to.
-            name (str): name of the layer on which to perform tile cache operation.
+            layer_id (string): Identifier of the layer to delete. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
             operation (str): operation type either 'seed', 'reseed', 'truncate', or 'masstruncate'.
             zoom_start (int, optional): beginning of zoom range on which to perform tile cache operation. Minimum is 0. Defaults to 10.
             zoom_end (int, optional): end of zoom range on which to perform tile cache operation. It is not usually recommended to seed past zoom 20. Maximum is 30. Defaults to 15.
@@ -2661,6 +2660,13 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             requests.RequestException: if modify tile cache operation is not submitted successfully.
             ValueError: if invalid value is provided for an argument.
         """  # noqa: E501
+        # Process identifier
+        workspace, name = self._process_identifier(layer_id)
+
+        # Get default work space if none is given
+        if not workspace:
+            workspace = self.catalog.get_default_workspace().name
+
         if operation not in self.GWC_OPERATIONS:
             raise ValueError('Invalid value "{}" provided for argument "operation". Must be "{}".'.format(
                 operation, '" or "'.join(self.GWC_OPERATIONS))
@@ -2809,17 +2815,23 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             exception = requests.RequestException(msg, response=response)
             raise exception
 
-    def enable_time_dimension(self, workspace, coverage_name):
+    def enable_time_dimension(self, coverage_id):
         """
         Enable time dimension for a given image mosaic layer
 
         Args:
-            workspace (str): name of the workspace the style belongs to.
-            coverage_name (str): name of the image mosaic layer.
+            coverage_id (str): name of the image mosaic layer including workspace. (e.g: workspace:name).
 
         Raises:
             requests.RequestException: if enable time dimension operation cannot be executed successfully.
-        """
+        """  # noqa: E501
+        # Process identifier
+        workspace, coverage_name = self._process_identifier(coverage_id)
+
+        # Get default work space if none is given
+        if not workspace:
+            workspace = self.catalog.get_default_workspace().name
+
         headers = {
             "Content-type": "text/xml"
         }
