@@ -2519,22 +2519,23 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         mock_logger.error.assert_called()
 
     def test_terminate_tile_cache_tasks_invalid_operation(self):
-        name = 'gwc_layer_name'
+        layer_id = f'{self.workspace_name}:gwc_layer_name'
         operation = 'invalid-operation'
-        self.assertRaises(ValueError, self.engine.terminate_tile_cache_tasks, self.workspace_name, name,
-                          kill=operation)
+        self.assertRaises(ValueError, self.engine.terminate_tile_cache_tasks, layer_id, kill=operation)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
-    def test_terminate_tile_cache_tasks(self, mock_post):
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog.get_default_workspace')
+    def test_terminate_tile_cache_tasks(self, mock_ws, mock_post):
         mock_post.return_value = mock.MagicMock(status_code=200)
-        name = 'gwc_layer_name'
+        mock_ws().name = self.workspace_name
+        layer_id = 'gwc_layer_name'
 
-        self.engine.terminate_tile_cache_tasks(self.workspace_name, name)
+        self.engine.terminate_tile_cache_tasks(layer_id)
 
         url = '{endpoint}seed/{workspace}:{name}'.format(
             endpoint=self.engine.get_gwc_endpoint(),
             workspace=self.workspace_name,
-            name=name
+            name=layer_id
         )
 
         # Create feature type call
@@ -2543,35 +2544,36 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
     def test_terminate_tile_cache_tasks_exception(self, mock_post):
         mock_post.return_value = mock.MagicMock(status_code=500)
-        name = 'gwc_layer_name'
+        layer_id = f'{self.workspace_name}:gwc_layer_name'
 
-        self.assertRaises(requests.RequestException, self.engine.terminate_tile_cache_tasks,
-                          self.workspace_name, name)
+        self.assertRaises(requests.RequestException, self.engine.terminate_tile_cache_tasks, layer_id)
 
         url = '{endpoint}seed/{workspace}:{name}'.format(
             endpoint=self.engine.get_gwc_endpoint(),
             workspace=self.workspace_name,
-            name=name
+            name='gwc_layer_name'
         )
 
         # Create feature type call
         mock_post.assert_called_with(url, auth=self.auth, data={'kill_all': self.engine.GWC_KILL_ALL})
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.get')
-    def test_query_tile_cache_tasks(self, mock_get):
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog.get_default_workspace')
+    def test_query_tile_cache_tasks(self, mock_ws, mock_get):
         mock_response = mock.MagicMock(status_code=200)
+        mock_ws().name = self.workspace_name
         mock_response.json.return_value = {'long-array-array': [
             [1, 100, 99, 1, 1],
             [10, 100, 90, 2, -2]
         ]}
         mock_get.return_value = mock_response
-        name = 'gwc_layer_name'
-        ret = self.engine.query_tile_cache_tasks(self.workspace_name, name)
+        layer_id = 'gwc_layer_name'
+        ret = self.engine.query_tile_cache_tasks(layer_id)
 
         url = '{endpoint}seed/{workspace}:{name}.json'.format(
             endpoint=self.engine.get_gwc_endpoint(),
             workspace=self.workspace_name,
-            name=name
+            name='gwc_layer_name'
         )
 
         # Create feature type call
@@ -2588,8 +2590,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     def test_query_tile_cache_tasks_exception(self, mock_get):
         mock_response = mock.MagicMock(status_code=500)
         mock_get.return_value = mock_response
-        name = 'gwc_layer_name'
-        self.assertRaises(requests.RequestException, self.engine.query_tile_cache_tasks, self.workspace_name, name)
+        layer_id = f'{self.workspace_name}:gwc_layer_name'
+        self.assertRaises(requests.RequestException, self.engine.query_tile_cache_tasks, layer_id)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.get_store')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')

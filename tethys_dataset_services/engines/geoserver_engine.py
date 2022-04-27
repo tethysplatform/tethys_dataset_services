@@ -2646,7 +2646,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Modify all or a portion of the GWC tile cache for given layer. Operations include seed, reseed, and truncate.
 
         Args:
-            layer_id (string): Identifier of the layer to delete. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
+            layer_id (string): Identifier of the layer. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
             operation (str): operation type either 'seed', 'reseed', 'truncate', or 'masstruncate'.
             zoom_start (int, optional): beginning of zoom range on which to perform tile cache operation. Minimum is 0. Defaults to 10.
             zoom_end (int, optional): end of zoom range on which to perform tile cache operation. It is not usually recommended to seed past zoom 20. Maximum is 30. Defaults to 15.
@@ -2735,19 +2735,25 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         response_dict = {'success': True, 'result': None}
         return response_dict
 
-    def terminate_tile_cache_tasks(self, workspace, name, kill='all'):
+    def terminate_tile_cache_tasks(self, layer_id, kill='all'):
         """
         Terminate running tile cache processes for given layer.
 
         Args:
-            workspace (str): name of the workspace the style belongs to.
-            name (str): name of the layer on which to terminate tile cache operations.
+            layer_id (string): Identifier of the layer. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
             kill (str): specify which type of task to terminate. Either 'running', 'pending', or 'all'.
 
         Raises:
             requests.RequestException: if terminate tile cache operation cannot be submitted successfully.
             ValueError: if invalid value is provided for an argument.
-        """
+        """  # noqa: E501
+        # Process identifier
+        workspace, name = self._process_identifier(layer_id)
+
+        # Get default work space if none is given
+        if not workspace:
+            workspace = self.catalog.get_default_workspace().name
+
         if kill not in self.GWC_KILL_OPERATIONS:
             raise ValueError('Invalid value "{}" provided for argument "kill". Must be "{}".'.format(
                 kill, '" or "'.join(self.GWC_KILL_OPERATIONS))
@@ -2771,13 +2777,12 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         response_dict = {'success': True, 'result': None}
         return response_dict
 
-    def query_tile_cache_tasks(self, workspace, name):
+    def query_tile_cache_tasks(self, layer_id):
         """
         Get the status of running tile cache tasks for a layer.
 
         Args:
-            workspace (str): name of the workspace the style belongs to.
-            name (str): name of the layer on which to get status.
+            layer_id (string): Identifier of the layer. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
 
         Returns:
             list: list of dictionaries with status with keys: 'tiles_processed', 'total_to_process', 'num_remaining', 'task_id', 'task_status'
@@ -2785,6 +2790,13 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         Raises:
             requests.RequestException: if query tile cache operation cannot be submitted successfully.
         """  # noqa: E501
+        # Process identifier
+        workspace, name = self._process_identifier(layer_id)
+
+        # Get default work space if none is given
+        if not workspace:
+            workspace = self.catalog.get_default_workspace().name
+
         url = self.get_gwc_endpoint() + 'seed/' + workspace + ':' + name + '.json'
         status_list = []
 
