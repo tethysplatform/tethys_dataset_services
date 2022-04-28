@@ -5,8 +5,8 @@ on:
       - main
       - master
   pull_request:
-  schedule:
-    - cron: "0 0 * * 0"
+  # schedule:
+  #   - cron: "0 0 * * 0"
 jobs:
   e2e-test:
     name: E2E Test Python ${{ matrix.py }} - Postgis ${{ matrix.postgis }}
