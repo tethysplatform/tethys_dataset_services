@@ -1,0 +1,14 @@
+<layer>
+  <defaultStyle>
+    <name>a-workspace:points</name>
+    <workspace>a-workspace</workspace>
+    <atom:link xmlns:atom="http://www.w3.org/2005/Atom" rel="alternate" href="http://fake.geoserver.org:8181/geoserver/rest/workspaces/a-workspace/styles/points.xml" type="application/xml"/>
+  </defaultStyle>
+  <styles class="linked-hash-set">
+    <style>
+      <name>a-workspace:lines</name>
+      <workspace>a-workspace</workspace>
+      <atom:link xmlns:atom="http://www.w3.org/2005/Atom" rel="alternate" href="http://fake.geoserver.org:8181/geoserver/rest/workspaces/a-workspace/styles/lines.xml" type="application/xml"/>
+    </style>
+  </styles>
+</layer>

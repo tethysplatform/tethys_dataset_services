@@ -1,0 +1,5 @@
+<layerGroup>
+    <name>boo</name>
+    <layers><layer>baz</layer><layer>bat</layer></layers>
+    <styles><style>points</style><style>lines</style></styles>
+</layerGroup>
