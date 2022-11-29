@@ -8,6 +8,7 @@ import pprint
 import requests
 from requests.auth import HTTPBasicAuth
 from io import BytesIO
+from urllib.parse import urlparse
 from xml.etree import ElementTree
 from zipfile import ZipFile, is_zipfile
 
@@ -96,7 +97,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             )
         return self._catalog
 
-    def __init__(self, endpoint, apikey=None, username=None, password=None, public_endpoint=None):
+    def __init__(self, endpoint, apikey=None, username=None, password=None, public_endpoint=None, node_ports=None):
         """
         Default constructor for Dataset Engines.
 
@@ -105,6 +106,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
           apikey (string, optional): API key that will be used to authenticate with the dataset service.
           username (string, optional): Username that will be used to authenticate with the dataset service.
           password (string, optional): Password that will be used to authenticate with the dataset service.
+          node_ports(list<int>, optional): A list of ports of each node in a clustered GeoServer deployment.
         """
         # Set custom property /geoserver/rest/ -> /geoserver/gwc/rest/
         if public_endpoint:
@@ -113,6 +115,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             self._gwc_endpoint = endpoint.replace('rest', 'gwc/rest')
         else:
             self._gwc_endpoint = endpoint.replace('rest', 'gwc/rest/')
+        
+        self.node_ports = node_ports
 
         super(GeoServerSpatialDatasetEngine, self).__init__(
             endpoint=endpoint,
@@ -247,6 +251,27 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                       'outputFormat={2}'.format(endpoint, resource_id, output_format)
 
         return wfs_url
+
+    def _get_node_endpoints(self, ports=None, public=True, gwc=False):
+        node_endpoints = []
+        if not gwc:
+            endpoint = self.public_endpoint if public and hasattr(self, 'public_endpoint') else self.endpoint
+        else:
+            endpoint = self.get_gwc_endpoint(public=public)
+            
+        endpoint = f'{endpoint}/' if not endpoint.endswith('/') else endpoint
+
+        if ports is None:
+            ports = self.node_ports
+        log.debug(f"GeoServer Node Ports: {ports}")
+
+        if ports is not None:
+            gs_url = urlparse(endpoint)
+            for port in ports:
+                node_endpoints.append(f"{gs_url.scheme}://{gs_url.hostname}:{port}{gs_url.path}")
+        else:
+            node_endpoints.append(endpoint)
+        return node_endpoints
 
     @staticmethod
     def _handle_debug(return_object, debug):
@@ -604,7 +629,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             gs_endpoint = self._gwc_endpoint
 
         # Add trailing slash for consistency.
-        if gs_endpoint[-1] != '/':
+        if not gs_endpoint.endswith('/'):
             gs_endpoint += '/'
 
         return gs_endpoint
@@ -621,7 +646,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         gs_endpoint = gs_endpoint.replace('rest', '{0}/ows'.format(workspace))
 
         # Add trailing slash for consistency.
-        if gs_endpoint[-1] != '/':
+        if not gs_endpoint.endswith('/'):
             gs_endpoint += '/'
         return gs_endpoint
 
@@ -636,7 +661,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         gs_endpoint = gs_endpoint.replace('rest', 'wms')
 
         # Add trailing slash for consistency.
-        if gs_endpoint[-1] != '/':
+        if not gs_endpoint.endswith('/'):
             gs_endpoint += '/'
         return gs_endpoint
 
@@ -652,22 +677,13 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                               GeoServer are running in a clustered GeoServer configuration.
             public (bool): Use the public geoserver endpoint if True, otherwise use the internal endpoint.
         """
-        urls = []
-        gs_endpoint = self.public_endpoint if public and hasattr(self, 'public_endpoint') else self.endpoint
-
-        if ports is not None:
-            gs_endpoint_template = gs_endpoint.replace('8181', '{0}')
-            for port in ports:
-                urls.append(gs_endpoint_template.format(port) + 'reload')
-        else:
-            urls.append(gs_endpoint + 'reload')
-
-        log.debug("Catalog Reload URLS: {0}".format(urls))
+        node_endpoints = self._get_node_endpoints(ports=ports, public=public)
+        log.debug("Catalog Reload URLS: {0}".format(node_endpoints))
 
         response_dict = {'success': True, 'result': None, 'error': []}
-        for url in urls:
+        for endpoint in node_endpoints:
             try:
-                response = requests.post(url, auth=(self.username, self.password))
+                response = requests.post(f'{endpoint}reload', auth=(self.username, self.password))
 
                 if response.status_code != 200:
                     msg = "Catalog Reload Status Code {0}: {1}".format(response.status_code, response.text)
@@ -683,32 +699,23 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
     def gwc_reload(self, ports=None, public=True):
         """
-                Reload the GeoWebCache configuration from disk.
+        Reload the GeoWebCache configuration from disk.
 
-                Args:
-                    ports (iterable): A tuple or list of integers representing the ports on which different instances of
-                                      GeoServer are running in a clustered GeoServer configuration.
-                    public (bool): Use the public geoserver endpoint if True, otherwise use the internal
-                                            endpoint.
-                """
-        urls = []
-        gwc_endpoint = self.get_gwc_endpoint(public=public)
-
-        if ports is not None:
-            gs_endpoint_template = gwc_endpoint.replace('8181', '{0}')
-            for port in ports:
-                urls.append(gs_endpoint_template.format(port) + 'reload')
-        else:
-            urls.append(gwc_endpoint + 'reload')
-
-        log.debug("GeoWebCache Reload URLS: {0}".format(urls))
+        Args:
+            ports (iterable): A tuple or list of integers representing the ports on which different instances of
+                                GeoServer are running in a clustered GeoServer configuration.
+            public (bool): Use the public geoserver endpoint if True, otherwise use the internal
+                                    endpoint.
+        """
+        node_endpoints = self._get_node_endpoints(ports=ports, public=public, gwc=True)
+        log.debug("GeoWebCache Reload URLS: {0}".format(node_endpoints))
 
         response_dict = {'success': True, 'result': None, 'error': []}
-        for url in urls:
+        for endpoint in node_endpoints:
             retries_remaining = 3
             while retries_remaining > 0:
                 try:
-                    response = requests.post(url, auth=(self.username, self.password))
+                    response = requests.post(f'{endpoint}reload', auth=(self.username, self.password))
 
                     if response.status_code != 200:
                         msg = "GeoWebCache Reload Status Code {0}: {1}".format(response.status_code, response.text)
@@ -1468,6 +1475,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                     log.error(exception)
                     raise exception
 
+        # Reload before attempting to update styles to avoid issues
+        self.reload()
+        
         # Add styles to new layer
         self.update_layer_styles(
             layer_id=layer_id,
@@ -2416,9 +2426,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Raise an exception if status code is not what we expect
         if response.status_code != 200:
             if response.status_code in self.WARNING_STATUS_CODES:
-                msg = "Delete Layer Status Code {0}: {1}".format(response.status_code, response.text)
-                exception = requests.RequestException(msg, response=response)
-                log.warning(exception)
+                pass
             else:
                 msg = "Delete Layer Status Code {0}: {1}".format(response.status_code, response.text)
                 exception = requests.RequestException(msg, response=response)
@@ -2445,7 +2453,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         response = requests.delete(url, auth=(self.username, self.password))
         if response.status_code != 200:
             if response.status_code == 404 and "No such layer group" in response.text:
-                return
+                pass
             else:
                 msg = "Delete Layer Group Status Code {0}: {1}".format(response.status_code, response.text)
                 exception = requests.RequestException(msg, response=response)
@@ -2558,9 +2566,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         if response.status_code != 200:
             if response.status_code in self.WARNING_STATUS_CODES:
-                msg = "Delete Coverage Store Status Code {0}: {1}".format(response.status_code, response.text)
-                exception = requests.RequestException(msg, response=response)
-                log.warning(exception)
+                pass
             else:
                 msg = "Delete Coverage Store Status Code {0}: {1}".format(response.status_code, response.text)
                 exception = requests.RequestException(msg, response=response)
@@ -2605,9 +2611,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Raise an exception if status code is not what we expect
         if response.status_code != 200:
             if response.status_code in self.WARNING_STATUS_CODES:
-                msg = "Delete Style Status Code {0}: {1}".format(response.status_code, response.text)
-                exception = requests.RequestException(msg, response=response)
-                log.warning(exception)
+                pass
             else:
                 msg = "Delete Style Status Code {0}: {1}".format(response.status_code, response.text)
                 exception = requests.RequestException(msg, response=response)
