@@ -1460,7 +1460,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                 auth=(self.username, self.password),
                 data=xml,
             )
-            
+
             # Raise an exception if status code is not what we expect
             if response.status_code == 201:
                 log.info('Successfully created featuretype {}'.format(layer_name))
