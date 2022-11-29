@@ -115,7 +115,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             self._gwc_endpoint = endpoint.replace('rest', 'gwc/rest')
         else:
             self._gwc_endpoint = endpoint.replace('rest', 'gwc/rest/')
-        
+
         self.node_ports = node_ports
 
         super(GeoServerSpatialDatasetEngine, self).__init__(
@@ -258,7 +258,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             endpoint = self.public_endpoint if public and hasattr(self, 'public_endpoint') else self.endpoint
         else:
             endpoint = self.get_gwc_endpoint(public=public)
-            
+
         endpoint = f'{endpoint}/' if not endpoint.endswith('/') else endpoint
 
         if ports is None:
@@ -1460,7 +1460,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                 auth=(self.username, self.password),
                 data=xml,
             )
-
+            
             # Raise an exception if status code is not what we expect
             if response.status_code == 201:
                 log.info('Successfully created featuretype {}'.format(layer_name))
@@ -1477,7 +1477,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         # Reload before attempting to update styles to avoid issues
         self.reload()
-        
+
         # Add styles to new layer
         self.update_layer_styles(
             layer_id=layer_id,
