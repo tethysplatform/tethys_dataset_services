@@ -19,6 +19,7 @@ jobs:
           - windows
           - macos
         py:
+          - "3.11"
           - "3.10"
           - "3.9"
           - "3.8"
@@ -37,7 +38,7 @@ jobs:
       - name: Run tests
         run: tox
       - name: Coveralls
-        if: matrix.os == 'ubuntu' && matrix.py == 3.9
+        if: matrix.os == 'ubuntu' && matrix.py == 3.10
         run: coveralls --service=github
         env: 
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

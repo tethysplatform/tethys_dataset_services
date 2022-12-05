@@ -1756,7 +1756,6 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         # Execute
         self.engine.delete_layer(layer_name, datastore=self.store_name)
-        mock_logger.warning.assert_called()
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.log')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.delete')
@@ -1904,7 +1903,6 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertIn(url, put_call_args[0][1]['url'])
         self.assertEqual(json, put_call_args[0][1]['params'])
         self.assertEqual({"Content-type": "application/json"}, put_call_args[0][1]['headers'])
-        mock_log.warning.assert_called()
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.log')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.delete')
@@ -1983,7 +1981,6 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         # Create feature type call
         mock_delete.assert_called_with(url=url, auth=self.auth, headers=headers, params=params)
-        mock_logger.warning.assert_called()
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.log')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.delete')
@@ -3254,11 +3251,12 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         mock_logger.error.assert_called()
 
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.reload')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.get_layer')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.update_layer_styles')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.log')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
-    def test_create_sql_view_layer(self, mock_post, mock_logger, mock_update_layer_styles, mock_get_layer):
+    def test_create_sql_view_layer(self, mock_post, mock_logger, mock_update_layer_styles, mock_get_layer, mock_reload):
         mock_post.side_effect = [MockResponse(201), MockResponse(200)]
         store_id = f'{self.workspace_name}:foo'
         layer_name = self.layer_names[0]
@@ -3300,14 +3298,16 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
             other_styles=None
         )
         mock_get_layer.assert_called()
+        mock_reload.assert_called()
 
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.reload')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.get_layer')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.update_layer_styles')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.log')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog.get_default_workspace')
     def test_create_layer_create_feature_type_already_exists(self, mock_workspace, mock_post, mock_logger,
-                                                             mock_update_layer_styles, mock_get_layer):
+                                                             mock_update_layer_styles, mock_get_layer, mock_reload):
         mock_post.side_effect = [MockResponse(500, 'already exists'), MockResponse(200)]
         mock_workspace().name = self.workspace_name
         store_id = 'foo'
@@ -3350,6 +3350,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
             other_styles=None
         )
         mock_get_layer.assert_called()
+        mock_reload.assert_called()
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.log')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
@@ -3372,7 +3373,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.log')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
     def test_create_sql_view_layer_gwc_error(self, mock_post, mock_logger, _):
-        mock_post.side_effect = [MockResponse(201)] + [MockResponse(500, 'GWC exception')] * 300
+        mock_post.side_effect = [MockResponse(201)] + [MockResponse(200)] + ([MockResponse(500, 'GWC exception')] * 300)
         store_id = f'{self.workspace_name}:foo'
         layer_name = self.layer_names[0]
         geometry_type = 'Point'
