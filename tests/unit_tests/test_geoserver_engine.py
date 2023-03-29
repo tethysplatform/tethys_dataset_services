@@ -2341,7 +2341,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     def test_reload_ports_none(self, mock_post):
         mock_post.return_value = MockResponse(200)
         self.engine.reload()
-        rest_endpoint = self.public_endpoint + 'reload'
+        rest_endpoint = self.endpoint + 'reload'
         mock_post.assert_called_with(rest_endpoint, auth=self.auth)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
@@ -2362,14 +2362,14 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
     def test_reload_connection_error(self, mock_post, mock_logger):
         mock_post.side_effect = requests.ConnectionError()
-        response = self.engine.reload()
+        self.engine.reload()
         mock_logger.warning.assert_called()
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
     def test_gwc_reload_ports_none(self, mock_post):
         mock_post.return_value = MockResponse(200)
         self.engine.gwc_reload()
-        rest_endpoint = self.public_endpoint.replace('rest', 'gwc/rest') + 'reload'
+        rest_endpoint = self.endpoint.replace('rest', 'gwc/rest') + 'reload'
         mock_post.assert_called_with(rest_endpoint, auth=self.auth)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
@@ -2390,7 +2390,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
     def test_gwc_reload_connection_error(self, mock_post, mock_logger):
         mock_post.side_effect = requests.ConnectionError()
-        response = self.engine.gwc_reload()
+        self.engine.gwc_reload()
         mock_logger.warning.assert_called()
 
     def test_ini_no_slash_endpoint(self):
