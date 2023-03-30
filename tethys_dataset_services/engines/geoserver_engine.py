@@ -668,7 +668,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
     def close(self):
         self.catalog.client.close()
 
-    def reload(self, ports=None, public=False):
+    def reload(self, ports=None, public=True):
         """
         Reload the configuration from disk.
 
@@ -697,7 +697,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         response_dict.pop('error', None) if not response_dict['error'] else response_dict.pop('result', None)
         return response_dict
 
-    def gwc_reload(self, ports=None, public=False):
+    def gwc_reload(self, ports=None, public=True):
         """
         Reload the GeoWebCache configuration from disk.
 
