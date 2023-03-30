@@ -1400,7 +1400,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         return response_dict
 
     def create_sql_view_layer(self, store_id, layer_name, geometry_type, srid, sql, default_style,
-                              geometry_name='geometry', other_styles=None, parameters=None, debug=False):
+                              geometry_name='geometry', other_styles=None, parameters=None, reload_public=False,
+                              debug=False):
         """
         Direct call to GeoServer REST API to create SQL View feature types and layers.
 
@@ -1414,6 +1415,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             default_style: The name of the default style. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
             other_styles: A list of other default style names. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
             parameters: A list of parameter dictionaries { name, default_value, regex_validator }.
+            reload_public: (bool, optional): Reload the catalog using the public endpoint. Defaults to False.
             debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
         """  # noqa: E501
         # Process identifier
@@ -1476,7 +1478,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                     raise exception
 
         # Reload before attempting to update styles to avoid issues
-        self.reload()
+        self.reload(public=reload_public)
 
         # Add styles to new layer
         self.update_layer_styles(
