@@ -11,6 +11,8 @@ jobs:
   e2e-test:
     name: E2E Test Python ${{ matrix.py }} - Postgis ${{ matrix.postgis }}
     runs-on: ubuntu-latest
+    env:
+      SQLALCHEMY_WARN_20: 1
     strategy:
       fail-fast: false
       matrix:
