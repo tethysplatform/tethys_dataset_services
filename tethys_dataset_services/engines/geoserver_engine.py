@@ -1250,7 +1250,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
     def create_postgis_store(self, store_id, host, port, database, username, password, max_connections=5,
                              max_connection_idle_time=30, evictor_run_periodicity=30, validate_connections=True,
-                             debug=False):
+                             expose_primary_keys=False, debug=False):
         """
         Use this method to link an existing PostGIS database to GeoServer as a feature store. Note that this method only works for data in vector formats.
 
@@ -1265,6 +1265,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
           max_connection_idle_time (int, optional): Number of seconds a connections can stay idle before the evictor considers closing it. Defaults to 30 seconds.
           evictor_run_periodicity (int, optional): Number of seconds between idle connection evictor runs. Defaults to 30 seconds.
           validate_connections (bool, optional): Test connections before using. Defaults to True.
+          expose_primary_keys (bool, optional):
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
@@ -1283,24 +1284,24 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             workspace = self.catalog.get_default_workspace().name
 
         # Create the store
-        xml = """
+        xml = f"""
               <dataStore>
-                <name>{0}</name>
+                <name>{name}</name>
                 <connectionParameters>
-                  <entry key="host">{1}</entry>
-                  <entry key="port">{2}</entry>
-                  <entry key="database">{3}</entry>
-                  <entry key="user">{4}</entry>
-                  <entry key="passwd">{5}</entry>
+                  <entry key="host">{host}</entry>
+                  <entry key="port">{port}</entry>
+                  <entry key="database">{database}</entry>
+                  <entry key="user">{username}</entry>
+                  <entry key="passwd">{password}</entry>
                   <entry key="dbtype">postgis</entry>
-                  <entry key="max connections">{6}</entry>
-                  <entry key="Max connection idle time">{7}</entry>
-                  <entry key="Evictor run periodicity">{8}</entry>
-                  <entry key="validate connections">{9}</entry>
+                  <entry key="max connections">{max_connections}</entry>
+                  <entry key="Max connection idle time">{max_connection_idle_time}</entry>
+                  <entry key="Evictor run periodicity">{evictor_run_periodicity}</entry>
+                  <entry key="validate connections">{str(validate_connections).lower()}</entry>
+                  <entry key="Expose primary keys">{str(expose_primary_keys).lower()}</entry>
                 </connectionParameters>
               </dataStore>
-              """.format(name, host, port, database, username, password, max_connections, max_connection_idle_time,
-                         evictor_run_periodicity, str(validate_connections).lower())
+              """
 
         # Prepare headers
         headers = {
