@@ -210,7 +210,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         for n in self.resource_names:
             self.assertIn(n, result)
 
-        mc.get_resources.called_with(store=None, workspace=None)
+        mc.get_resources.assert_called_with(store=None, workspace=None)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_list_resources_with_properties(self, mock_catalog):
@@ -244,7 +244,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
             self.assertIn('store', r)
             self.assertEqual(self.store_name, r['store'])
 
-        mc.get_resources.called_with(store=None, workspace=None)
+        mc.get_resources.assert_called_with(store=None, workspace=None)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_list_resources_ambiguous_error(self, mock_catalog):
@@ -260,7 +260,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         # Success
         self.assertFalse(response['success'])
 
-        mc.get_resources.called_with(store=None, workspace=None)
+        mc.get_resources.assert_called_with(store=None, workspace=None)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_list_resources_multiple_stores_error(self, mock_catalog):
@@ -277,7 +277,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertFalse(response['success'])
         self.assertIn('Multiple stores found named', response['error'])
 
-        mc.get_resources.called_with(store=None, workspace=None)
+        mc.get_resources.assert_called_with(store=None, workspace=None)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_list_layers(self, mock_catalog):
