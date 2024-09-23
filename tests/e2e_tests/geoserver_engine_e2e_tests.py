@@ -989,10 +989,12 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Execute
         response = self.geoserver_engine.create_layer_from_postgis_store(
             store_id=store_id,
-            table=self.pg_table_name
+            table=self.pg_table_name,
+            debug=True
         )
 
         # Check for success response
+        print(response)
         self.assertTrue(response['success'])
 
         # TEST list_stores
@@ -1136,8 +1138,10 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Create layer from postgis store
         response = self.geoserver_engine.create_layer_from_postgis_store(
             store_id=store_id,
-            table=self.pg_table_name
+            table=self.pg_table_name,
+            debug=True
         )
+        print(response)
         self.assertTrue(response['success'])
 
         # Pause to let GeoServer catch up before continuing
