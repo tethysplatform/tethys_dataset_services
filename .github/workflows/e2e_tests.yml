@@ -68,6 +68,9 @@ jobs:
           PGPASSWORD=mysecretpassword psql -U postgres -h localhost -c "CREATE DATABASE tds_tests WITH OWNER postgres;"
           PGPASSWORD=mysecretpassword psql -U postgres -h localhost -d tds_tests -c  "CREATE EXTENSION postgis;"
           if [[ ${{ matrix.postgis }} == *"3.4-alpine"* ]]; then PGPASSWORD=mysecretpassword psql -U postgres -h localhost -d tds_tests -c  "CREATE EXTENSION postgis_raster;"; fi
+          # The next two are workarounds for issues with PostGIS calculating extents in PostGIS 3.4 (see: https://gis.stackexchange.com/questions/75536/geoserver-not-reading-bounding-box-from-postgis-geometry-correctly)
+          if [[ ${{ matrix.postgis }} == *"3.4-alpine"* ]]; then PGPASSWORD=mysecretpassword psql -U postgres -h localhost -d tds_tests -c  "create or replace function st_estimated_extent(text,text) returns box2d as 'select null::box2d' language sql;"; fi
+          if [[ ${{ matrix.postgis }} == *"3.4-alpine"* ]]; then PGPASSWORD=mysecretpassword psql -U postgres -h localhost -d tds_tests -c  "create or replace function st_estimated_extent(text,text,text) returns box2d as 'select null::box2d' language sql;"; fi
           sleep 10
       - name: Run tests
         run: tox -e e2e_gs_tests
