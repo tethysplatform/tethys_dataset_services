@@ -67,7 +67,7 @@ jobs:
         run: |
           PGPASSWORD=mysecretpassword psql -U postgres -h localhost -c "CREATE DATABASE tds_tests WITH OWNER postgres;"
           PGPASSWORD=mysecretpassword psql -U postgres -h localhost -d tds_tests -c  "CREATE EXTENSION postgis;"
-          if [[ ${{ matrix.py }} == *"3.4-alpine"* ]]; then PGPASSWORD=mysecretpassword psql -U postgres -h localhost -d tds_tests -c  "CREATE EXTENSION postgis_raster;"; fi
+          if [[ ${{ matrix.postgis }} == *"3.4-alpine"* ]]; then PGPASSWORD=mysecretpassword psql -U postgres -h localhost -d tds_tests -c  "CREATE EXTENSION postgis_raster;"; fi
           sleep 10
       - name: Run tests
         run: tox -e e2e_gs_tests
