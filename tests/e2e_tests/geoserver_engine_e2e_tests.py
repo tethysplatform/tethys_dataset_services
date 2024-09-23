@@ -131,7 +131,8 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         insert_sql = "INSERT INTO {table} VALUES ({id}, '{name}', ST_GeomFromText('POINT({lon} {lat})', 4326));"
         rows = [
             {"id": 1, "name": "Aquaveo", "lat": 40.276039, "lon": -111.651120},
-            {"id": 2, "name": "BYU", "lat": 40.252335, "lon": -111.649326},
+            {"id": 2, "name": "Lynker", "lat": 39.111534, "lon": -77.556859},
+            {"id": 3, "name": "CHL", "lat": 32.299343, "lon": -90.866044},
         ]
 
         for r in rows:
