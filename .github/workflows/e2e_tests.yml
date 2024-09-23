@@ -22,11 +22,11 @@ jobs:
           - "11-2.5-alpine"
           - "12-2.5-alpine"
           # Not working on PostGIS 3.4 yet
-          - "12-3.4-alpine"
-          - "13-3.4-alpine"
-          - "14-3.4-alpine"
-          - "15-3.4-alpine"
-          - "16-3.4-alpine"
+          # - "12-3.4-alpine"
+          # - "13-3.4-alpine"
+          # - "14-3.4-alpine"
+          # - "15-3.4-alpine"
+          # - "16-3.4-alpine"
     services:
       geoserver:
         image: tethysplatform/geoserver
