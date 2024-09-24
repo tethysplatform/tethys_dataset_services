@@ -210,7 +210,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         for n in self.resource_names:
             self.assertIn(n, result)
 
-        mc.get_resources.called_with(store=None, workspace=None)
+        mc.get_resources.assert_called_with(stores=None, workspaces=None)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_list_resources_with_properties(self, mock_catalog):
@@ -244,7 +244,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
             self.assertIn('store', r)
             self.assertEqual(self.store_name, r['store'])
 
-        mc.get_resources.called_with(store=None, workspace=None)
+        mc.get_resources.assert_called_with(stores=None, workspaces=None)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_list_resources_ambiguous_error(self, mock_catalog):
@@ -260,7 +260,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         # Success
         self.assertFalse(response['success'])
 
-        mc.get_resources.called_with(store=None, workspace=None)
+        mc.get_resources.assert_called_with(stores=None, workspaces=None)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_list_resources_multiple_stores_error(self, mock_catalog):
@@ -277,7 +277,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertFalse(response['success'])
         self.assertIn('Multiple stores found named', response['error'])
 
-        mc.get_resources.called_with(store=None, workspace=None)
+        mc.get_resources.assert_called_with(stores=None, workspaces=None)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_list_layers(self, mock_catalog):
@@ -3708,6 +3708,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
                   <entry key="Max connection idle time">{7}</entry>
                   <entry key="Evictor run periodicity">{8}</entry>
                   <entry key="validate connections">true</entry>
+                  <entry key="Expose primary keys">false</entry>
                 </connectionParameters>
               </dataStore>
               """.format('foo', host, port, database, username, password, max_connections, max_connection_idle_time,
@@ -3756,6 +3757,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
                   <entry key="Max connection idle time">{7}</entry>
                   <entry key="Evictor run periodicity">{8}</entry>
                   <entry key="validate connections">false</entry>
+                  <entry key="Expose primary keys">false</entry>
                 </connectionParameters>
               </dataStore>
               """.format('foo', host, port, database, username, password, max_connections, max_connection_idle_time,
@@ -3772,6 +3774,56 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         )
         self.engine.create_postgis_store(store_id, host, port, database, username, password, max_connections, 
                                          max_connection_idle_time, evictor_run_periodicity, validate_connections=False)
+        mock_post.assert_called_with(url=rest_endpoint, data=xml, headers=expected_headers, auth=self.auth)
+
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.get_store')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
+    @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog.get_default_workspace')
+    def test_create_postgis_store_expose_primary_keys_true(self, mock_workspace, mock_post, _):
+        mock_post.return_value = MockResponse(201)
+        store_id = 'foo'
+        mock_workspace().name = self.workspace_name
+        host = 'localhost'
+        port = '5432'
+        database = 'foo_db'
+        username = 'user'
+        password = 'pass'
+        max_connections = 10
+        max_connection_idle_time = 40
+        evictor_run_periodicity = 60
+
+        xml = """
+              <dataStore>
+                <name>{0}</name>
+                <connectionParameters>
+                  <entry key="host">{1}</entry>
+                  <entry key="port">{2}</entry>
+                  <entry key="database">{3}</entry>
+                  <entry key="user">{4}</entry>
+                  <entry key="passwd">{5}</entry>
+                  <entry key="dbtype">postgis</entry>
+                  <entry key="max connections">{6}</entry>
+                  <entry key="Max connection idle time">{7}</entry>
+                  <entry key="Evictor run periodicity">{8}</entry>
+                  <entry key="validate connections">false</entry>
+                  <entry key="Expose primary keys">true</entry>
+                </connectionParameters>
+              </dataStore>
+              """.format('foo', host, port, database, username, password, max_connections, max_connection_idle_time,
+                         evictor_run_periodicity)
+
+        expected_headers = {
+            "Content-type": "text/xml",
+            "Accept": "application/xml"
+        }
+
+        rest_endpoint = '{endpoint}workspaces/{workspace}/datastores'.format(
+            endpoint=self.endpoint,
+            workspace=self.workspace_name
+        )
+        self.engine.create_postgis_store(store_id, host, port, database, username, password, max_connections, 
+                                         max_connection_idle_time, evictor_run_periodicity, validate_connections=False,
+                                         expose_primary_keys=True)
         mock_post.assert_called_with(url=rest_endpoint, data=xml, headers=expected_headers, auth=self.auth)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.get_store')
@@ -3803,6 +3855,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
                   <entry key="Max connection idle time">{7}</entry>
                   <entry key="Evictor run periodicity">{8}</entry>
                   <entry key="validate connections">true</entry>
+                  <entry key="Expose primary keys">false</entry>
                 </connectionParameters>
               </dataStore>
               """.format('foo', host, port, database, username, password, max_connections, max_connection_idle_time,

@@ -15,17 +15,18 @@ jobs:
       fail-fast: false
       matrix:
         py:
-          - "3.10"
+          - "3.12"
         postgis:
           - "9.6-2.5-alpine"
           - "10-2.5-alpine"
           - "11-2.5-alpine"
           - "12-2.5-alpine"
-          # Not working on PostGIS 3.2 yet
-          # - "9.6-3.2-alpine"
-          # - "10-3.2-alpine"
-          # - "11-3.2-alpine"
-          # - "12-3.2-alpine"
+          # Not working on PostGIS 3.4 yet
+          # - "12-3.4-alpine"
+          # - "13-3.4-alpine"
+          # - "14-3.4-alpine"
+          # - "15-3.4-alpine"
+          # - "16-3.4-alpine"
     services:
       geoserver:
         image: tethysplatform/geoserver
@@ -52,9 +53,9 @@ jobs:
         ports:
           - 5432:5432
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.py }} for test
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.py }}
       - name: Install dependencies
@@ -66,6 +67,7 @@ jobs:
         run: |
           PGPASSWORD=mysecretpassword psql -U postgres -h localhost -c "CREATE DATABASE tds_tests WITH OWNER postgres;"
           PGPASSWORD=mysecretpassword psql -U postgres -h localhost -d tds_tests -c  "CREATE EXTENSION postgis;"
+          if [[ ${{ matrix.postgis }} == *"3.4-alpine"* ]]; then PGPASSWORD=mysecretpassword psql -U postgres -h localhost -d tds_tests -c  "CREATE EXTENSION postgis_raster;"; fi
           sleep 10
       - name: Run tests
         run: tox -e e2e_gs_tests

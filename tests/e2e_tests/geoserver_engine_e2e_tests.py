@@ -131,7 +131,8 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         insert_sql = "INSERT INTO {table} VALUES ({id}, '{name}', ST_GeomFromText('POINT({lon} {lat})', 4326));"
         rows = [
             {"id": 1, "name": "Aquaveo", "lat": 40.276039, "lon": -111.651120},
-            {"id": 2, "name": "BYU", "lat": 40.252335, "lon": -111.649326},
+            {"id": 2, "name": "Lynker", "lat": 39.111534, "lon": -77.556859},
+            {"id": 3, "name": "CHL", "lat": 32.299343, "lon": -90.866044},
         ]
 
         for r in rows:
@@ -989,10 +990,12 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Execute
         response = self.geoserver_engine.create_layer_from_postgis_store(
             store_id=store_id,
-            table=self.pg_table_name
+            table=self.pg_table_name,
+            debug=True
         )
 
         # Check for success response
+        # TODO: returns an error in PostGIS 3.4: Internal Server Error(500): :java.io.IOException: Error occured calculating bounds for points
         self.assertTrue(response['success'])
 
         # TEST list_stores
@@ -1136,8 +1139,11 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # Create layer from postgis store
         response = self.geoserver_engine.create_layer_from_postgis_store(
             store_id=store_id,
-            table=self.pg_table_name
+            table=self.pg_table_name,
+            debug=True
         )
+
+        # TODO: returns an error in PostGIS 3.4: Internal Server Error(500): :java.io.IOException: Error occured calculating bounds for points
         self.assertTrue(response['success'])
 
         # Pause to let GeoServer catch up before continuing
