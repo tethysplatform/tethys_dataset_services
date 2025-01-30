@@ -1501,7 +1501,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         retries_remaining = 300
         while retries_remaining > 0:
-            response = requests.post(
+            response = requests.put(
                 url,
                 headers=headers,
                 auth=(self.username, self.password),
