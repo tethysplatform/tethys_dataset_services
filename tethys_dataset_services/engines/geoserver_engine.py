@@ -677,7 +677,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                               GeoServer are running in a clustered GeoServer configuration.
             public (bool): Use the public geoserver endpoint if True, otherwise use the internal endpoint.
         """
-        node_endpoints = self._get_node_endpoints(ports=ports, public=public)
+        node_endpoints = self._get_node_endpoints(ports=[9090], public=public) # take this out, it is hardcoded for testing.
+        # node_endpoints = self._get_node_endpoints(ports=ports, public=public)
         log.debug("Catalog Reload URLS: {0}".format(node_endpoints))
 
         response_dict = {'success': True, 'result': None, 'error': []}
@@ -1332,7 +1333,96 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         return response_dict
 
-    def create_layer_from_postgis_store(self, store_id, table, debug=False):
+
+
+
+    def create_layer_from_postgis_store(self, store_id, table, layer_name=None, debug=False):
+        """
+        Add an existing PostGIS table as a feature resource to a PostGIS store that already exists.
+
+        Args:
+            store_id (str): Identifier for the store to add the resource to. This can be a store name,
+                or "workspace:store_name" combo (e.g.: "name" or "workspace:name"). If the workspace
+                is not specified, the catalog's default workspace is used.
+            table (str): The underlying table name in the PostGIS database. A layer (feature resource)
+                will be created referencing this table.
+            layer_name (str, optional): If provided, this name will be used for the newly created layer
+                in GeoServer. If not provided, defaults to the same as 'table'.
+            debug (bool, optional): Pretty print the response dictionary to the console for debugging.
+                Defaults to False.
+
+        Returns:
+            dict: A response dictionary with 'success', 'result', and/or 'error' keys.
+
+        Examples:
+            # Use the table name for layer:
+            engine.create_layer_from_postgis_store(
+                store_id='workspace:store_name',
+                table='table_name'
+            )
+
+            # Provide a custom layer name:
+            engine.create_layer_from_postgis_store(
+                store_id='workspace:store_name',
+                table='table_name',
+                layer_name='my_custom_layer'
+            )
+        """
+        # Extract (workspace, store_name) from the store_id
+        workspace, store_name = self._process_identifier(store_id)
+        if not workspace:
+            workspace = self.catalog.get_default_workspace().name
+
+        # Verify the store exists
+        store_info = self.get_store(store_id, debug=debug)
+        if not store_info['success']:
+            message = f"There is no store named '{store_name}'"
+            if workspace:
+                message += f" in {workspace}"
+            return {'success': False, 'error': message}
+
+        # If no layer_name was provided, default to the PostGIS table name
+        if not layer_name:
+            layer_name = table
+
+        # Create an XML body for the new feature type in GeoServer
+        # The <name> field sets the GeoServer layer (and resource) name.
+        xml_body = f"""
+            <featureType>
+                <name>{layer_name}</name>
+                <nativeName>{table}</nativeName>
+            </featureType>
+        """
+
+        headers = {
+            "Content-type": "text/xml",
+            "Accept": "application/xml"
+        }
+
+        # POST /workspaces/<workspace>/datastores/<store_name>/featuretypes
+        url = self._assemble_url('workspaces', workspace, 'datastores', store_name, 'featuretypes')
+        response = requests.post(
+            url=url,
+            data=xml_body,
+            headers=headers,
+            auth=HTTPBasicAuth(username=self.username, password=self.password)
+        )
+
+        if response.status_code != 201:
+            response_dict = {
+                'success': False,
+                'error': f'{response.reason}({response.status_code}): {response.text}'
+            }
+            self._handle_debug(response_dict, debug)
+            return response_dict
+
+        # Optionally return the store info, or you could directly query the new layer if desired
+        response_dict = self.get_store(store_id=store_id, debug=debug)
+        self._handle_debug(response_dict, debug)
+        return response_dict
+
+
+    def create_layer_from_postgis_store2(self, store_id, table, debug=False):
         """
         Add an existing postgis table as a feature resource to a postgis store that already exists.
 
@@ -2208,7 +2298,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         """
         # Pop tile caching properties to handle separately
         tile_caching = kwargs.pop('tile_caching', None)
-
+        # breakpoint()
         try:
             # Get resource
             layer = self.catalog.get_layer(name=layer_id)
@@ -2225,7 +2315,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             # Assemble Response
             response_dict = {'success': True,
                              'result': layer_dict}
-
+            
             # Handle tile caching properties (gsconfig doesn't support this)
             if tile_caching is not None:
                 gwc_url = '{0}layers/{1}.xml'.format(self.gwc_endpoint, layer_id)
