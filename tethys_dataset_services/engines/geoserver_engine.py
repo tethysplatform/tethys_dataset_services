@@ -677,8 +677,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                               GeoServer are running in a clustered GeoServer configuration.
             public (bool): Use the public geoserver endpoint if True, otherwise use the internal endpoint.
         """
-        node_endpoints = self._get_node_endpoints(ports=[9090], public=public) # take this out, it is hardcoded for testing.
-        # node_endpoints = self._get_node_endpoints(ports=ports, public=public)
+        # node_endpoints = self._get_node_endpoints(ports=[9090], public=public) # take this out, it is hardcoded for testing.
+        node_endpoints = self._get_node_endpoints(ports=ports, public=public)
         log.debug("Catalog Reload URLS: {0}".format(node_endpoints))
 
         response_dict = {'success': True, 'result': None, 'error': []}
