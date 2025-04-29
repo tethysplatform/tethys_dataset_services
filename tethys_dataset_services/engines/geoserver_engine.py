@@ -677,8 +677,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                               GeoServer are running in a clustered GeoServer configuration.
             public (bool): Use the public geoserver endpoint if True, otherwise use the internal endpoint.
         """
-        node_endpoints = self._get_node_endpoints(ports=[9090], public=public) # take this out, it is hardcoded for testing.
-        # node_endpoints = self._get_node_endpoints(ports=ports, public=public)
+
+        node_endpoints = self._get_node_endpoints(ports=ports, public=public)
         log.debug("Catalog Reload URLS: {0}".format(node_endpoints))
 
         response_dict = {'success': True, 'result': None, 'error': []}
@@ -1333,9 +1333,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         return response_dict
 
-
-
-
     def create_layer_from_postgis_store(self, store_id, table, layer_name=None, debug=False):
         """
         Add an existing PostGIS table as a feature resource to a PostGIS store that already exists.
@@ -1419,75 +1416,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # Optionally return the store info, or you could directly query the new layer if desired
         response_dict = self.get_store(store_id=store_id, debug=debug)
         self._handle_debug(response_dict, debug)
-        return response_dict
-
-
-    def create_layer_from_postgis_store2(self, store_id, table, debug=False):
-        """
-        Add an existing postgis table as a feature resource to a postgis store that already exists.
-
-        Args:
-          store_id (string): Identifier for the store to add the resource to. Can be a store name or a workspace name combination (e.g.: "name" or "workspace:name"). Note that the workspace must be an existing workspace. If no workspace is given, the default workspace will be assigned.  # noqa: E501
-          table (string): Name of existing table to add as a feature resource. A layer will automatically be created for this resource. Both the resource and the layer will share the same name as the table.  # noqa: E501
-          debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
-
-        Returns:
-          (dict): Response dictionary
-
-        Examples:
-
-          response = engine.create_layer_from_postgis_store(store_id='workspace:store_name', table='table_name')
-        """
-        # Process identifier
-        workspace, name = self._process_identifier(store_id)
-
-        # Get default work space if none is given
-        if not workspace:
-            workspace = self.catalog.get_default_workspace().name
-
-        # Throw error store does not exist
-        store = self.get_store(store_id, debug)
-        if not store['success']:
-            message = "There is no store named " + name
-            if workspace:
-                message += " in " + workspace
-
-            response_dict = {'success': False, 'error': message}
-
-            return response_dict
-
-        # Prepare file
-        xml = """
-              <featureType>
-                <name>{0}</name>
-              </featureType>
-              """.format(table)
-
-        # Prepare headers
-        headers = {
-            "Content-type": "text/xml",
-            "Accept": "application/xml"
-        }
-
-        # Prepare URL
-        url = self._assemble_url('workspaces', workspace, 'datastores', name, 'featuretypes')
-
-        # Execute: POST /workspaces/<ws>/datastores
-        response = requests.post(
-            url=url,
-            data=xml,
-            headers=headers,
-            auth=HTTPBasicAuth(username=self.username, password=self.password)
-        )
-
-        if response.status_code != 201:
-            response_dict = {'success': False,
-                             'error': '{1}({0}): {2}'.format(response.status_code, response.reason, response.text)}
-
-            self._handle_debug(response_dict, debug)
-            return response_dict
-
-        response_dict = self.get_store(store_id=store_id, debug=debug)
         return response_dict
 
     def create_sql_view_layer(self, store_id, layer_name, geometry_type, srid, sql, default_style,
