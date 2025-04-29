@@ -23,10 +23,10 @@ class XmlDictObject(dict):
         self.__setitem__(item, value)
 
     def __str__(self):
-        if '_text' in self:
-            return self.__getitem__('_text')
+        if "_text" in self:
+            return self.__getitem__("_text")
         else:
-            return ''
+            return ""
 
     @staticmethod
     def Wrap(x):
@@ -61,8 +61,8 @@ def _ConvertDictToXmlRecurse(parent, dictitem):
     assert not isinstance(dictitem, type([]))
 
     if isinstance(dictitem, dict):
-        for (tag, child) in dictitem.items():
-            if str(tag) == '_text':
+        for tag, child in dictitem.items():
+            if str(tag) == "_text":
                 parent.text = str(child)
             elif isinstance(child, type([])):
                 # iterate through the array and convert
@@ -111,14 +111,14 @@ def _ConvertXmlToDictRecurse(node, dictclass):
             nodedict[child.tag] = newitem
 
     if node.text is None:
-        text = ''
+        text = ""
     else:
         text = node.text.strip()
 
     if len(nodedict) > 0:
         # if we have a dictionary add the text as a dictionary value (if there is any)
         if len(text) > 0:
-            nodedict['_text'] = text
+            nodedict["_text"] = text
     else:
         # if we don't have child nodes or attributes, just set the text
         nodedict = text
@@ -134,6 +134,6 @@ def ConvertXmlToDict(root, dictclass=XmlDictObject):
     if isinstance(root, basestring):
         root = ElementTree.parse(root).getroot()
     elif not isinstance(root, ElementTree.Element):
-        raise TypeError('Expected ElementTree.Element or file path string')
+        raise TypeError("Expected ElementTree.Element or file path string")
 
     return dictclass({root.tag: _ConvertXmlToDictRecurse(root, dictclass)})
