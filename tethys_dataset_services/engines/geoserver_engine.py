@@ -1614,7 +1614,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         return response_dict
 
     def create_shapefile_resource(self, store_id, shapefile_base=None, shapefile_zip=None, shapefile_upload=None,
-                                  overwrite=False, charset=None, debug=False):
+                                  overwrite=False, charset=None, default_style=None, debug=False):
         """
         Use this method to add shapefile resources to GeoServer.
 
@@ -1626,7 +1626,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
           shapefile_zip (string, optional): Path to a zip file containing the shapefile and side cars.
           shapefile_upload (FileUpload list, optional): A list of Django FileUpload objects containing a shapefile and side cars that have been uploaded via multipart/form-data form.  # noqa: E501
           overwrite (bool, optional): Overwrite the file if it already exists.
-          charset (string, optional): Specify the character encoding of the file being uploaded (e.g.: ISO-8559-1)
+          charset (string, optional): Specify the character encoding of the file being uploaded (e.g.: ISO-8559-1).
+          default_style (string, optional): The name of the default style to apply to the layer. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").  # noqa: E501
           debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
 
         Returns:
@@ -1772,8 +1773,10 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         # Wrap up with failure
         if response.status_code != 201:
-            response_dict = {'success': False,
-                             'error': '{1}({0}): {2}'.format(response.status_code, response.reason, response.text)}
+            response_dict = {
+                'success': False,
+                'error': f'{response.reason}({response.status_code}): {response.text}'
+            }
 
             self._handle_debug(response_dict, debug)
             return response_dict
@@ -1787,6 +1790,34 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         elif shapefile_upload:
             # This case uses the store name as the Resource ID.
             resource_id = name
+
+        # Set the default style
+        if default_style is not None:
+            layer_url = self._assemble_url('layers', f'{workspace}:{resource_id}.xml')
+            layer_headers = {"Content-Type": "application/xml"}
+            layer_data = f"""
+                <layer>
+                <defaultStyle>
+                    <name>{default_style}</name>
+                </defaultStyle>
+                </layer>
+                """
+
+            layer_response = requests.put(
+                layer_url,
+                headers=layer_headers,
+                data=layer_data,
+                auth=HTTPBasicAuth(username=self.username, password=self.password)
+            )
+
+            if layer_response.status_code != 200:
+                layer_response_dict = {
+                    'success': False,
+                    'error': f'{layer_response.reason}({layer_response.status_code}): {layer_response.text}'
+                }
+
+                self._handle_debug(layer_response_dict, debug)
+                return response_dict
 
         # Wrap up successfully
         new_resource = self.catalog.get_resource(name=resource_id, store=name, workspace=workspace)
