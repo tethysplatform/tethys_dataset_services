@@ -79,7 +79,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.username = 'foo'
         self.password = 'bar'
         self.auth = (self.username, self.password)
-        
+
         self.engine = GeoServerSpatialDatasetEngine(
             endpoint=self.endpoint,
             username=self.username,
@@ -515,7 +515,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
             self.assertIn(n, result)
 
         mc.get_styles.assert_called_with(workspaces=[])
-    
+
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog')
     def test_list_styles_of_workspace(self, mock_catalog):
         mc = mock_catalog()
@@ -1650,7 +1650,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         default_style = self.style_names[0]
         other_styles = [self.style_names[1]]
 
-        self.assertRaises(requests.RequestException, self.engine.update_layer_styles, layer_id, default_style, 
+        self.assertRaises(requests.RequestException, self.engine.update_layer_styles, layer_id, default_style,
                           other_styles)
 
         mock_logger.error.assert_called()
@@ -1959,7 +1959,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertEqual(expected_headers, delete_call_args[0][1]['headers'])
         self.assertEqual(expected_params, delete_call_args[0][1]['params'])
 
-        mock_delete.assert_called_with(url=expected_url, auth=self.auth, headers=expected_headers, 
+        mock_delete.assert_called_with(url=expected_url, auth=self.auth, headers=expected_headers,
                                        params=expected_params)
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.log')
@@ -2120,10 +2120,10 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         # Workspace is given
         store_id = '{}:{}'.format(self.workspace_name, self.store_names[0])
 
-        with open(shapefile_cst, 'rb') as cst_upload,\
-                open(shapefile_dbf, 'rb') as dbf_upload,\
-                open(shapefile_prj, 'rb') as prj_upload,\
-                open(shapefile_shp, 'rb') as shp_upload,\
+        with open(shapefile_cst, 'rb') as cst_upload, \
+                open(shapefile_dbf, 'rb') as dbf_upload, \
+                open(shapefile_prj, 'rb') as prj_upload, \
+                open(shapefile_shp, 'rb') as shp_upload, \
                 open(shapefile_shx, 'rb') as shx_upload:
             upload_list = [cst_upload, dbf_upload, prj_upload, shp_upload, shx_upload]
             response = self.engine.create_shapefile_resource(store_id=store_id,
@@ -2362,7 +2362,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
     def test_reload_connection_error(self, mock_post, mock_logger):
         mock_post.side_effect = requests.ConnectionError()
-        response = self.engine.reload()
+        self.engine.reload()
         mock_logger.warning.assert_called()
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
@@ -2390,7 +2390,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
     def test_gwc_reload_connection_error(self, mock_post, mock_logger):
         mock_post.side_effect = requests.ConnectionError()
-        response = self.engine.gwc_reload()
+        self.engine.gwc_reload()
         mock_logger.warning.assert_called()
 
     def test_ini_no_slash_endpoint(self):
@@ -3104,10 +3104,10 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         sld_context = {'foo': 'bar'}
 
         mock_get_style.return_value = {
-            'success': True, 
+            'success': True,
             'result': {'name': self.mock_styles[0].name, 'workspace': self.workspace_name}
         }
-        
+
         response = self.engine.create_style(style_id, sld_template, sld_context)
 
         # Validate response object
@@ -3141,7 +3141,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         sld_context = {'foo': 'bar'}
 
         mock_get_style.return_value = {
-            'success': True, 
+            'success': True,
             'result': ' warnings '
         }
 
@@ -3154,7 +3154,6 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         post_call_args = mock_post.call_args_list
         self.assertIn(style_url, post_call_args[0][0][0])
         mock_log.warning.assert_called()
-
 
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.log')
     @mock.patch('tethys_dataset_services.engines.geoserver_engine.requests.post')
@@ -3195,7 +3194,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         sld_context = {'foo': 'bar'}
         self.engine.delete_style = mock.MagicMock()
         mock_get_style.return_value = {
-            'success': True, 
+            'success': True,
             'result': {'name': self.mock_styles[0].name, 'workspace': self.workspace_name}
         }
 
@@ -3207,7 +3206,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         # Success
         self.assertTrue(response['success'])
-        
+
         # Extract Result
         result = response['result']
 
@@ -3311,7 +3310,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         mock_post.side_effect = [MockResponse(500, 'already exists'), MockResponse(200)]
         mock_workspace().name = self.workspace_name
         store_id = 'foo'
-        layer_name =  self.layer_names[0]
+        layer_name = self.layer_names[0]
         geometry_type = 'Point'
         srid = 4236
         sql = 'SELECT * FROM foo'
@@ -3772,7 +3771,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
             endpoint=self.endpoint,
             workspace=self.workspace_name
         )
-        self.engine.create_postgis_store(store_id, host, port, database, username, password, max_connections, 
+        self.engine.create_postgis_store(store_id, host, port, database, username, password, max_connections,
                                          max_connection_idle_time, evictor_run_periodicity, validate_connections=False)
         mock_post.assert_called_with(url=rest_endpoint, data=xml, headers=expected_headers, auth=self.auth)
 
@@ -3821,7 +3820,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
             endpoint=self.endpoint,
             workspace=self.workspace_name
         )
-        self.engine.create_postgis_store(store_id, host, port, database, username, password, max_connections, 
+        self.engine.create_postgis_store(store_id, host, port, database, username, password, max_connections,
                                          max_connection_idle_time, evictor_run_periodicity, validate_connections=False,
                                          expose_primary_keys=True)
         mock_post.assert_called_with(url=rest_endpoint, data=xml, headers=expected_headers, auth=self.auth)

@@ -677,7 +677,8 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                               GeoServer are running in a clustered GeoServer configuration.
             public (bool): Use the public geoserver endpoint if True, otherwise use the internal endpoint.
         """
-        # node_endpoints = self._get_node_endpoints(ports=[9090], public=public) # take this out, it is hardcoded for testing.
+        # take this out, it is hardcoded for testing:
+        # node_endpoints = self._get_node_endpoints(ports=[9090], public=public)
         node_endpoints = self._get_node_endpoints(ports=ports, public=public)
         log.debug("Catalog Reload URLS: {0}".format(node_endpoints))
 
@@ -1333,9 +1334,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         return response_dict
 
-
-
-
     def create_layer_from_postgis_store(self, store_id, table, layer_name=None, debug=False):
         """
         Add an existing PostGIS table as a feature resource to a PostGIS store that already exists.
@@ -1420,7 +1418,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         response_dict = self.get_store(store_id=store_id, debug=debug)
         self._handle_debug(response_dict, debug)
         return response_dict
-
 
     def create_layer_from_postgis_store2(self, store_id, table, debug=False):
         """
@@ -2346,7 +2343,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             # Assemble Response
             response_dict = {'success': True,
                              'result': layer_dict}
-            
+
             # Handle tile caching properties (gsconfig doesn't support this)
             if tile_caching is not None:
                 gwc_url = '{0}layers/{1}.xml'.format(self.gwc_endpoint, layer_id)
