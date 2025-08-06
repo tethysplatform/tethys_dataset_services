@@ -71,7 +71,7 @@ docker-compose up -d
 
 ```
 cd ..
-tox -e e2e_geoserver_tests
+tox -e e2e_gs_tests
 ```
 
 6. It is recommended that after each run, you refresh the Docker containers. Run the following command to remove them:
