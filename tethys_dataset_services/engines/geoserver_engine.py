@@ -2718,7 +2718,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         """
         # Pop tile caching properties to handle separately
         tile_caching = kwargs.pop("tile_caching", None)
-        # breakpoint()
         try:
             # Get resource
             layer = self.catalog.get_layer(name=layer_id)
@@ -2802,9 +2801,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         self._handle_debug(response_dict, debug)
         return response_dict
 
-    def update_layer_styles(
-        self, layer_id, default_style, other_styles=None, debug=False
-    ):
+    def update_layer_styles(self, layer_id, default_style, other_styles=None, debug=False):
         """
         Update/add styles to existing layer.
 
@@ -2823,24 +2820,26 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         # check if layer workspace is style workspace else use styles default location
         lyr_ws_styles = self.list_styles(workspace=layer_workspace)
         if default_style in lyr_ws_styles:
-            default_style = "{0}:{1}".format(layer_workspace, default_style)
+            default_style = '{0}:{1}'.format(layer_workspace, default_style)
         if other_styles:
             for i in range(len(other_styles)):
                 if other_styles[i] in lyr_ws_styles:
-                    other_styles[i] = "{0}:{1}".format(layer_workspace, other_styles[i])
+                    other_styles[i] = '{0}:{1}'.format(layer_workspace, other_styles[i])
 
         context = {
-            "default_style": default_style,
-            "other_styles": other_styles or [],
-            "geoserver_rest_endpoint": self.endpoint,
+            'default_style': default_style,
+            'other_styles': other_styles or [],
+            'geoserver_rest_endpoint': self.endpoint
         }
 
         # Open layer template
-        layer_path = os.path.join(self.XML_PATH, "layer_template.xml")
-        url = self._assemble_url("layers", "{0}.xml".format(layer_name))
-        headers = {"Content-type": "text/xml"}
+        layer_path = os.path.join(self.XML_PATH, 'layer_template.xml')
+        url = self._assemble_url('layers', '{0}.xml'.format(layer_name))
+        headers = {
+            "Content-type": "text/xml"
+        }
 
-        with open(layer_path, "r") as layer_file:
+        with open(layer_path, 'r') as layer_file:
             text = layer_file.read()
             template = Template(text)
             xml = template.render(context)
@@ -2856,14 +2855,12 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
             # Raise an exception if status code is not what we expect
             if response.status_code == 200:
-                log.info("Successfully created layer {}".format(layer_name))
+                log.info('Successfully created layer {}'.format(layer_name))
                 break
             else:
                 retries_remaining -= 1
                 if retries_remaining == 0:
-                    msg = "Create Layer Status Code {0}: {1}".format(
-                        response.status_code, response.text
-                    )
+                    msg = "Create Layer Status Code {0}: {1}".format(response.status_code, response.text)
                     exception = requests.RequestException(msg, response=response)
                     log.error(exception)
                     raise exception
@@ -2955,34 +2952,37 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
     def delete_layer_group(self, layer_group_id):
         """
-        Args:
-            layer_group_id (string): Identifier of the layer group to delete. Can be a name or a workspace-name combination (e.g.: "name" or "workspace:name").
-
-        """  # noqa: E501
+        Delete the specified layer-group.  Works around a GeoServer 500 / NPE
+        that occurs on workspace-qualified groups by always passing
+        ``recurse=true``.
+        """
         # Process identifier
         workspace, group_name = self._process_identifier(layer_group_id)
 
-        # Get default work space if none is given
+        # Fall back to default workspace
         if not workspace:
             workspace = self.catalog.get_default_workspace().name
 
-        url = self._assemble_url(
-            "workspaces", workspace, "layergroups", "{0}".format(group_name)
+        url = self._assemble_url("workspaces", workspace, "layergroups",
+                                f"{group_name}")
+        response = requests.delete(
+            url,
+            auth=(self.username, self.password),
+            params={"recurse": "true"},
         )
-        response = requests.delete(url, auth=(self.username, self.password))
-        if response.status_code != 200:
-            if response.status_code == 404 and "No such layer group" in response.text:
-                pass
-            else:
-                msg = "Delete Layer Group Status Code {0}: {1}".format(
-                    response.status_code, response.text
-                )
-                exception = requests.RequestException(msg, response=response)
-                log.error(exception)
-                raise exception
 
-        response_dict = {"success": True, "result": None}
-        return response_dict
+        # Accept 200 OK or 404 “already gone”
+        if response.status_code not in (200, 404):
+            # 404 with the expected text is OK (idempotent delete)
+            if not (response.status_code == 404 and
+                    "No such layer group" in response.text):
+                msg = (f"Delete Layer Group Status Code {response.status_code}: "
+                    f"{response.text}")
+                exc = requests.RequestException(msg, response=response)
+                log.error(exc)
+                raise exc
+
+        return {"success": True, "result": None}
 
     def delete_workspace(self, workspace_id, purge=False, recurse=False, debug=False):
         """

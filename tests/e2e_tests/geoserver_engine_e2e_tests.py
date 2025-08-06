@@ -545,7 +545,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         self.assertIsInstance(result, list)
 
         # Check if layer is in list
-        self.assertIn(layer_name, result)
+        self.assertIn(layer_id, result)
 
         # TEST get_layer
 
@@ -708,7 +708,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         self.assertIsInstance(result, list)
 
         # Check if layer is in list
-        self.assertIn(layer_name, result)
+        self.assertIn(layer_id, result)
 
         # TEST get_layer
 
@@ -751,9 +751,8 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # expected_layer_group_id = '{}:{}'.format(self.workspace_name, random_string_generator(10))
 
         expected_layer_group_id = random_string_generator(10)
-        expected_layers = ["roads", "bugsites", "streams"]
+        expected_layers = ["sf:roads", "sf:bugsites", "sf:streams"]
         expected_styles = ["simple_roads", "capitals", "simple_streams"]
-
         # TODO: create_layer_group: fails on catalog.save() when workspace is given.
         response = self.geoserver_engine.create_layer_group(
             layer_group_id=f"sf:{expected_layer_group_id}",
@@ -818,7 +817,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
 
         # TEST delete layer group
         # Clean up
-        self.geoserver_engine.delete_layer_group(layer_group_id=expected_layer_group_id)
+        self.geoserver_engine.delete_layer_group(layer_group_id=f"sf:{expected_layer_group_id}")
         self.assert_valid_response_object(response)
         self.assertTrue(response["success"])
         # self.assertIsNone(response['result'])
@@ -1169,14 +1168,13 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         postgis_store_id = "{}:{}".format(self.workspace_name, store_id_name)
         sql = "SELECT * FROM {}".format(self.pg_table_name)
         geometry_type = self.geometry_type
-
         response = self.geoserver_engine.create_sql_view_layer(
             store_id=postgis_store_id,
             layer_name=feature_type_name,
             geometry_type=geometry_type,
             srid=self.srid,
             sql=sql,
-            default_style="points",
+            default_style="point",
         )
 
         self.assertTrue(response["success"])
