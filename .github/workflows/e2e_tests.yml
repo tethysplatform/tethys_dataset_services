@@ -17,28 +17,16 @@ jobs:
         py:
           - "3.12"
         postgis:
-          - "9.6-2.5-alpine"
-          - "10-2.5-alpine"
-          - "11-2.5-alpine"
-          - "12-2.5-alpine"
-          # Not working on PostGIS 3.4 yet
-          # - "12-3.4-alpine"
-          # - "13-3.4-alpine"
-          # - "14-3.4-alpine"
-          # - "15-3.4-alpine"
-          # - "16-3.4-alpine"
+          - "latest"
     services:
       geoserver:
-        image: tethysplatform/geoserver
+        image: docker.osgeo.org/geoserver:2.27.0
         env:
-          ENABLED_NODES: 1
-          REST_NODES: 1
-          MAX_MEMORY: 512
-          MIN_MEMORY: 128
-          NUM_CORES: 2
-          MAX_TIMEOUT: 60
+          SKIP_DEMO_DATA: false
+          CORS_ENABLED: true
+          ENABLE_JSONP: true
         ports:
-          - 8181:8181
+          - 8181:8080
       postgis:
         image: postgis/postgis:${{ matrix.postgis }}
         env:
