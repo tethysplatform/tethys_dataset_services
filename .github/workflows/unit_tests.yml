@@ -37,9 +37,10 @@ jobs:
           brew update
           brew install libpq
           echo "/opt/homebrew/opt/libpq/bin" >> $GITHUB_PATH
+          echo "PG_CONFIG=/opt/homebrew/opt/libpq/bin/pg_config" >> $GITHUB_ENV
           echo "LDFLAGS=-L/opt/homebrew/opt/libpq/lib" >> $GITHUB_ENV
           echo "CPPFLAGS=-I/opt/homebrew/opt/libpq/include" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=/opt/homebrew/opt/libpq/lib/pkgconfig" >> $GITHUB_EN
+          echo "PKG_CONFIG_PATH=/opt/homebrew/opt/libpq/lib/pkgconfig" >> $GITHUB_ENV
 
       - name: Install dependencies
         run: |
