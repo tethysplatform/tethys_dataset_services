@@ -80,8 +80,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         )
 
         # Create Test Engine
-        self.endpoint = "http://localhost:8181/geoserver/rest/"
-        self.public_endpoint = "http://localhost:8181/geoserver/rest/"
+        self.endpoint = "http://fake.geoserver.org:8181/geoserver/rest/"
+        self.public_endpoint = "http://fake.public.geoserver.org:8181/geoserver/rest/"
         self.username = "foo"
         self.password = "bar"
         self.auth = (self.username, self.password)
@@ -1961,7 +1961,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         )
 
         # Create feature type call
-        mock_delete.assert_called_with(url, auth=self.auth)
+        mock_delete.assert_called_with(url, auth=self.auth, params={'recurse': 'true'})
 
     @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.delete")
     @mock.patch(
@@ -1980,7 +1980,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         )
 
         # Create feature type call
-        mock_delete.assert_called_with(url, auth=self.auth)
+        mock_delete.assert_called_with(url, auth=self.auth, params={'recurse': 'true'})
 
     @mock.patch("tethys_dataset_services.engines.geoserver_engine.log")
     @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.delete")
@@ -3656,6 +3656,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         mock_logger.error.assert_called()
 
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.put")
     @mock.patch(
         "tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.reload"
     )
@@ -3674,8 +3675,10 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         mock_update_layer_styles,
         mock_get_layer,
         mock_reload,
+        mock_put
     ):
-        mock_post.side_effect = [MockResponse(201), MockResponse(200)]
+        mock_post.side_effect = [MockResponse(201)]  # featuretype create
+        mock_put.return_value = MockResponse(200)    # GWC layer create
         store_id = f"{self.workspace_name}:foo"
         layer_name = self.layer_names[0]
         geometry_type = "Point"
@@ -3711,10 +3714,9 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertIn(sql_view_url, post_call_args[0][0][0])
         self.assertEqual(expected_sql_xml, post_call_args[0][1]["data"])
 
-        # GWC Call
-        self.assertIn(gwc_layer_url, post_call_args[1][0][0])
-        self.assertEqual(expected_gwc_lyr_xml, str(post_call_args[1][1]["data"]))
-        mock_logger.info.assert_called()
+        put_call_args = mock_put.call_args_list
+        self.assertIn(gwc_layer_url, put_call_args[0][0][0])
+        self.assertEqual(expected_gwc_lyr_xml, str(put_call_args[0][1]["data"]))
 
         mock_update_layer_styles.assert_called_with(
             layer_id=f"{self.workspace_name}:{layer_name}",
@@ -3735,19 +3737,22 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     )
     @mock.patch("tethys_dataset_services.engines.geoserver_engine.log")
     @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.post")
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.put")
     @mock.patch(
         "tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog.get_default_workspace"
     )
     def test_create_layer_create_feature_type_already_exists(
         self,
         mock_workspace,
+        mock_put,
         mock_post,
         mock_logger,
         mock_update_layer_styles,
         mock_get_layer,
         mock_reload,
     ):
-        mock_post.side_effect = [MockResponse(500, "already exists"), MockResponse(200)]
+        mock_put.return_value = MockResponse(200)
+        mock_post.return_value = MockResponse(500, "already exists")
         mock_workspace().name = self.workspace_name
         store_id = 'foo'
         layer_name = self.layer_names[0]
@@ -3785,8 +3790,9 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertEqual(expected_sql_xml, post_call_args[0][1]["data"])
 
         # GWC Call
-        self.assertIn(gwc_layer_url, post_call_args[1][0][0])
-        self.assertEqual(expected_gwc_lyr_xml, str(post_call_args[1][1]["data"]))
+        put_call_args = mock_put.call_args_list
+        self.assertIn(gwc_layer_url, put_call_args[0][0][0])
+        self.assertEqual(expected_gwc_lyr_xml, str(put_call_args[0][1]["data"]))
         mock_logger.info.assert_called()
 
         mock_update_layer_styles.assert_called_with(
@@ -3821,14 +3827,12 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
     @mock.patch(
         "tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.update_layer_styles"
     )
-    @mock.patch("tethys_dataset_services.engines.geoserver_engine.log")
     @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.post")
-    def test_create_sql_view_layer_gwc_error(self, mock_post, mock_logger, _):
-        mock_post.side_effect = (
-            [MockResponse(201)]
-            + [MockResponse(200)]
-            + ([MockResponse(500, "GWC exception")] * 300)
-        )
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.log")
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.put")
+    def test_create_sql_view_layer_gwc_error(self, mock_put, mock_logger, mock_post, _):
+        mock_post.side_effect = [MockResponse(201), MockResponse(200)]
+        mock_put.return_value = MockResponse(500, "GWC exception")
         store_id = f"{self.workspace_name}:foo"
         layer_name = self.layer_names[0]
         geometry_type = "Point"
@@ -4520,7 +4524,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         self.assertIn("There is no store named", r)
 
-        mock_store.assert_called_with(store_id, False)
+        mock_store.assert_called_with(store_id, debug=False)
 
     @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.post")
     @mock.patch(
@@ -4551,7 +4555,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertEqual(expected_url, post_call_args[0][1]["url"])
         self.assertEqual(expected_headers, post_call_args[0][1]["headers"])
 
-        mock_store.assert_called_with(store_id, False)
+        mock_store.assert_called_with(store_id, debug=False)
 
 
 if __name__ == "__main__":

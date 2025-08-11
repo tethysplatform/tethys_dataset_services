@@ -2989,18 +2989,17 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             params={"recurse": "true"},
         )
 
-        # Accept 200 OK or 404 “already gone”
-        if response.status_code not in (200, 404):
-            # 404 with the expected text is OK (idempotent delete)
-            if not (response.status_code == 404 and
-                    "No such layer group" in response.text):
-                msg = (f"Delete Layer Group Status Code {response.status_code}: "
-                    f"{response.text}")
-                exc = requests.RequestException(msg, response=response)
-                log.error(exc)
-                raise exc
+        if response.status_code != 200:
+            if response.status_code == 404 and "No such layer group" in response.text:
+                pass
+            else:
+                msg = "Delete Layer Group Status Code {0}: {1}".format(response.status_code, response.text)
+                exception = requests.RequestException(msg, response=response)
+                log.error(exception)
+                raise exception
 
-        return {"success": True, "result": None}
+        response_dict = {'success': True, 'result': None}
+        return response_dict
 
     def delete_workspace(self, workspace_id, purge=False, recurse=False, debug=False):
         """
