@@ -333,13 +333,11 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         store_rand = random_string_generator(10)
         store_id = "{}:{}".format(self.workspace_name, store_rand)
 
-        with open(shapefile_cst, "rb") as cst_upload, open(
-            shapefile_dbf, "rb"
-        ) as dbf_upload, open(shapefile_prj, "rb") as prj_upload, open(
-            shapefile_shp, "rb"
-        ) as shp_upload, open(
-            shapefile_shx, "rb"
-        ) as shx_upload:
+        with open(shapefile_cst, 'rb') as cst_upload, \
+             open(shapefile_dbf, 'rb') as dbf_upload, \
+             open(shapefile_prj, 'rb') as prj_upload, \
+             open(shapefile_shp, 'rb') as shp_upload, \
+             open(shapefile_shx, 'rb') as shx_upload:
             upload_list = [cst_upload, dbf_upload, prj_upload, shp_upload, shx_upload]
             response = self.geoserver_engine.create_shapefile_resource(
                 store_id=store_id, shapefile_upload=upload_list, overwrite=True
@@ -500,10 +498,9 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         # TEST create_coverage resource
         # my_grass.zip
         layer_name = random_string_generator(10)
-        layer_id = "{}:{}".format(self.workspace_name, layer_name)
-        expected_coverage_type = "GrassGrid"
-        coverage_file_name = "my_grass.zip"
-        coverage_name = coverage_file_name.split(".")[0]
+        layer_id = '{}:{}'.format(self.workspace_name, layer_name)
+        expected_coverage_type = 'GrassGrid'
+        coverage_file_name = 'my_grass.zip'
         coverage_file = os.path.join(self.files_root, "grass_ascii", coverage_file_name)
 
         # Execute
@@ -1008,8 +1005,9 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         )
 
         # Check for success response
-        # TODO: returns an error in PostGIS 3.4: Internal Server Error(500): :java.io.IOException: Error occured calculating bounds for points
-        self.assertTrue(response["success"])
+        # TODO: returns an error in PostGIS 3.4: Internal Server Error(500):
+        # :java.io.IOException: Error occured calculating bounds for points
+        self.assertTrue(response['success'])
 
         # TEST list_stores
 
@@ -1078,7 +1076,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
             password=self.pg_password,
         )
 
-        self.assertTrue(response["success"])
+        self.assertTrue(response['success'])
 
         # Pause to let GeoServer catch up
         sleep(5)
@@ -1148,7 +1146,7 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
             username=self.pg_username,
             password=self.pg_password,
         )
-        self.assertTrue(response["success"])
+        self.assertTrue(response['success'])
 
         # Pause to let GeoServer catch up before continuing
         sleep(5)
@@ -1158,8 +1156,9 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
             store_id=store_id, table=self.pg_table_name, debug=True
         )
 
-        # TODO: returns an error in PostGIS 3.4: Internal Server Error(500): :java.io.IOException: Error occured calculating bounds for points
-        self.assertTrue(response["success"])
+        # TODO: returns an error in PostGIS 3.4: Internal Server Error(500):
+        # :java.io.IOException: Error occured calculating bounds for points
+        self.assertTrue(response['success'])
 
         # Pause to let GeoServer catch up before continuing
         sleep(5)
