@@ -30,6 +30,17 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.py }}
+
+      - name: macOS prerequisites for psycopg2
+        if: startsWith(matrix.os, 'macos') && matrix.py == '3.9'
+        run: |
+          brew update
+          brew install libpq
+          echo "/opt/homebrew/opt/libpq/bin" >> $GITHUB_PATH
+          echo "LDFLAGS=-L/opt/homebrew/opt/libpq/lib" >> $GITHUB_ENV
+          echo "CPPFLAGS=-I/opt/homebrew/opt/libpq/include" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/opt/homebrew/opt/libpq/lib/pkgconfig" >> $GITHUB_EN
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
