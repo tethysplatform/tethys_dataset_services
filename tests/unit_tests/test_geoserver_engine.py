@@ -2539,6 +2539,54 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertIn(".public.", response)
         self.assertIn("/gwc/rest/", response)
 
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.put")
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog")
+    def test_create_shapefile_resource_default_style_success(self, mock_catalog, mock_put):
+        # first PUT = shapefile upload (201), second PUT = set default style (200)
+        mock_put.side_effect = [MockResponse(201), MockResponse(200)]
+        mc = mock_catalog()
+        mc.get_default_workspace().name = self.workspace_name[0]
+        mc.get_resource.return_value = self.mock_resources[0]
+
+        shapefile_base = os.path.join(self.files_root, "shapefile", "test")
+        store_id = self.store_names[0]
+
+        resp = self.engine.create_shapefile_resource(
+            store_id=store_id,
+            shapefile_base=shapefile_base,
+            overwrite=True,
+            default_style="points",
+        )
+
+        self.assertTrue(resp["success"])
+        # ensure we hit the second PUT with the layer XML body
+        self.assertEqual(2, len(mock_put.call_args_list))
+        second_call = mock_put.call_args_list[1]
+        self.assertIn("<defaultStyle>", second_call.kwargs["data"])
+        self.assertIn("<name>points</name>", second_call.kwargs["data"])
+
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.put")
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog")
+    def test_create_shapefile_resource_default_style_failure(self, mock_catalog, mock_put):
+        # first PUT = shapefile upload ok, second PUT = layer update fails
+        mock_put.side_effect = [MockResponse(201), MockResponse(500, text="bad", reason="Oops")]
+        mc = mock_catalog()
+        mc.get_default_workspace().name = self.workspace_name[0]
+        mc.get_resource.return_value = self.mock_resources[0]
+
+        shapefile_base = os.path.join(self.files_root, "shapefile", "test")
+        store_id = self.store_names[0]
+
+        resp = self.engine.create_shapefile_resource(
+            store_id=store_id,
+            shapefile_base=shapefile_base,
+            overwrite=True,
+            default_style="points",
+        )
+
+        self.assertFalse(resp["success"])
+        self.assertIn("Oops(500): bad", resp["error"])
+
     def test_get_ows_endpoint(self):
         workspace = self.workspace_name
         response = self.engine.get_ows_endpoint(workspace, public=False)

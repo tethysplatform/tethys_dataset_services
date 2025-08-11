@@ -2196,7 +2196,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                 }
 
                 self._handle_debug(layer_response_dict, debug)
-                return response_dict
+                return layer_response_dict
 
         # Wrap up successfully
         new_resource = self.catalog.get_resource(
