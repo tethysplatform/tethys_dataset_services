@@ -80,8 +80,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         )
 
         # Create Test Engine
-        self.endpoint = "http://fake.geoserver.org:8181/geoserver/rest/"
-        self.public_endpoint = "http://fake.public.geoserver.org:8181/geoserver/rest/"
+        self.endpoint = "http://localhost:8181/geoserver/rest/"
+        self.public_endpoint = "http://localhost:8181/geoserver/rest/"
         self.username = "foo"
         self.password = "bar"
         self.auth = (self.username, self.password)
