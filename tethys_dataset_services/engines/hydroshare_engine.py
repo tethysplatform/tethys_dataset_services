@@ -13,7 +13,7 @@ class HydroShareDatasetEngine(DatasetEngine):
         """
         HydroShare Dataset Engine Type
         """
-        return 'HydroShare'
+        return "HydroShare"
 
     def _prepare_request(self, method, data_dict=None, file=None, apikey=None):
         """
@@ -176,7 +176,9 @@ class HydroShareDatasetEngine(DatasetEngine):
         """
         raise NotImplementedError()
 
-    def update_resource(self, resource_id, url=None, file=None, console=False, **kwargs):
+    def update_resource(
+        self, resource_id, url=None, file=None, console=False, **kwargs
+    ):
         """
         Update HydroShare file
 

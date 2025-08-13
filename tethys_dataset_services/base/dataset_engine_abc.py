@@ -16,6 +16,7 @@ class DatasetEngine:
     successful or not. If 'success' is True, then 'result' item will contain the resulting data. If 'success'
     is False, then 'error' should contain error information.
     """
+
     __metaclass__ = ABCMeta
 
     @property
@@ -72,7 +73,7 @@ class DatasetEngine:
         """
         Representation of Dataset Engine object for debugging purposes.
         """
-        return '<DatasetEngine type={0} endpoint={1}>'.format(self.type, self.endpoint)
+        return "<DatasetEngine type={0} endpoint={1}>".format(self.type, self.endpoint)
 
     @abstractmethod
     def search_datasets(self, query, **kwargs):

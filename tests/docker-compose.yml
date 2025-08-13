@@ -1,7 +1,6 @@
-version: "3.3"
 services:
   postgis:
-    image: "postgis/postgis:12-2.5"
+    image: "postgis/postgis:latest"
     ports:
       - "5432:5432"
     environment:
@@ -9,17 +8,10 @@ services:
       - POSTGRES_USER=postgres
 
   geoserver:
-    image: "tethysplatform/geoserver"
+    image: "docker.osgeo.org/geoserver:2.27.0"
     ports:
-      - "8181:8181"
-      - "8081:8081"
-      - "8082:8082"
-      - "8083:8083"
-      - "8084:8084"
+      - "8181:8080"
     environment:
-      - ENABLED_NODES=4
-      - REST_NODES=1
-      - MAX_MEMORY=512
-      - MIN_MEMORY=512
-      - NUM_CORES=2
-      - MAX_TIMEOUT=60
+      - SKIP_DEMO_DATA=false
+      - CORS_ENABLED=true
+      - ENABLE_JSONP=true
