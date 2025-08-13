@@ -1850,6 +1850,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         parameters=None,
         reload_public=False,
         debug=False,
+        *,
+        enable_gwc=True,
+        gwc_method="AUTO"
     ):
         """
         Direct call to GeoServer REST API to create SQL View feature types and layers.
@@ -1866,6 +1869,13 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             parameters: A list of parameter dictionaries { name, default_value, regex_validator }.
             reload_public: (bool, optional): Reload the catalog using the public endpoint. Defaults to False.
             debug (bool, optional): Pretty print the response dictionary to the console for debugging. Defaults to False.
+            enable_gwc (bool, keyword-only): If True, create/modify the GWC layer after the feature type is created. Default: True (backward compatible).
+            gwc_method (str, keyword-only):
+                One of {"AUTO", "POST", "PUT"}:
+                    - "AUTO": probe and pick the correct method (POST=modify, PUT=create).
+                    - "POST": force modify.
+                    - "PUT":  force create.
+                Default: "AUTO".
         """  # noqa: E501
         # Process identifier
         workspace, store_name = self._process_identifier(store_id)
@@ -1937,45 +1947,94 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         )
 
         # GeoWebCache Settings
-        gwc_layer_path = os.path.join(self.XML_PATH, "gwc_layer_template.xml")
-        url = (
-            self.get_gwc_endpoint(public=False)
-            + "layers/"
-            + workspace
-            + ":"
-            + layer_name
-            + ".xml"
-        )
-        headers = {"Content-type": "text/xml"}
-        with open(gwc_layer_path, "r") as gwc_layer_file:
-            text = gwc_layer_file.read()
-            template = Template(text)
-            xml = template.render(context)
-
-        retries_remaining = 300
-        while retries_remaining > 0:
-            response = requests.put(
-                url,
-                headers=headers,
-                auth=(self.username, self.password),
-                data=xml,
+        if enable_gwc:
+            gwc_layer_path = os.path.join(self.XML_PATH, "gwc_layer_template.xml")
+            gwc_url = (
+                self.get_gwc_endpoint(public=False)
+                + "layers/"
+                + workspace
+                + ":"
+                + layer_name
+                + ".xml"
             )
+            gwc_headers = {"Content-type": "text/xml"}
+            with open(gwc_layer_path, "r") as gwc_layer_file:
+                text = gwc_layer_file.read()
+                template = Template(text)
+                xml = template.render(context)
 
-            if response.status_code == 200:
-                log.info("Successfully created GeoWebCache layer {}".format(layer_name))
-                break
-            else:
-                log.warning(
-                    "GWC DID NOT RETURN 200, but instead: {}. {}\n".format(
-                        response.status_code, response.text
+
+            # Decide method, aligned with current GWC REST:
+            # PUT => add new layer, POST => modify existing layer
+            method = (gwc_method or "AUTO").upper()
+            if method not in {"AUTO", "POST", "PUT"}:
+                raise ValueError("gwc_method must be one of 'AUTO', 'POST', or 'PUT'")
+
+            if method == "AUTO":
+                try:
+                    probe = requests.get(
+                        gwc_url,
+                        auth=(self.username, self.password),
+                        headers={"Accept": "application/xml"},
                     )
-                )
+                    # Exists? -> POST (modify). Missing? -> PUT (create).
+                    if probe.status_code == 200:
+                        method_to_use = "POST"
+                    elif probe.status_code == 404:
+                        method_to_use = "PUT"
+                    else:
+                        method_to_use = "POST"  # safe default
+                except Exception:
+                    method_to_use = "POST"  # safe default if probe fails
+            else:
+                method_to_use = method
+
+            retries_remaining = 3
+            put_fallback_done = False
+
+            while retries_remaining > 0:
+                if method_to_use == "PUT":
+                    resp = requests.put(
+                        gwc_url,
+                        headers=gwc_headers,
+                        auth=(self.username, self.password),
+                        data=xml,
+                    )
+                    ok = resp.status_code == 200  # docs show 200 on success
+                else:  # POST (modify)
+                    resp = requests.post(
+                        gwc_url,
+                        headers=gwc_headers,
+                        auth=(self.username, self.password),
+                        data=xml,
+                    )
+                    ok = resp.status_code == 200
+
+                if ok:
+                    log.info("Successfully applied GeoWebCache layer settings for %s", layer_name)
+                    break
+
+                # If trying PUT but the layer already exists, switch once to POST
+                if (
+                    method_to_use == "PUT"
+                    and not put_fallback_done
+                    and (
+                        resp.status_code in (405, 409)
+                        or "already exists" in (resp.text or "").lower()
+                    )
+                ):
+                    log.info("GWC layer %s already exists; switching to POST.", layer_name)
+                    method_to_use = "POST"
+                    put_fallback_done = True
+                    continue
+
+                log.warning("GWC returned %s. %s\n", resp.status_code, resp.text)
                 retries_remaining -= 1
                 if retries_remaining == 0:
-                    msg = "Create GWC Layer Status Code {0}: {1}".format(
-                        response.status_code, response.text
+                    msg = "Create/Update GWC Layer Status Code {0}: {1}".format(
+                        resp.status_code, resp.text
                     )
-                    exception = requests.RequestException(msg, response=response)
+                    exception = requests.RequestException(msg, response=resp)
                     log.error(exception)
                     raise exception
 

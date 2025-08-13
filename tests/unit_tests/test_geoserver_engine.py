@@ -3735,7 +3735,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         default_style = "points"
 
         self.engine.create_sql_view_layer(
-            store_id, layer_name, geometry_type, srid, sql, default_style
+            store_id, layer_name, geometry_type, srid, sql, default_style,
+            gwc_method="PUT"  # force create path; uses mock_put and avoids extra POST
         )
 
         # Validate endpoint calls
@@ -3799,8 +3800,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         mock_get_layer,
         mock_reload,
     ):
-        mock_put.return_value = MockResponse(200)
-        mock_post.return_value = MockResponse(500, "already exists")
+        mock_post.side_effect = [MockResponse(500, "already exists"), MockResponse(200)]
+        mock_put.return_value = MockResponse(200)  # ensure no accidental failure if called
         mock_workspace().name = self.workspace_name
         store_id = 'foo'
         layer_name = self.layer_names[0]
@@ -3810,7 +3811,8 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         default_style = "points"
 
         self.engine.create_sql_view_layer(
-            store_id, layer_name, geometry_type, srid, sql, default_style
+            store_id, layer_name, geometry_type, srid, sql, default_style,
+            gwc_method="POST"
         )
 
         # Validate endpoint calls
@@ -3838,9 +3840,9 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertEqual(expected_sql_xml, post_call_args[0][1]["data"])
 
         # GWC Call
-        put_call_args = mock_put.call_args_list
-        self.assertIn(gwc_layer_url, put_call_args[0][0][0])
-        self.assertEqual(expected_gwc_lyr_xml, str(put_call_args[0][1]["data"]))
+        post_call_args = mock_post.call_args_list
+        self.assertIn(gwc_layer_url, post_call_args[1][0][0])
+        self.assertEqual(expected_gwc_lyr_xml, str(post_call_args[1][1]["data"]))
         mock_logger.info.assert_called()
 
         mock_update_layer_styles.assert_called_with(
@@ -3890,13 +3892,235 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         with self.assertRaises(requests.RequestException) as error:
             self.engine.create_sql_view_layer(
-                store_id, layer_name, geometry_type, srid, sql, default_style
+                store_id, layer_name, geometry_type, srid, sql, default_style,
+                gwc_method="PUT"
             )
 
         self.assertEqual(
-            "Create GWC Layer Status Code 500: GWC exception", str(error.exception)
+            "Create/Update GWC Layer Status Code 500: GWC exception", str(error.exception)
         )
         mock_logger.error.assert_called()
+
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.reload")
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.update_layer_styles")
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.get")
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.put")
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.post")
+    def test_create_sql_view_layer_gwc_invalid_method(
+        self, mock_post, mock_put, mock_get, mock_update_layer_styles, mock_reload
+    ):
+        # Feature type creation succeeds, then invalid gwc_method triggers ValueError
+        mock_post.return_value = MockResponse(201)
+        store_id = f"{self.workspace_name}:foo"
+        layer_name = self.layer_names[0]
+        default_style = "points"
+
+        with self.assertRaises(ValueError) as err:
+            self.engine.create_sql_view_layer(
+                store_id, layer_name, "Point", 4236, "SELECT * FROM foo", "points",
+                gwc_method="BAD"
+            )
+        self.assertIn("gwc_method must be one of 'AUTO', 'POST', or 'PUT'", str(err.exception))
+        # ensure we didn't try to probe or call GWC after the check
+        mock_get.assert_not_called()
+        mock_put.assert_not_called()
+        # FT creation happened
+        mock_post.assert_called_once()
+        mock_update_layer_styles.assert_called_with(
+            layer_id=f"{self.workspace_name}:{layer_name}",
+            default_style=default_style,
+            other_styles=None,
+        )
+        mock_reload.assert_called()
+
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.reload")
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.update_layer_styles")
+    @mock.patch(
+        "tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.get_layer"
+    )
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.get")
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.put")
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.post")
+    def test_create_sql_view_layer_gwc_auto_probe_exists_uses_post(
+        self, mock_post, mock_put, mock_get, mock_get_layer, mock_update_layer_styles, mock_reload
+    ):
+        # FT create (POST 201), then AUTO probe (GET 200) -> GWC POST (modify 200)
+        mock_post.side_effect = [MockResponse(201), MockResponse(200)]
+        mock_get.return_value = MockResponse(200)
+        store_id = f"{self.workspace_name}:foo"
+        layer_name = self.layer_names[0]
+        default_style = "points"
+
+        self.engine.create_sql_view_layer(
+            store_id, layer_name, "Point", 4236, "SELECT * FROM foo", "points",
+            gwc_method="AUTO"
+        )
+
+        gwc_layer_url = "layers/{workspace}:{feature_name}.xml".format(
+            workspace=self.workspace_name, feature_name=layer_name
+        )
+        # second POST call should be to GWC
+        post_calls = mock_post.call_args_list
+        self.assertIn(gwc_layer_url, post_calls[1][0][0])
+        mock_put.assert_not_called()
+        mock_update_layer_styles.assert_called_with(
+            layer_id=f"{self.workspace_name}:{layer_name}",
+            default_style=default_style,
+            other_styles=None,
+        )
+        mock_get_layer.assert_called()
+        mock_reload.assert_called()
+
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.reload")
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.update_layer_styles")
+    @mock.patch(
+        "tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.get_layer"
+    )
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.get")
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.put")
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.post")
+    def test_create_sql_view_layer_gwc_auto_probe_missing_uses_put(
+        self, mock_post, mock_put, mock_get, mock_get_layer, mock_update_layer_styles, mock_reload
+    ):
+        # FT create (POST 201), then AUTO probe (GET 404) -> GWC PUT (create 200)
+        mock_post.side_effect = [MockResponse(201)]
+        mock_put.return_value = MockResponse(200)
+        mock_get.return_value = MockResponse(404)
+        store_id = f"{self.workspace_name}:foo"
+        layer_name = self.layer_names[0]
+        default_style = "points"
+
+        self.engine.create_sql_view_layer(
+            store_id, layer_name, "Point", 4236, "SELECT * FROM foo", "points",
+            gwc_method="AUTO"
+        )
+
+        gwc_layer_url = "layers/{workspace}:{feature_name}.xml".format(
+            workspace=self.workspace_name, feature_name=layer_name
+        )
+        put_calls = mock_put.call_args_list
+        self.assertIn(gwc_layer_url, put_calls[0][0][0])
+        # only one POST (feature type), no GWC POST
+        self.assertEqual(len(mock_post.call_args_list), 1)
+
+        mock_update_layer_styles.assert_called_with(
+            layer_id=f"{self.workspace_name}:{layer_name}",
+            default_style=default_style,
+            other_styles=None,
+        )
+        mock_get_layer.assert_called()
+        mock_reload.assert_called()
+
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.reload")
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.update_layer_styles")
+    @mock.patch(
+        "tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.get_layer"
+    )
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.get")
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.put")
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.post")
+    def test_create_sql_view_layer_gwc_auto_probe_unknown_status_uses_post(
+        self, mock_post, mock_put, mock_get, mock_get_layer, mock_update_layer_styles, mock_reload
+    ):
+        # FT create (POST 201), then AUTO probe (GET 500) -> GWC POST (modify 200) as safe default
+        mock_post.side_effect = [MockResponse(201), MockResponse(200)]
+        mock_get.return_value = MockResponse(500)
+        store_id = f"{self.workspace_name}:foo"
+        layer_name = self.layer_names[0]
+        default_style = "points"
+
+        self.engine.create_sql_view_layer(
+            store_id, layer_name, "Point", 4236, "SELECT * FROM foo", "points",
+            gwc_method="AUTO"
+        )
+
+        gwc_layer_url = "layers/{workspace}:{feature_name}.xml".format(
+            workspace=self.workspace_name, feature_name=layer_name
+        )
+        self.assertIn(gwc_layer_url, mock_post.call_args_list[1][0][0])
+        mock_put.assert_not_called()
+
+        mock_update_layer_styles.assert_called_with(
+            layer_id=f"{self.workspace_name}:{layer_name}",
+            default_style=default_style,
+            other_styles=None,
+        )
+        mock_get_layer.assert_called()
+        mock_reload.assert_called()
+
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.reload")
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.update_layer_styles")
+    @mock.patch(
+        "tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.get_layer"
+    )
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.get")
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.put")
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.post")
+    def test_create_sql_view_layer_gwc_auto_probe_exception_uses_post(
+        self, mock_post, mock_put, mock_get, mock_get_layer, mock_update_layer_styles, mock_reload
+    ):
+        # FT create (POST 201), then AUTO probe raises -> GWC POST (modify 200)
+        mock_post.side_effect = [MockResponse(201), MockResponse(200)]
+        mock_get.side_effect = Exception("probe failed")
+        store_id = f"{self.workspace_name}:foo"
+        layer_name = self.layer_names[0]
+        default_style = "points"
+        self.engine.create_sql_view_layer(
+            store_id, layer_name, "Point", 4236, "SELECT * FROM foo", "points",
+            gwc_method="AUTO"
+        )
+
+        gwc_layer_url = "layers/{workspace}:{feature_name}.xml".format(
+            workspace=self.workspace_name, feature_name=layer_name
+        )
+        self.assertIn(gwc_layer_url, mock_post.call_args_list[1][0][0])
+        mock_put.assert_not_called()
+        mock_update_layer_styles.assert_called_with(
+            layer_id=f"{self.workspace_name}:{layer_name}",
+            default_style=default_style,
+            other_styles=None,
+        )
+        mock_get_layer.assert_called()
+        mock_reload.assert_called()
+
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.reload")
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.update_layer_styles")
+    @mock.patch(
+        "tethys_dataset_services.engines.geoserver_engine.GeoServerSpatialDatasetEngine.get_layer"
+    )
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.put")
+    @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.post")
+    def test_create_sql_view_layer_gwc_put_fallbacks_to_post_when_exists(
+        self, mock_post, mock_put, mock_get_layer, mock_update_layer_styles, mock_reload
+    ):
+        # FT create (POST 201)
+        # GWC PUT returns 409 "already exists" -> code falls back to POST next loop -> 200
+        mock_post.side_effect = [MockResponse(201), MockResponse(200)]
+        mock_put.side_effect = [MockResponse(409, "already exists")]
+        store_id = f"{self.workspace_name}:foo"
+        layer_name = self.layer_names[0]
+        default_style = "points"
+
+        self.engine.create_sql_view_layer(
+            store_id, layer_name, "Point", 4236, "SELECT * FROM foo", "points",
+            gwc_method="PUT"
+        )
+
+        gwc_layer_url = "layers/{workspace}:{feature_name}.xml".format(
+            workspace=self.workspace_name, feature_name=layer_name
+        )
+        # First PUT attempted once
+        self.assertIn(gwc_layer_url, mock_put.call_args_list[0][0][0])
+        # Then POST used after fallback (second POST call overall)
+        self.assertIn(gwc_layer_url, mock_post.call_args_list[1][0][0])
+
+        mock_update_layer_styles.assert_called_with(
+            layer_id=f"{self.workspace_name}:{layer_name}",
+            default_style=default_style,
+            other_styles=None,
+        )
+        mock_get_layer.assert_called()
+        mock_reload.assert_called()
 
     @mock.patch("tethys_dataset_services.engines.geoserver_engine.GeoServerCatalog")
     def test_apply_changes_to_gs_object(self, mock_catalog):

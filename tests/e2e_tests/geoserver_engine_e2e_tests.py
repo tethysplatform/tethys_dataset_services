@@ -11,7 +11,7 @@ from builtins import *  # noqa: F403, F401
 
 import random
 import string
-from time import sleep
+from time import time, sleep
 import unittest
 import os
 from sqlalchemy.engine import create_engine
@@ -1174,6 +1174,8 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
             srid=self.srid,
             sql=sql,
             default_style="point",
+            enable_gwc=True,
+            gwc_method="AUTO",
         )
 
         self.assertTrue(response["success"])
@@ -1188,24 +1190,23 @@ class GeoServerDatasetEngineEnd2EndTests(unittest.TestCase):
         self.assertIn(feature_type_name, r["name"])
 
         # TEST list_resources
-
-        # Execute
-        response = self.geoserver_engine.list_resources()
-
-        # Validate response object
-        self.assert_valid_response_object(response)
+        deadline = time() + 30
+        listed = []
+        while time() < deadline:
+            response = self.geoserver_engine.list_resources()
+            self.assert_valid_response_object(response)
+            if response["success"] and isinstance(response["result"], list):
+                listed = response["result"]
+                if feature_type_name in listed:
+                    break
+            sleep(1)
 
         # Success
         self.assertTrue(response["success"])
-
-        # Extract Result
-        result = response["result"]
-
         # Returns list
-        self.assertIsInstance(result, list)
-
+        self.assertIsInstance(listed, list)
         # layer listed
-        self.assertIn(feature_type_name, result)
+        self.assertIn(feature_type_name, listed)
 
         # TEST get_resources
 
