@@ -1,5 +1,3 @@
 include LICENSE
 include README.md
-recursive-include tethys_dataset_services/tests/support *
-recursive-include tethys_dataset_services/tests/files *
 recursive-include tethys_dataset_services/resources *

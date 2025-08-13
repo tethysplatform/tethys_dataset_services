@@ -15,3 +15,6 @@ build
 tethys_datasets/temp/*
 tests/test_config.py
 .vscode
+
+# setuptools_scm generated version file
+tethys_dataset_services/_version.py

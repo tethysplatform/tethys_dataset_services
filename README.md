@@ -36,6 +36,33 @@ cd tethys_dataset_services
 pip install --editable .
 ```
 
+## Versioning and Releases
+
+This project uses `setuptools_scm` for automatic versioning based on git tags and has migrated from `setup.cfg` to `pyproject.toml` for modern Python packaging standards. The version is automatically determined from the latest git tag and the number of commits since that tag.
+
+### Creating a Release
+
+To create a new release:
+
+1. Create and push a git tag with the version number (following semantic versioning):
+   ```bash
+   git tag 2.4.0
+   git push origin 2.4.0
+   ```
+
+2. The GitHub Action workflow will automatically:
+   - Run all tests on Python 3.10, 3.11, 3.12, and 3.13
+   - Build the package
+   - Publish to PyPI
+
+### Development Versions
+
+During development, the version will include the commit hash and distance from the last tag (e.g., `2.4.1.dev5+g1234567`).
+
+### PyPI Configuration
+
+For automatic publishing to work, you need to configure PyPI API token in your repository secrets as `PYPI_API_TOKEN`, or set up trusted publishing in your PyPI account settings.
+
 ## Tests
 
 Tests are executed using tox:

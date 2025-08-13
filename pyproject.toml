@@ -1,3 +1,62 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "tethys_dataset_services"
+description = "A generic Python interface for dataset services such as GeoServer, CKAN, and HydroShare"
+authors = [
+    {name = "Nathan Swain", email = "nswain@aquaveo.com"}
+]
+readme = "README.md"
+license = "BSD-2-Clause"
+keywords = []
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Web Environment",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11", 
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "django",
+    "future",
+    "jinja2",
+    "owslib",
+    "geoserver-restconfig",
+    "requests",
+    "requests_toolbelt",
+    "sqlalchemy<2",
+    "psycopg2-binary",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/tethysplatform/tethys_dataset_services"
+Documentation = "http://docs.tethysplatform.org/en/stable/tethys_sdk/tethys_services/spatial_dataset_service/base_reference.html"
+
+[project.optional-dependencies]
+tests = [
+    "tox",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+exclude = ["tests*"]
+
+[tool.setuptools_scm]
+write_to = "tethys_dataset_services/_version.py"
