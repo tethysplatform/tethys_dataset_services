@@ -2248,7 +2248,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         # Wrap up successfully
         new_resource = self.catalog.get_resource(
-            name=name, store=name, workspace=workspace
+            store=name, workspace=workspace
         )
         resource_dict = self._transcribe_geoserver_object(new_resource)
 

@@ -2285,7 +2285,6 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
 
         mc.get_default_workspace.assert_called_with()
         mc.get_resource.assert_called_with(
-            name=self.store_names[0],
             store=self.store_names[0],
             workspace=self.workspace_name[0],
         )
@@ -2321,7 +2320,7 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertIn(self.store_name[0], r["store"])
 
         mc.get_resource.assert_called_with(
-            name=self.store_names[0], store=self.store_names[0], workspace=self.workspace_name
+            store=self.store_names[0], workspace=self.workspace_name
         )
 
     @mock.patch("tethys_dataset_services.engines.geoserver_engine.requests.put")
@@ -2364,7 +2363,6 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertIn(self.store_name[0], r["store"])
 
         mc.get_resource.assert_called_with(
-            name=self.store_names[0],
             store=self.store_names[0],
             workspace=self.workspace_name,
         )
@@ -2440,7 +2438,6 @@ class TestGeoServerDatasetEngine(unittest.TestCase):
         self.assertIn(self.store_name[0], r["store"])
 
         mc.get_resource.assert_called_with(
-            name=self.store_names[0],
             store=self.store_names[0],
             workspace=self.workspace_name,
         )
