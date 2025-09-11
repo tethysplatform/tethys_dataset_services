@@ -1963,7 +1963,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                 template = Template(text)
                 xml = template.render(context)
 
-
             # Decide method, aligned with current GWC REST:
             # PUT => add new layer, POST => modify existing layer
             method = (gwc_method or "AUTO").upper()
@@ -3030,8 +3029,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         if not workspace:
             workspace = self.catalog.get_default_workspace().name
 
-        url = self._assemble_url("workspaces", workspace, "layergroups",
-                                f"{group_name}")
+        url = self._assemble_url("workspaces", workspace, "layergroups", f"{group_name}")
         response = requests.delete(
             url,
             auth=(self.username, self.password),
