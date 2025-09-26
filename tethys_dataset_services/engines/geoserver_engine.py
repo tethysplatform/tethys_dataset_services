@@ -1963,7 +1963,6 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
                 template = Template(text)
                 xml = template.render(context)
 
-
             # Decide method, aligned with current GWC REST:
             # PUT => add new layer, POST => modify existing layer
             method = (gwc_method or "AUTO").upper()
@@ -2219,19 +2218,9 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
             self._handle_debug(response_dict, debug)
             return response_dict
 
-        if shapefile_base:
-            # This case uses the store name as the Resource ID.
-            resource_id = name
-        elif shapefile_zip:
-            # This case uses the filename as the Resource ID.
-            resource_id = os.path.splitext(os.path.basename(shapefile_zip))[0]
-        elif shapefile_upload:
-            # This case uses the store name as the Resource ID.
-            resource_id = name
-
         # Set the default style
         if default_style is not None:
-            layer_url = self._assemble_url('layers', f'{workspace}:{resource_id}.xml')
+            layer_url = self._assemble_url("layers", name)
             layer_headers = {"Content-Type": "application/xml"}
             layer_data = f"""
                 <layer>
@@ -2259,7 +2248,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
 
         # Wrap up successfully
         new_resource = self.catalog.get_resource(
-            name=resource_id, store=name, workspace=workspace
+            store=name, workspace=workspace
         )
         resource_dict = self._transcribe_geoserver_object(new_resource)
 
@@ -3040,8 +3029,7 @@ class GeoServerSpatialDatasetEngine(SpatialDatasetEngine):
         if not workspace:
             workspace = self.catalog.get_default_workspace().name
 
-        url = self._assemble_url("workspaces", workspace, "layergroups",
-                                f"{group_name}")
+        url = self._assemble_url("workspaces", workspace, "layergroups", f"{group_name}")
         response = requests.delete(
             url,
             auth=(self.username, self.password),
